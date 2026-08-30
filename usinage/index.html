@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>(function(){try{var t=localStorage.getItem('theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-<title>Usinage</title>
+<title>Réservations des machines-outils</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0083ba">
 <meta name="mobile-web-app-capable" content="yes">
@@ -88,6 +88,8 @@
   th{background:#e8f5fb;padding:10px 8px;font-size:.82rem;font-weight:700;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap}
   th.today-col{background:var(--primary-light);color:var(--primary-dark)}
   td{border:1px solid var(--border);padding:0;vertical-align:top}
+  /* Séparation plus marquée entre deux machines (première ligne de chaque machine) */
+  tr.machine-start > td{border-top:2px solid #8296a5}
   td.machine-label{padding:8px 10px;font-weight:700;font-size:.88rem;border-right:2px solid var(--border);white-space:nowrap;vertical-align:middle;text-align:left;min-width:100px}
   .machine-color-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;border:1px solid rgba(0,0,0,.15);vertical-align:middle}
   .slot-cell{min-width:130px;height:auto;min-height:100px;padding:6px 8px;position:relative;transition:background .15s}
@@ -425,6 +427,7 @@
   :root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea{background:var(--surface);color:var(--text)}
   /* Colonne « machine » : fond sombre uniforme, mais on garde le liseré coloré (border-left inline) */
   :root[data-theme="dark"] .machine-label{background:#152531!important;color:var(--text)}
+  :root[data-theme="dark"] tr.machine-start > td{border-top-color:#4a6779}
 </style>
 </head>
 <body>
@@ -456,10 +459,10 @@
 </div>
 
 <header>
-  <div class="icon" id="headerIcon"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="Usinage"><path d="M45 9h9v33h-9z"/><path d="M7 45h50v7H7z"/><path d="M12 52v4M52 52v4"/><path d="M45 17H29v6"/><path d="M24 23h10v8H24z" fill="currentColor" stroke="none"/><path d="M29 31v7"/><path d="M20 38h18v7H20z"/></svg></div>
+  <div class="icon" id="headerIcon"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="Réservations des machines-outils"><path d="M45 9h9v33h-9z"/><path d="M7 45h50v7H7z"/><path d="M12 52v4M52 52v4"/><path d="M45 17H29v6"/><path d="M24 23h10v8H24z" fill="currentColor" stroke="none"/><path d="M29 31v7"/><path d="M20 38h18v7H20z"/></svg></div>
   <div>
-    <h1>Usinage</h1>
-    <p>Planification hebdomadaire des créneaux</p>
+    <h1>Réservations des machines-outils</h1>
+    <p>Planification des réservations des machines-outils de l'atelier GMP</p>
   </div>
   <div class="header-qr">
     <img id="headerQr" src="" alt="QR Code">
@@ -1041,7 +1044,7 @@ function buildMultiMachineAgendaTable(machineList,days){
     var color=getMachineColor(machine);
     var colorLabel=hexToRgba(color,0.10);
     SLOTS.forEach((slot,idx)=>{
-      html+="<tr>";
+      html+="<tr"+(idx===0?" class='machine-start'":"")+">";
       if(idx===0) html+="<td class='machine-label' rowspan='"+SLOTS.length+"' style='background:"+colorLabel+";border-left:4px solid "+color+"'><span class='machine-color-dot' style='background:"+color+"'></span>"+esc(machine)+"</td>";
       days.forEach(day=>{
         var key=machine+"|"+fmt(day)+"|"+slot;
@@ -2108,7 +2111,7 @@ function render(){
     var colorLabel=blendWithSurface(color,0.10);
 
     SLOTS.forEach((slot,idx)=>{
-      html+="<tr>";
+      html+="<tr"+(idx===0?" class='machine-start'":"")+">";
       if(idx===0){
         var mSt=machineStatus[machine]||'ok';
         var mBadge=mSt!=='ok'?'<br><span class="badge-'+mSt+'">'+mSt.toUpperCase()+(machineStatusReason[machine]?' — '+esc(machineStatusReason[machine]):'')+'</span>':'';

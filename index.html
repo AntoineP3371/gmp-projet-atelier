@@ -201,7 +201,7 @@
         <path d="M20 38h18v7H20z"/>
       </svg>
       <span class="badge">Usinage</span>
-      <h2>Réservation Machines</h2>
+      <h2>Réservations des machines-outils</h2>
       <p>Planning de réservation des machines de l'atelier (tournage, fraisage, CN…).</p>
       <span class="go">Accéder →</span>
     </a>
@@ -224,7 +224,7 @@
         <path d="M16 42v12M48 42v12"/>
       </svg>
       <span class="badge">Fabrication additive</span>
-      <h2>Impression 3D</h2>
+      <h2>Demandes d'impressions 3D</h2>
       <p>Dépôt et suivi des demandes d'impression 3D (fichier STEP, visualisation, validation).</p>
       <span class="go">Accéder →</span>
     </a>
@@ -232,12 +232,12 @@
 
   <div class="admin-bar">
     <span class="admin-bar-label">Administration</span>
-    <button class="admin-link" onclick="portalAuth('operateurs')">👥 Gérer les opérateurs</button>
-    <button class="admin-link" onclick="portalAuth('etudiants')">👨‍🎓 Étudiants / Projets</button>
+    <button class="admin-link" onclick="portalAuth('operateurs')">👥 Administration des opérateurs</button>
+    <button class="admin-link" onclick="portalAuth('etudiants')">👨‍🎓 Administration des étudiants-tes et des projets</button>
   </div>
 
   <footer>Atelier GMP — IUT Bordeaux</footer>
-  <div class="site-version">v3.2.1</div>
+  <div class="site-version">v3.2.2</div>
 
 <div class="pv-overlay" id="pvOverlay"><div class="pv-modal" id="pvModal"></div></div>
 <div class="pv-toast" id="pvToast"></div>
@@ -285,13 +285,13 @@ window.addEventListener('pageshow', function(e){ if(e.persisted){ pvClose(); } }
 
 // ══════════════ OPÉRATEURS ══════════════
 async function openOperateurs(){
-  pvOpen("<h2>👥 Gérer les opérateurs</h2><div class='pv-meta'>Chargement…</div>");
+  pvOpen("<h2>👥 Administration des opérateurs</h2><div class='pv-meta'>Chargement…</div>");
   const res=await sb.functions.invoke('admin-operators',{ body:{ action:'list', adminCode:_pvAdminPw } });
-  if(res.error || !res.data || !res.data.ok){ pvOpen("<h2>👥 Gérer les opérateurs</h2><div class='pv-meta'>Accès refusé — reconnectez-vous.</div><div class='pv-actions'><button class='pv-btn' onclick='pvClose()'>Fermer</button></div>"); return; }
+  if(res.error || !res.data || !res.data.ok){ pvOpen("<h2>👥 Administration des opérateurs</h2><div class='pv-meta'>Accès refusé — reconnectez-vous.</div><div class='pv-actions'><button class='pv-btn' onclick='pvClose()'>Fermer</button></div>"); return; }
   const ops=res.data.operators||[];
   let rows=ops.map(o=>opRow(o.name||'',o.phone||'',o.apikey||'',o.code||'',o.machines_outils,o.impression_3d)).join('');
   pvOpen(
-    "<h2>👥 Gérer les opérateurs</h2>"+
+    "<h2>👥 Administration des opérateurs</h2>"+
     "<div class='pv-meta'>Nom, WhatsApp (CallMeBot) et code de validation à 4 chiffres. Liste commune à Réservation Machines et Impression 3D.</div>"+
     "<div class='pv-info'><strong>📲 Clé API CallMeBot</strong> — depuis le téléphone de l'opérateur :<br>"+
       "1. Enregistrer le contact <strong>+34 644 86 70 49</strong><br>"+
@@ -371,7 +371,7 @@ async function pvRenameProjet(){
   pvToast('✅ Projet renommé'); openEtudiants();
 }
 async function openEtudiants(){
-  pvOpen("<h2>👨‍🎓 Étudiants / Projets</h2><div class='pv-meta'>Chargement…</div>");
+  pvOpen("<h2>👨‍🎓 Administration des étudiants-tes et des projets</h2><div class='pv-meta'>Chargement…</div>");
   const {data,error}=await sb.from('etudiants').select('*').order('projet').order('nom');
   const et=(!error&&data)?data:[];
   _etudList=et;
@@ -406,7 +406,7 @@ async function openEtudiants(){
     "<div class='pv-meta' style='margin-top:4px'>Met à jour la liste étudiants ET toutes les demandes d'impression du projet.</div>"
     : "";
   pvOpen(
-    "<h2>👨‍🎓 Étudiants / Projets</h2>"+
+    "<h2>👨‍🎓 Administration des étudiants-tes et des projets</h2>"+
     "<div class='pv-meta'>Liste commune à Réservation Machines et Impression 3D.</div>"+
     list+
     ((et.length||_etudExtra.length)?"<div style='margin-top:6px'><button class='pv-btn' onclick='pvDownloadEtud()'>⬇ Télécharger la liste (xlsx)</button>"+(_etudExtra.length?"<span class='pv-meta' style='margin-left:8px'>+ "+_etudExtra.length+" projet(s) hors liste inclus</span>":"")+"</div>":"")+
