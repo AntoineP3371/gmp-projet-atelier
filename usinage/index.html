@@ -1666,6 +1666,24 @@ async function adminUnlock(key){
 }
 
 // ─── RÉSERVATION ──────────────────────────────────────────────────────────────
+// Liste d'attente : l'étudiant laisse son e-mail sur un créneau occupé pour être prévenu s'il se libère.
+async function joinWaitlist(key){
+  var parts=key.split('|');
+  var inp=document.getElementById('wlMail'); var email=(inp&&inp.value||'').trim();
+  if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showToast('⚠️ Adresse e-mail invalide'); return; }
+  showToast('⏳ Enregistrement…');
+  var res=await sb.functions.invoke('booking-op',{ body:{ action:'waitlist-add', machine:parts[0], date:parts[1], slot:parts[2], email:email } });
+  if(res.error || !res.data || !res.data.ok){
+    var e=res.data&&res.data.error;
+    showToast(e==='already-waiting' ? '⚠️ Quelqu\'un est déjà en attente sur ce créneau'
+            : e==='not-occupied'   ? 'Ce créneau est libre — réservez-le directement'
+            : e==='bad-email'      ? '⚠️ Adresse e-mail invalide'
+            : '❌ Erreur');
+    return;
+  }
+  showToast('🔔 Vous serez prévenu·e par e-mail si ce créneau se libère');
+  closeModal();
+}
 function book(machine,date,slot){
   var key=machine+"|"+date+"|"+slot;
   if(disabled[key]) return;
@@ -1696,6 +1714,16 @@ function book(machine,date,slot){
           "<div class='row'><span>Nom</span><span>"+esc(r.nom)+" "+esc(r.prenom)+"</span></div>"+
           "<div class='row'><span>Opérateur</span><span>"+(r.operateur?esc(r.operateur):"—")+"</span></div>"+
           "<div class='row'><span>Projet</span><span>"+(r.projet?esc(r.projet):"—")+"</span></div>"+
+        "</div>"+
+        "<div style='margin:10px 0;padding:10px 0;border-top:1px solid var(--border)'>"+
+          "<div class='form-group' style='margin-bottom:4px'>"+
+            "<label>🔔 Être prévenu·e si ce créneau se libère</label>"+
+            "<input type='email' id='wlMail' placeholder='prenom.nom@u-bordeaux.fr' autocomplete='off'>"+
+            "<span style='font-size:.72rem;color:var(--muted)'>Un e-mail vous préviendra si la réservation est annulée. Non partagé, une seule personne en attente.</span>"+
+          "</div>"+
+          "<div class='modal-actions' style='justify-content:flex-start'>"+
+            "<button class='btn btn-ok' onclick='joinWaitlist(\""+jsesc(key)+"\")'>🔔 Me prévenir</button>"+
+          "</div>"+
         "</div>"+
         "<div class='form-group' style='margin-bottom:4px'>"+
           "<label>Code d'annulation</label>"+

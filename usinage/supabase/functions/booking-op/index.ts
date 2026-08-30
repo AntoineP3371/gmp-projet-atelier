@@ -68,6 +68,32 @@ Deno.serve(async (req) => {
       nom: x.nom || '', prenom: x.prenom || '', operateur: x.operateur || '', projet: x.projet || '',
       encadrant1: x.encadrant1 || '', encadrant2: x.encadrant2 || '', encadrant3: x.encadrant3 || '',
     })
+    // Liste d'attente : si une personne attendait ce créneau, la prévenir qu'il s'est libéré,
+    // puis retirer l'entrée. L'adresse vient de la table VERROUILLÉE waitlist (jamais exposée).
+    const notifyWaitlist = async (m: string, d: string, s: string) => {
+      const { data } = await sb.from('waitlist').select('email').match({ machine: m, date: d, slot: s }).maybeSingle()
+      const email = (data?.email ?? '').toString().trim()
+      if (!email) return
+      const apiKey = (Deno.env.get('RESEND_API_KEY') || '').trim()
+      const from = (Deno.env.get('RESEND_FROM') || 'Atelier GMP <onboarding@resend.dev>').trim()
+      const appUrl = (Deno.env.get('APP_URL') || 'https://gmpbordeaux.fr/gmp-projet-atelier/usinage/').trim()
+      if (apiKey) {
+        const html =
+          `<p>Bonjour,</p>` +
+          `<p>Le créneau que vous suiviez s'est <b>libéré</b> :</p>` +
+          `<p><b>${m}</b> — ${d} — ${s}</p>` +
+          `<p>Réservez-le vite (premier arrivé, premier servi) : <a href="${appUrl}">${appUrl}</a></p>` +
+          `<p style="color:#888;font-size:.85rem">Message automatique de l'atelier GMP — merci de ne pas répondre.</p>`
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from, to: [email], subject: 'Un créneau machine s\'est libéré', html }),
+          })
+        } catch (_) { /* on retire l'entrée quand même */ }
+      }
+      await sb.from('waitlist').delete().match({ machine: m, date: d, slot: s })
+    }
 
     if (action === 'create') {
       if (!(await opOk(b.opName, b.opCode))) return json({ ok: false, error: 'badcode' })
@@ -86,6 +112,20 @@ Deno.serve(async (req) => {
       if (!(isAdmin || (await pinOk(b.machine, b.date, b.slot, b.pin)))) return json({ ok: false, error: 'auth' })
       await sb.from('bookings').delete().match({ machine: b.machine, date: b.date, slot: b.slot })
       await sb.from('booking_pins').delete().match({ machine: b.machine, date: b.date, slot: b.slot })
+      try { await notifyWaitlist(b.machine, b.date, b.slot) } catch (_) {}
+      return json({ ok: true })
+    }
+
+    // Liste d'attente : l'étudiant laisse son e-mail sur un créneau OCCUPÉ pour être prévenu (public).
+    if (action === 'waitlist-add') {
+      const email = (b.email ?? '').toString().trim()
+      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ ok: false, error: 'bad-email' }, 400)
+      const bk = await sb.from('bookings').select('machine').match({ machine: b.machine, date: b.date, slot: b.slot }).maybeSingle()
+      if (!bk.data) return json({ ok: false, error: 'not-occupied' })          // libre => pas besoin d'attendre
+      const ex = await sb.from('waitlist').select('email').match({ machine: b.machine, date: b.date, slot: b.slot }).maybeSingle()
+      if (ex.data) return json({ ok: false, error: 'already-waiting' })         // une seule personne en attente
+      const ins = await sb.from('waitlist').insert({ machine: b.machine, date: b.date, slot: b.slot, email })
+      if (ins.error) throw ins.error
       return json({ ok: true })
     }
 
@@ -113,6 +153,7 @@ Deno.serve(async (req) => {
       await sb.from('booking_pins').upsert({ machine: to.machine, date: to.date, slot: to.slot, pin: keepPin })
       await sb.from('bookings').delete().match({ machine: from.machine, date: from.date, slot: from.slot })
       await sb.from('booking_pins').delete().match({ machine: from.machine, date: from.date, slot: from.slot })
+      try { await notifyWaitlist(from.machine, from.date, from.slot) } catch (_) {}
       return json({ ok: true })
     }
 
