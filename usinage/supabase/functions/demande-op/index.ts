@@ -48,8 +48,14 @@ Deno.serve(async (req) => {
       const lim = (limMap[projet] != null) ? Number(limMap[projet]) : limDef
       const { count } = await sb.from('demandes').select('id', { count: 'exact', head: true }).eq('projet', projet)
       if ((count || 0) >= lim) return json({ ok: false, error: 'limit', lim })
-      const ins = await sb.from('demandes').insert(d)
+      const ins = await sb.from('demandes').insert(d).select('id').single()
       if (ins.error) throw ins.error
+      // E-mail facultatif : rangé dans la table VERROUILLÉE demande_contacts (aucun accès anon),
+      // jamais dans demandes. Sera lu côté serveur puis supprimé après l'envoi du mail « terminée ».
+      const email = (b.email ?? '').toString().trim()
+      if (email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && ins.data?.id) {
+        await sb.from('demande_contacts').upsert([{ demande_id: ins.data.id, email }])
+      }
       return json({ ok: true })
     }
 

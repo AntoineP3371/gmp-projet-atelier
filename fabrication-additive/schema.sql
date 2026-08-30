@@ -102,6 +102,20 @@ drop policy if exists parametres_all on public.parametres;
 create policy parametres_all on public.parametres
   for all using (true) with check (true);
 
+-- ---------- Contacts e-mail des demandes (VERROUILLÉ, RGPD) ---------------
+-- Adresse e-mail facultative fournie par l'étudiant au dépôt, pour être prévenu quand sa pièce
+-- est imprimée. Table SANS accès anon (aucune policy) : l'adresse n'est JAMAIS lisible par le
+-- navigateur, seulement par les Edge Functions (demande-op pour l'écrire, notify-print-email pour
+-- l'utiliser). L'adresse est supprimée après l'envoi du mail (minimisation). Suppression en cascade
+-- si la demande est supprimée.
+create table if not exists public.demande_contacts (
+  demande_id bigint primary key references public.demandes(id) on delete cascade,
+  email      text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.demande_contacts enable row level security;
+-- (aucune policy volontairement : refus total pour anon)
+
 -- ---------- Vues publiques (lecture anon) --------------------------------
 -- Les applis ne lisent JAMAIS les tables 'operateurs' et 'parametres' directement :
 -- elles passent par ces deux vues, qui n'exposent qu'un sous-ensemble sûr.

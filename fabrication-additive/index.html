@@ -522,6 +522,11 @@
           <label>Commentaire / paramètres d'impression</label>
           <input type="text" id="fnotes" autocomplete="off" placeholder="Ex. : épaisseur de couche, densité de remplissage, nb de parois, couleur…">
         </div>
+        <div class="form-group">
+          <label>E-mail (facultatif)</label>
+          <input type="email" id="femail" autocomplete="off" placeholder="prenom.nom@u-bordeaux.fr">
+          <span class="hint">Pour recevoir un mail avec la photo quand votre pièce est imprimée. Utilisé uniquement pour ça, jamais partagé, supprimé après l'envoi.</span>
+        </div>
       </div>
 
       <div style="margin-top:18px;display:flex;justify-content:flex-end">
@@ -1248,6 +1253,13 @@ async function onPhotoPicked(ev){
     if(res.error || !res.data || !res.data.ok){ showToast('❌ '+((res.data&&res.data.error==='auth')?'Accès refusé':'Erreur d\'enregistrement')); return; }
     showToast('📷 Photo ajoutée');
     loadOperateur();
+    // Notification e-mail (facultative) : le serveur n'envoie QUE si un e-mail est associé à la demande
+    // (rangé dans la table verrouillée demande_contacts), puis efface l'adresse. Silencieux sinon.
+    try{
+      const photoB64=await fileToBase64(photoFile);
+      const mail=await sb.functions.invoke('notify-print-email',{ body:{ id:id, photoB64:photoB64, operateur:currentOperateurNom, opCode:_operateurCode } });
+      if(!mail.error && mail.data && mail.data.ok && mail.data.sent) showToast('📧 Mail envoyé à l\'étudiant');
+    }catch(e){ /* l'e-mail est un bonus : ne bloque jamais le flux */ }
   }catch(e){ busy(false); showToast('❌ '+(e.message||'Échec de la photo')); }
   finally{ _photoDemande=null; ev.target.value=''; }
 }
@@ -1304,7 +1316,10 @@ async function submitDemande(){
       finition:(document.querySelector('input[name=finition]:checked')||{}).value||'brouillon',
       notes:document.getElementById('fnotes').value.trim()
     };
-    const res=await sb.functions.invoke('demande-op',{ body:{ action:'create', demande:demande } });
+    // E-mail facultatif : envoyé À PART (jamais stocké dans la table demandes, lisible en anon) ;
+    // il sera rangé côté serveur dans la table verrouillée demande_contacts.
+    const email=(document.getElementById('femail').value||'').trim();
+    const res=await sb.functions.invoke('demande-op',{ body:{ action:'create', demande:demande, email:email } });
     busy(false);
     if(res.error || !res.data || !res.data.ok){
       const e=res.data&&res.data.error;
@@ -1316,7 +1331,7 @@ async function submitDemande(){
   }catch(e){ busy(false); showToast('❌ '+e.message); }
 }
 function resetStudentForm(){
-  ['fnom','fprenom','fnotes','fprojet-autre'].forEach(id=>document.getElementById(id).value='');
+  ['fnom','fprenom','fnotes','femail','fprojet-autre'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fprojet').value=''; onProjetChange();
   const un=document.querySelector('input[name=usinage][value=non]'); if(un)un.checked=true;
   const bro=document.querySelector('input[name=finition][value=brouillon]'); if(bro)bro.checked=true;
@@ -2244,7 +2259,13 @@ async function rechercherSuivi(silent){
   const html=progress+data.map(d=>{
     const end=countdownEnd(d);
     const pos=posMap[d.id];
-    const fileLine = (d.statut==='validee' && pos) ? "<br>🕒 File d'attente : "+pos+"ᵉ sur "+fileLen : "";
+    // File d'attente : nombre d'impressions avant celle-ci (pos-1), formulé simplement.
+    const avant = pos ? pos-1 : 0;
+    const fileLine = (d.statut==='validee' && pos)
+      ? "<br>🕒 "+(avant===0 ? "Votre impression est la prochaine de la file"
+                             : avant+" impression"+(avant>1?"s":"")+" avant la vôtre")
+        +" <span style='color:var(--muted)'>("+fileLen+" en attente au total)</span>"
+      : "";
     return "<div class='demande-card st-"+d.statut+"'><div class='dc-top'>"+
     "<div><div class='dc-title'>"+titreDemande(d)+"</div>"+
     "<div class='dc-meta'>"+machineLabel(d.machine)+" · ⏱️ "+esc(tempsLabel(d))+(d.bbox?" · 📐 "+esc(d.bbox):"")+" · 📄 "+esc(d.fichier_nom)+
