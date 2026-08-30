@@ -71,9 +71,9 @@ Deno.serve(async (req) => {
     // Liste d'attente : si une personne attendait ce créneau, la prévenir qu'il s'est libéré,
     // puis retirer l'entrée. L'adresse vient de la table VERROUILLÉE waitlist (jamais exposée).
     const notifyWaitlist = async (m: string, d: string, s: string) => {
-      const { data } = await sb.from('waitlist').select('email').match({ machine: m, date: d, slot: s }).maybeSingle()
-      const email = (data?.email ?? '').toString().trim()
-      if (!email) return
+      const { data } = await sb.from('waitlist').select('email').match({ machine: m, date: d, slot: s })
+      const emails = ((data || []) as any[]).map((r) => (r.email ?? '').toString().trim()).filter(Boolean)
+      if (!emails.length) return
       const apiKey = (Deno.env.get('RESEND_API_KEY') || '').trim()
       const from = (Deno.env.get('RESEND_FROM') || 'Atelier GMP <onboarding@resend.dev>').trim()
       const appUrl = (Deno.env.get('APP_URL') || 'https://gmpbordeaux.fr/gmp-projet-atelier/usinage/').trim()
@@ -84,13 +84,16 @@ Deno.serve(async (req) => {
           `<p><b>${m}</b> — ${d} — ${s}</p>` +
           `<p>Réservez-le vite (premier arrivé, premier servi) : <a href="${appUrl}">${appUrl}</a></p>` +
           `<p style="color:#888;font-size:.85rem">Message automatique de l'atelier GMP — merci de ne pas répondre.</p>`
-        try {
-          await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from, to: [email], subject: 'Un créneau machine s\'est libéré', html }),
-          })
-        } catch (_) { /* on retire l'entrée quand même */ }
+        // Un envoi PAR destinataire (on n'expose pas les adresses des autres personnes en attente).
+        for (const email of emails) {
+          try {
+            await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ from, to: [email], subject: 'Un créneau machine s\'est libéré', html }),
+            })
+          } catch (_) { /* on continue avec les suivants */ }
+        }
       }
       await sb.from('waitlist').delete().match({ machine: m, date: d, slot: s })
     }
@@ -137,11 +140,13 @@ Deno.serve(async (req) => {
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ ok: false, error: 'bad-email' }, 400)
       const bk = await sb.from('bookings').select('machine').match({ machine: b.machine, date: b.date, slot: b.slot }).maybeSingle()
       if (!bk.data) return json({ ok: false, error: 'not-occupied' })          // libre => pas besoin d'attendre
-      const ex = await sb.from('waitlist').select('email').match({ machine: b.machine, date: b.date, slot: b.slot }).maybeSingle()
-      if (ex.data) return json({ ok: false, error: 'already-waiting' })         // une seule personne en attente
+      const { data: rows } = await sb.from('waitlist').select('email').match({ machine: b.machine, date: b.date, slot: b.slot })
+      const list = ((rows || []) as any[]).map((r) => (r.email ?? '').toString().trim().toLowerCase())
+      if (list.includes(email.toLowerCase())) return json({ ok: true, already: true })  // déjà inscrit(e)
+      if (list.length >= 3) return json({ ok: false, error: 'full' })                    // plafond de 3 atteint
       const ins = await sb.from('waitlist').insert({ machine: b.machine, date: b.date, slot: b.slot, email })
       if (ins.error) throw ins.error
-      return json({ ok: true })
+      return json({ ok: true, count: list.length + 1 })                                  // rang dans la file
     }
 
     if (action === 'update') { // même créneau

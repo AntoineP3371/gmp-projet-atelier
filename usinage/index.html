@@ -1676,13 +1676,14 @@ async function joinWaitlist(key){
   var res=await sb.functions.invoke('booking-op',{ body:{ action:'waitlist-add', machine:parts[0], date:parts[1], slot:parts[2], email:email } });
   if(res.error || !res.data || !res.data.ok){
     var e=res.data&&res.data.error;
-    showToast(e==='already-waiting' ? '⚠️ Quelqu\'un est déjà en attente sur ce créneau'
-            : e==='not-occupied'   ? 'Ce créneau est libre — réservez-le directement'
-            : e==='bad-email'      ? '⚠️ Adresse e-mail invalide'
+    showToast(e==='full'        ? '⚠️ 3 personnes sont déjà en attente sur ce créneau — préférez un autre créneau ou une autre machine'
+            : e==='not-occupied'? 'Ce créneau est libre — réservez-le directement'
+            : e==='bad-email'   ? '⚠️ Adresse e-mail invalide'
             : '❌ Erreur');
     return;
   }
-  showToast('🔔 Vous serez prévenu·e par e-mail si ce créneau se libère');
+  if(res.data.already) showToast('✅ Vous êtes déjà en attente sur ce créneau');
+  else showToast('🔔 Vous serez prévenu·e par e-mail si ce créneau se libère'+(res.data.count?' ('+res.data.count+'/3 en attente)':''));
   closeModal();
 }
 function book(machine,date,slot){
@@ -1720,7 +1721,7 @@ function book(machine,date,slot){
           "<div class='form-group' style='margin-bottom:4px'>"+
             "<label>🔔 Être prévenu·e si ce créneau se libère</label>"+
             "<input type='email' id='wlMail' placeholder='prenom.nom@u-bordeaux.fr' autocomplete='off'>"+
-            "<span style='font-size:.72rem;color:var(--muted)'>Un e-mail vous préviendra si la réservation est annulée. Non partagé, une seule personne en attente.</span>"+
+            "<span style='font-size:.72rem;color:var(--muted)'>Un e-mail vous préviendra si la réservation est annulée. Non partagé — jusqu'à 3 personnes en attente par créneau.</span>"+
           "</div>"+
           "<div class='modal-actions' style='justify-content:flex-start'>"+
             "<button class='btn btn-ok' onclick='joinWaitlist(\""+jsesc(key)+"\")'>🔔 Me prévenir</button>"+
