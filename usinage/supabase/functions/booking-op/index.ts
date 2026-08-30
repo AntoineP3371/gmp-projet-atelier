@@ -94,6 +94,17 @@ Deno.serve(async (req) => {
       }
       await sb.from('waitlist').delete().match({ machine: m, date: d, slot: s })
     }
+    // Prévient l'opérateur par WhatsApp (CallMeBot) qu'une réservation qu'il supervise a été annulée.
+    const notifyOperatorCancel = async (m: string, d: string, s: string, bk: any) => {
+      if (!bk || !bk.operateur) return
+      const { data: op } = await sb.from('operateurs').select('phone, apikey').eq('name', bk.operateur).maybeSingle()
+      const phone = (op?.phone ?? '').toString().trim()
+      const apikey = (op?.apikey ?? '').toString().trim()
+      if (!phone || !apikey) return
+      const msg = `Annulation : le créneau ${s} du ${d} sur ${m} (réservé par ${bk.nom || ''} ${bk.prenom || ''}${bk.projet ? ', ' + bk.projet : ''}) a été annulé.`
+      const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(msg)}&apikey=${encodeURIComponent(apikey)}`
+      try { await fetch(url) } catch (_) {}
+    }
 
     if (action === 'create') {
       if (!(await opOk(b.opName, b.opCode))) return json({ ok: false, error: 'badcode' })
@@ -110,8 +121,12 @@ Deno.serve(async (req) => {
 
     if (action === 'cancel') {
       if (!(isAdmin || (await pinOk(b.machine, b.date, b.slot, b.pin)))) return json({ ok: false, error: 'auth' })
+      // Lire la réservation AVANT suppression (pour prévenir l'opérateur).
+      const { data: bkRow } = await sb.from('bookings').select('operateur, nom, prenom, projet').match({ machine: b.machine, date: b.date, slot: b.slot }).maybeSingle()
       await sb.from('bookings').delete().match({ machine: b.machine, date: b.date, slot: b.slot })
       await sb.from('booking_pins').delete().match({ machine: b.machine, date: b.date, slot: b.slot })
+      // Notif WhatsApp opérateur : uniquement pour une annulation ÉTUDIANT (PIN), pas admin.
+      if (!isAdmin) { try { await notifyOperatorCancel(b.machine, b.date, b.slot, bkRow) } catch (_) {} }
       try { await notifyWaitlist(b.machine, b.date, b.slot) } catch (_) {}
       return json({ ok: true })
     }
