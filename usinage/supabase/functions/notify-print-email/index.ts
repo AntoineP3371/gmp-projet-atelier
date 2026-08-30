@@ -35,11 +35,14 @@ Deno.serve(async (req) => {
 
     const id = b.id
     if (!id) return json({ ok: false, error: 'no id' }, 400)
+    console.log('[notify-print-email] invoquée pour demande id=', id)
 
     // 1) Adresse dans la table verrouillée. Pas d'adresse => rien à faire (cas normal).
-    const { data: contact } = await sb.from('demande_contacts').select('email').eq('demande_id', id).maybeSingle()
+    const { data: contact, error: cErr } = await sb.from('demande_contacts').select('email').eq('demande_id', id).maybeSingle()
+    if (cErr) console.log('[notify-print-email] erreur lecture demande_contacts:', cErr.message)
     const email = (contact?.email ?? '').toString().trim()
-    if (!email) return json({ ok: true, sent: false, reason: 'no-email' })
+    if (!email) { console.log('[notify-print-email] AUCUN e-mail stocké pour cette demande (no-email)'); return json({ ok: true, sent: false, reason: 'no-email' }) }
+    console.log('[notify-print-email] e-mail trouvé, envoi en cours…')
 
     // 2) Infos de la demande pour personnaliser le message.
     const { data: d } = await sb.from('demandes')
@@ -53,14 +56,21 @@ Deno.serve(async (req) => {
     // 3) Config Resend.
     const apiKey = (Deno.env.get('RESEND_API_KEY') || '').trim()
     const from = (Deno.env.get('RESEND_FROM') || 'Atelier GMP <onboarding@resend.dev>').trim()
-    if (!apiKey) return json({ ok: false, error: 'no-resend-key' }, 500)
+    if (!apiKey) { console.log('[notify-print-email] RESEND_API_KEY absent (no-resend-key)'); return json({ ok: false, error: 'no-resend-key' }, 500) }
+    console.log('[notify-print-email] RESEND_FROM =', from)
 
+    const hasPhoto = !!b.photoB64
+    // Numéro affiché : on privilégie le libellé « n° X / Y » fourni par le client (identique au suivi),
+    // sinon le simple numéro de la demande.
+    const noLabel = (b.numeroLabel ?? '').toString().trim() || (d?.numero != null ? String(d.numero) : '')
     const html =
       `<p>Bonjour ${esc(prenom) || ''},</p>` +
-      `<p>Votre impression 3D pour le projet <b>${esc(projet)}</b>` +
+      `<p>Votre impression 3D` + (noLabel ? ` (demande n° ${esc(noLabel)})` : '') + ` pour le projet <b>${esc(projet)}</b>` +
       (fichier ? ` (fichier <b>${esc(fichier)}</b>)` : '') +
       ` est <b>terminée</b> ✅</p>` +
-      `<p>Vous pouvez venir la récupérer auprès de ${esc(op) || 'l\'opérateur'}. La photo de la pièce est en pièce jointe.</p>` +
+      `<p>Vous pouvez venir la récupérer auprès de ${esc(op) || 'l\'opérateur'}.` +
+      (hasPhoto ? ` La photo de la pièce est en pièce jointe.` : '') + `</p>` +
+      `<p>— ${esc(op) || 'L\'atelier GMP'}</p>` +
       `<p style="color:#888;font-size:.85rem">Message automatique de l'atelier GMP — merci de ne pas répondre.</p>`
 
     const payload: any = {
@@ -81,13 +91,17 @@ Deno.serve(async (req) => {
     })
     if (!resp.ok) {
       const t = await resp.text()
+      console.log('[notify-print-email] Resend a REFUSÉ (send-failed):', t.slice(0, 300))
       return json({ ok: false, error: 'send-failed', detail: t.slice(0, 300) }, 502)
     }
 
-    // 4) Minimisation : on efface l'adresse après l'envoi réussi.
+    // 4) Minimisation : on efface l'adresse après l'envoi réussi + on baisse le drapeau public.
     await sb.from('demande_contacts').delete().eq('demande_id', id)
+    await sb.from('demandes').update({ has_email: false }).eq('id', id)
+    console.log('[notify-print-email] ENVOYÉ avec succès + adresse effacée')
     return json({ ok: true, sent: true })
   } catch (e) {
+    console.log('[notify-print-email] EXCEPTION:', String(e))
     return json({ ok: false, error: String(e) }, 500)
   }
 })

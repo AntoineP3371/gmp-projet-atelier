@@ -809,7 +809,7 @@
     <h2>📷 Photo de la pièce</h2>
     <div class="meta" id="photoAskMeta">Impression marquée terminée. Vous pouvez ajouter une photo de la pièce (facultatif).</div>
     <div class="modal-actions">
-      <button class="btn btn-close" onclick="closeOverlay('ovPhotoAsk')">Plus tard</button>
+      <button class="btn btn-close" onclick="skipPhotoNotify()">Sans photo</button>
       <button class="btn btn-ok" onclick="document.getElementById('photoInput').click()">📷 Prendre / choisir une photo</button>
     </div>
   </div>
@@ -1257,11 +1257,23 @@ async function onPhotoPicked(ev){
     // (rangé dans la table verrouillée demande_contacts), puis efface l'adresse. Silencieux sinon.
     try{
       const photoB64=await fileToBase64(photoFile);
-      const mail=await sb.functions.invoke('notify-print-email',{ body:{ id:id, photoB64:photoB64, operateur:currentOperateurNom, opCode:_operateurCode } });
+      const dd=demandesById[id]||{};
+      const mail=await sb.functions.invoke('notify-print-email',{ body:{ id:id, photoB64:photoB64, numeroLabel:numeroLabel(dd), operateur:currentOperateurNom, opCode:_operateurCode } });
       if(!mail.error && mail.data && mail.data.ok && mail.data.sent) showToast('📧 Mail envoyé à l\'étudiant');
     }catch(e){ /* l'e-mail est un bonus : ne bloque jamais le flux */ }
   }catch(e){ busy(false); showToast('❌ '+(e.message||'Échec de la photo')); }
   finally{ _photoDemande=null; ev.target.value=''; }
+}
+// « Sans photo » : marque déjà terminée (fait dans finishPrint), puis envoie le mail SANS pièce jointe.
+async function skipPhotoNotify(){
+  const dem=_photoDemande; closeOverlay('ovPhotoAsk');
+  if(!dem){ return; }
+  const id=dem.id; _photoDemande=null;
+  try{
+    const dd=demandesById[id]||{};
+    const mail=await sb.functions.invoke('notify-print-email',{ body:{ id:id, numeroLabel:numeroLabel(dd), operateur:currentOperateurNom, opCode:_operateurCode } });
+    if(!mail.error && mail.data && mail.data.ok && mail.data.sent) showToast('📧 Mail envoyé à l\'étudiant');
+  }catch(e){ /* silencieux */ }
 }
 // Affiche la photo d'une demande (récupérée depuis le Drive en base64, comme le STEP).
 async function voirPhoto(id){
@@ -1785,7 +1797,7 @@ function restoreDureeInputs(saved){
   });
 }
 let lastSigOperateur=null;
-function demandeSig(d){ return [d.id,d.statut,d.operateur_nom,d.encadrant_commentaire,d.operateur_commentaire,d.encadrant_commentaire_at,d.operateur_commentaire_at,d.en_cours_at,d.duree_reelle_min,d.imprime_at,d.encadrant_nom,d.projet,d.priorite,d.archive,d.photo_file_id].join('|'); }
+function demandeSig(d){ return [d.id,d.statut,d.operateur_nom,d.encadrant_commentaire,d.operateur_commentaire,d.encadrant_commentaire_at,d.operateur_commentaire_at,d.en_cours_at,d.duree_reelle_min,d.imprime_at,d.encadrant_nom,d.projet,d.priorite,d.archive,d.photo_file_id,d.has_email].join('|'); }
 // Ordre de la file : en cours d'abord, puis les validées (priorité décroissante, plus anciennes d'abord),
 // puis les terminées (les plus récentes d'abord).
 function ordreFile(a,b){
@@ -2266,6 +2278,15 @@ async function rechercherSuivi(silent){
                              : avant+" impression"+(avant>1?"s":"")+" avant la vôtre")
         +" <span style='color:var(--muted)'>("+fileLen+" en attente au total)</span>"
       : "";
+    // E-mail : indicateur « renseigné » (sans exposer l'adresse) + ajout tant que non terminée/refusée.
+    const canMail = d.statut!=='imprimee' && d.statut!=='refusee';
+    const mailInfo = d.has_email ? "<br>📧 <b style='color:var(--green)'>E-mail renseigné</b> — vous serez prévenu·e quand la pièce sera imprimée" : "";
+    const mailForm = canMail
+      ? "<div class='dc-actions' style='align-items:center;gap:6px;flex-wrap:wrap'>"+
+        "<input type='email' id='suiviMail-"+d.id+"' placeholder='prenom.nom@u-bordeaux.fr' style='flex:1;min-width:190px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:.85rem;background:var(--bg);color:var(--text)'>"+
+        "<button class='btn btn-ghost' onclick='setSuiviEmail("+d.id+")'>📧 "+(d.has_email?'Modifier mon e-mail':'Être prévenu·e par e-mail')+"</button>"+
+        "</div>"
+      : "";
     return "<div class='demande-card st-"+d.statut+"'><div class='dc-top'>"+
     "<div><div class='dc-title'>"+titreDemande(d)+"</div>"+
     "<div class='dc-meta'>"+machineLabel(d.machine)+" · ⏱️ "+esc(tempsLabel(d))+(d.bbox?" · 📐 "+esc(d.bbox):"")+" · 📄 "+esc(d.fichier_nom)+
@@ -2273,12 +2294,30 @@ async function rechercherSuivi(silent){
     comLine('📝','étudiant', (d.etudiant_prenom||'')+' '+(d.etudiant_nom||''), d.created_at, d.notes)+
     suiviLigneEncadrant(d)+
     suiviLigneOperateur(d)+
-    suiviLigneStatut(d, fileLine)+"</div></div></div>"+
+    suiviLigneStatut(d, fileLine)+mailInfo+"</div></div></div>"+
     ((d.statut==='imprimee'&&d.photo_file_id)?"<div class='dc-actions'><button class='btn btn-ghost' onclick='voirPhoto("+d.id+")'>📷 Voir la photo</button></div>":"")+
+    mailForm+
     "</div>";
   }).join('');
   preserveScroll(box, ()=>{ box.innerHTML=html; });
   tickCountdowns();
+}
+// L'étudiant renseigne son e-mail depuis le suivi (tant que la demande n'est pas terminée).
+// L'adresse part vers l'action publique set-email (rangée côté serveur dans demande_contacts).
+async function setSuiviEmail(id){
+  const inp=document.getElementById('suiviMail-'+id); if(!inp) return;
+  const email=(inp.value||'').trim();
+  if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showToast('⚠️ Adresse e-mail invalide'); return; }
+  busy(true,'Enregistrement…');
+  const res=await sb.functions.invoke('demande-op',{ body:{ action:'set-email', id:id, email:email } });
+  busy(false);
+  if(res.error || !res.data || !res.data.ok){
+    const e=res.data&&res.data.error;
+    showToast('❌ '+(e==='closed'?'Demande déjà terminée':(e==='bad-email'?'Adresse invalide':'Erreur')));
+    return;
+  }
+  showToast('📧 E-mail enregistré — vous serez prévenu·e quand ce sera imprimé');
+  lastSigSuivi=null; rechercherSuivi(true);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

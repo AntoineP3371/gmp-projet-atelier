@@ -55,7 +55,22 @@ Deno.serve(async (req) => {
       const email = (b.email ?? '').toString().trim()
       if (email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && ins.data?.id) {
         await sb.from('demande_contacts').upsert([{ demande_id: ins.data.id, email }])
+        // Drapeau PUBLIC (non sensible) : indique au suivi qu'un e-mail est renseigné, sans l'exposer.
+        await sb.from('demandes').update({ has_email: true }).eq('id', ins.data.id)
       }
+      return json({ ok: true })
+    }
+
+    // Ajout/màj de l'e-mail par l'ÉTUDIANT depuis le suivi (public), tant que la demande n'est pas terminée.
+    // L'adresse va dans la table verrouillée demande_contacts ; seul le drapeau has_email est public.
+    if (action === 'set-email') {
+      const email = (b.email ?? '').toString().trim()
+      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ ok: false, error: 'bad-email' }, 400)
+      const { data: dem } = await sb.from('demandes').select('statut').eq('id', b.id).maybeSingle()
+      if (!dem) return json({ ok: false, error: 'not-found' }, 404)
+      if (dem.statut === 'imprimee' || dem.statut === 'refusee') return json({ ok: false, error: 'closed' }, 409)
+      await sb.from('demande_contacts').upsert([{ demande_id: b.id, email }])
+      await sb.from('demandes').update({ has_email: true }).eq('id', b.id)
       return json({ ok: true })
     }
 

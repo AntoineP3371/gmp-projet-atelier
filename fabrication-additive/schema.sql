@@ -52,6 +52,7 @@ alter table public.demandes add column if not exists archive              boolea
 alter table public.demandes add column if not exists priorite             integer default 0;      -- ordre dans la file d'attente d'impression
 alter table public.demandes add column if not exists photo_file_id        text default '';        -- ID Drive de la photo de la pièce terminée
 alter table public.demandes add column if not exists photo_link           text default '';        -- lien Drive de la photo de la pièce terminée
+alter table public.demandes add column if not exists has_email            boolean default false;  -- drapeau PUBLIC : un e-mail est renseigné (l'adresse, elle, est dans demande_contacts)
 
 -- Index pour le suivi étudiant (recherche par nom/prénom) et les listes
 create index if not exists demandes_statut_idx  on public.demandes (statut);
