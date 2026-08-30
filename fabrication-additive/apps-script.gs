@@ -19,8 +19,11 @@
 var FOLDER_ID = 'COLLEZ_ICI_L_ID_DU_DOSSIER_DRIVE';
 
 // -------- Dépôt d'un fichier (upload) --------------------------------------
-// body.replaceByName (optionnel) : si true, supprime d'abord les fichiers
-// existants du même nom dans le dossier (utilisé pour remplacer une photo de pièce).
+// Options :
+//   body.replaceByName       : supprime d'abord les fichiers existants du même nom (ex. photo de pièce).
+//   body.subfolder           : nom d'un sous-dossier cible (créé s'il n'existe pas ; ex. "backups").
+//   body.purgeOlderThanDays  : met à la corbeille les fichiers du dossier cible plus vieux que N jours.
+//   body.private             : si true, NE PAS partager le fichier par lien (données sensibles = backups).
 function doPost (e) {
   try {
     var body = JSON.parse(e.postData.contents);
@@ -29,6 +32,22 @@ function doPost (e) {
     var dataB64  = body.dataB64  || '';
 
     var folder = DriveApp.getFolderById(FOLDER_ID);
+
+    // Sous-dossier optionnel (créé s'il n'existe pas).
+    if (body.subfolder) {
+      var subs = folder.getFoldersByName(body.subfolder);
+      folder = subs.hasNext() ? subs.next() : folder.createFolder(body.subfolder);
+    }
+
+    // Purge optionnelle : corbeille les fichiers du dossier cible plus vieux que N jours.
+    if (body.purgeOlderThanDays) {
+      var cutoff = new Date().getTime() - Number(body.purgeOlderThanDays) * 24 * 60 * 60 * 1000;
+      var it = folder.getFiles();
+      while (it.hasNext()) {
+        var old = it.next();
+        if (old.getDateCreated().getTime() < cutoff) old.setTrashed(true);
+      }
+    }
 
     // Remplacement : met à la corbeille les anciens fichiers du même nom.
     if (body.replaceByName) {
@@ -40,8 +59,10 @@ function doPost (e) {
     var blob  = Utilities.newBlob(bytes, mimeType, name);
     var file  = folder.createFile(blob);
 
-    // Lien de consultation (lecture pour toute personne disposant du lien)
-    try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err) {}
+    // Lien de consultation (lecture par lien) — SAUF fichiers privés (ex. sauvegardes).
+    if (!body.private) {
+      try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err) {}
+    }
 
     return json({ ok: true, id: file.getId(), link: file.getUrl(), name: name });
   } catch (err) {
