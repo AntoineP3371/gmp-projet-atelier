@@ -11,8 +11,8 @@
 <script src="https://cdn.jsdelivr.net/npm/online-3d-viewer@0.18.0/build/engine/o3dv.min.js"></script>
 <style>
   :root{
-    --bg:#f3f9fc; --surface:#fff; --border:#d6e6ef;
-    --primary:#0083ba; --primary-light:#e2f4fc; --primary-dark:#00688f;
+    --bg:#f4f1fb; --surface:#fff; --border:#e2dcf1;
+    --primary:#7c3aed; --primary-light:#f1ecfe; --primary-dark:#5b21b6;
     --text:#13303d; --muted:#5b7686;
     --danger:#ef4444; --danger-light:#fee2e2;
     --admin:#7c3aed; --admin-light:#ede9fe; --admin-dark:#5b21b6;
@@ -26,7 +26,7 @@
   body.wide .wrap{max-width:1360px}
   .home-btn{position:fixed;top:12px;left:12px;z-index:60;display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 13px;font-size:.85rem;font-weight:600;color:var(--text);text-decoration:none;box-shadow:var(--shadow);transition:background .15s,border-color .15s}
   .home-btn:hover{background:var(--primary-light);border-color:var(--primary)}
-  .logo-bar{display:flex;justify-content:center;align-items:center;padding:16px 0 20px}
+  .logo-bar{display:flex;justify-content:center;align-items:center;padding:4px 0 18px}
   .logo-bar img{max-height:70px;max-width:100%;width:auto;height:auto;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.10))}
   @media(max-width:640px){ .logo-bar img{max-height:46px} }
 
@@ -34,7 +34,7 @@
   header{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
   .header-icon{line-height:1}
   .header-icon svg{width:42px;height:42px;color:var(--primary);display:block}
-  header h1{font-size:1.4rem;font-weight:800;color:var(--text);line-height:1.2}
+  header h1{font-size:1.5rem;font-weight:800;letter-spacing:-.01em;color:var(--text);line-height:1.2}
   header p{font-size:.85rem;color:var(--muted);margin-top:2px}
   .nav{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
 
@@ -99,7 +99,7 @@
   .file-tag{display:inline-flex;align-items:center;gap:8px;background:var(--primary-light);color:var(--primary-dark);border:1px solid var(--primary);border-radius:7px;padding:6px 12px;font-size:.85rem;font-weight:600;margin-top:10px}
 
   /* Viewer 3D */
-  .viewer{width:100%;height:340px;border:1px solid var(--border);border-radius:var(--radius);background:#eef6fb;margin-top:12px;position:relative;overflow:hidden}
+  .viewer{width:100%;height:340px;border:1px solid var(--border);border-radius:var(--radius);background:var(--primary-light);margin-top:12px;position:relative;overflow:hidden}
   .viewer canvas{display:block}
   .viewer-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.9rem;text-align:center;padding:20px}
   .metrics{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:.82rem;color:var(--muted)}
@@ -321,8 +321,8 @@
 <!-- ═══ Refonte visuelle (CSS seul — aucun contenu ni logique modifié) ═══ -->
 <style>
   :root{
-    --bg:#eef3f6; --border:#d5e1e9;
-    --primary:#0e7ca8; --primary-light:#e1f1f8; --primary-dark:#08556f;
+    --bg:#f0edf7; --border:#ddd6ee;
+    --primary:#7c3aed; --primary-light:#f1ecfe; --primary-dark:#5b21b6;
     --text:#10222b; --muted:#5b7686;
     --danger:#c2352c; --danger-light:#fbe7e5;
     --admin:#6d4ae0; --admin-light:#edeafb; --admin-dark:#4b2fb0;
@@ -354,8 +354,8 @@
 
   /* ═══ THÈME SOMBRE ═══ */
   :root[data-theme="dark"]{
-    --bg:#0d1a21; --surface:#16262f; --border:#294551;
-    --primary:#3ba7d0; --primary-light:#12313f; --primary-dark:#8fd2ea;
+    --bg:#140f1e; --surface:#1e1830; --border:#39304f;
+    --primary:#a78bfa; --primary-light:#241b3a; --primary-dark:#c4b5fd;
     --text:#e6eef2; --muted:#93aab7;
     --danger:#e4675e; --danger-light:#331715;
     --admin:#a791f0; --admin-light:#241d3a; --admin-dark:#cbbaf8;
@@ -1128,13 +1128,19 @@ function onFileChosen(files){
   renderStudentModel(file);
 }
 
+// Fond du rendu 3D, adapté au thème (violet clair / violet sombre).
+function viewerBgColor(){
+  const attr=document.documentElement.getAttribute('data-theme');
+  const dark = attr==='dark' || (attr!=='light' && matchMedia('(prefers-color-scheme:dark)').matches);
+  return dark ? new OV.RGBAColor(30,24,48,255) : new OV.RGBAColor(240,237,247,255);
+}
 function renderStudentModel(file){
   const cont=document.getElementById('viewer');
   document.getElementById('viewerEmpty').style.display='none';
   document.getElementById('metrics').innerHTML="<span class='spinner'></span> Analyse du modèle…";
   if(studentViewer){ try{studentViewer.Destroy();}catch(e){} studentViewer=null; cont.innerHTML=''; }
   studentViewer=new OV.EmbeddedViewer(cont,{
-    backgroundColor:new OV.RGBAColor(238,246,251,255),
+    backgroundColor:viewerBgColor(),
     defaultColor:new OV.RGBColor(0,131,186),
     onModelLoaded:()=>{
       const model=studentViewer.GetModel();
@@ -1397,7 +1403,7 @@ async function loadStepInto(cont, driveId, fichierNom){
     if(!j.ok) throw new Error(j.error||'Fichier introuvable');
     const file=base64ToFile(j.dataB64, fichierNom||j.name||'modele.step', j.mimeType);
     cont.innerHTML='';
-    const v=new OV.EmbeddedViewer(cont,{ backgroundColor:new OV.RGBAColor(238,246,251,255), defaultColor:new OV.RGBColor(0,131,186) });
+    const v=new OV.EmbeddedViewer(cont,{ backgroundColor:viewerBgColor(), defaultColor:new OV.RGBColor(0,131,186) });
     v.LoadModelFromFileList([file]);
     return v;
   }catch(e){ cont.innerHTML="<div class='viewer-empty'>❌ "+esc(e.message)+"</div>"; return null; }
