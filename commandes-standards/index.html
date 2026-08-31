@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>(function(){try{var t=localStorage.getItem('theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Commandes d'éléments standards — Atelier GMP</title>
+<meta name="theme-color" content="#0e8f6e">
+<link rel="icon" type="image/png" href="../usinage/favicon-64.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#eef4f1; --surface:#ffffff; --surface-2:#f6faf8; --border:#d3e4dd;
+  --primary:#0e8f6e; --primary-dark:#0a6b52; --primary-light:#e0f3ec;
+  --text:#12241f; --muted:#5c7a70;
+  --danger:#c2352c; --danger-light:#fbe7e5;
+  --amber:#b06a0b; --amber-light:#fdf0dc;
+  --blue:#1560a8; --blue-light:#e3eefb;
+  --violet:#6d4ae0; --violet-light:#ece7fb;
+  --green:#1f7a3d; --green-light:#e2f3e6;
+  --admin:#7c3aed; --admin-light:#ede9fe; --admin-dark:#5b21b6;
+  --radius:14px; --shadow:0 6px 26px rgba(0,40,30,.10);
+}
+:root[data-theme="dark"]{
+  --bg:#0f1a16; --surface:#16241f; --surface-2:#132019; --border:#294036;
+  --primary:#2bb98d; --primary-dark:#1c8f6b; --primary-light:#12352a;
+  --text:#e7f0ec; --muted:#8fa89e;
+  --danger:#f0857c; --danger-light:#3a201e;
+  --amber:#e0a960; --amber-light:#38290f;
+  --blue:#7db4ec; --blue-light:#182838;
+  --violet:#b49af0; --violet-light:#241d38;
+  --green:#7fce93; --green-light:#16301c;
+  --admin:#a791f0; --admin-light:#241d3a; --admin-dark:#cbbaf8;
+  --shadow:0 6px 26px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:
+  linear-gradient(rgba(14,143,110,.045) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(14,143,110,.045) 1px,transparent 1px),
+  radial-gradient(1100px 480px at 50% -8%, var(--primary-light) 0%, var(--bg) 60%);
+  background-size:26px 26px,26px 26px,auto;
+  color:var(--text);min-height:100vh;padding:64px 16px 48px;font-size:15px;line-height:1.5}
+a{color:var(--primary-dark)}
+.wrap{max-width:1080px;margin:0 auto}
+h1{font-size:1.5rem;font-weight:800;letter-spacing:-.01em}
+h2{font-size:1.15rem;font-weight:800;margin-bottom:4px}
+h3{font-size:.98rem;font-weight:700}
+.sub{color:var(--muted);font-size:.9rem;margin-bottom:18px}
+.home-btn{position:fixed;top:12px;left:12px;z-index:60;display:inline-flex;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 13px;
+  font-size:.85rem;font-weight:600;color:var(--text);text-decoration:none;
+  box-shadow:0 2px 12px rgba(0,40,30,.1);transition:background .15s,border-color .15s}
+.home-btn:hover{background:var(--primary-light);border-color:var(--primary)}
+.theme-toggle{position:fixed;top:12px;right:12px;z-index:70;width:38px;height:38px;border-radius:9px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:1.05rem;cursor:pointer;
+  box-shadow:0 2px 12px rgba(0,40,30,.1);display:inline-flex;align-items:center;justify-content:center;transition:border-color .15s}
+.theme-toggle:hover{border-color:var(--primary)}
+.logo-bar{display:flex;justify-content:center;align-items:center;padding:4px 0 18px}
+.logo-bar img{max-height:70px;max-width:100%;width:auto;height:auto;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.1))}
+.topbar{display:flex;align-items:center;gap:14px 22px;flex-wrap:wrap;margin-bottom:24px}
+.brand{display:flex;align-items:center;gap:14px;margin:0}
+.brand .dot{flex-shrink:0;line-height:1;color:var(--primary);display:flex;align-items:center}
+.brand .dot svg{width:44px;height:44px;display:block}
+.s-note{color:var(--muted);margin:2px 0 8px;min-height:1em}
+.testflag{display:inline-block;margin-left:10px;font-size:.66rem;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;background:var(--amber-light);color:var(--amber);padding:3px 9px;border-radius:20px;vertical-align:middle}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 0 auto}
+@media(max-width:760px){nav{width:100%;margin-left:0}nav .nav-btn{flex:1;justify-content:center}}
+.nav-btn{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:8px 15px;
+  font-size:.875rem;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;gap:6px;align-items:center;
+  transition:background .15s,border-color .15s,transform .1s}
+.nav-btn:hover{background:var(--primary-light);border-color:var(--primary)}
+.nav-btn:active{transform:scale(.97)}
+.nav-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.nav-btn.tint{background:var(--primary-light);color:var(--primary-dark);border-color:var(--primary)}
+.nav-btn.tint:hover{background:var(--primary);color:#fff}
+.nav-btn.admin{background:var(--admin-light);color:var(--admin-dark);border-color:var(--admin)}
+.nav-btn.admin:hover,.nav-btn.admin.active{background:var(--admin);color:#fff;border-color:var(--admin)}
+.view{display:none}
+.view.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.82rem;font-weight:600;color:var(--muted)}
+input,select,textarea{font-family:inherit;font-size:.92rem;color:var(--text);background:var(--surface);
+  border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--primary)}
+textarea{resize:vertical;min-height:56px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:9px;font-size:.875rem;
+  font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;
+  transition:background .15s,border-color .15s,transform .1s}
+.btn:hover{background:var(--primary-light);border-color:var(--primary)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn.primary:hover{background:var(--primary-dark);border-color:var(--primary-dark)}
+.btn.ghost{background:var(--primary-light);color:var(--primary-dark);border-color:var(--primary);width:100%;justify-content:center}
+.btn.ghost:hover{background:var(--primary);color:#fff}
+.btn.sm{padding:5px 10px;font-size:.8rem;border-radius:7px}
+.btn.sm.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn.danger{background:var(--danger-light);color:var(--danger);border-color:#fca5a5}
+.btn.danger:hover{background:var(--danger);color:#fff}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap}
+.line{border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--surface-2)}
+.line-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.line-head .n{font-weight:800;color:var(--primary-dark)}
+.line-total{font-weight:800}
+.mini{font-size:.8rem;color:var(--muted)}
+.supplier{border:1.5px solid var(--primary);border-radius:12px;padding:14px;margin-bottom:14px;background:var(--surface-2)}
+.supplier-head{display:flex;gap:10px;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap}
+.supplier-head .f{flex:1;min-width:200px}
+.art{border:1.5px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--surface)}
+.art-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.art-head .n{font-weight:700;color:var(--muted);font-size:.82rem}
+.btn.ghost.sm{padding:7px;font-size:.82rem}
+.sa-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--surface-2)}
+.op-check{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;margin:0 8px 8px 0;border:1.5px solid var(--border);border-radius:9px;font-size:.88rem;font-weight:600;cursor:pointer;background:var(--surface-2)}
+.op-check input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+.op-check:has(input:checked){border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark)}
+details.statut-help{margin:6px 0 14px;font-size:.85rem}
+details.statut-help summary{cursor:pointer;font-weight:600;color:var(--primary-dark)}
+.statut-help .h-row{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border)}
+.statut-help .h-row:last-child{border-bottom:none}
+.statut-help .h-row .d{color:var(--muted)}
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+.stat .k{font-size:.8rem;color:var(--muted)}
+.stat .v{font-size:1.5rem;font-weight:800;margin-top:2px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.filters select,.filters input{width:auto;min-width:130px;font-size:.85rem;padding:6px 9px}
+.toolbar-right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+table.data{width:100%;border-collapse:collapse;font-size:.85rem}
+table.data th{text-align:left;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface)}
+table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+.ctx{color:var(--muted);font-size:.78rem;margin-top:3px}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.74rem;font-weight:800;white-space:nowrap}
+.st-dem{background:var(--amber-light);color:var(--amber)}
+.st-cmd{background:var(--blue-light);color:var(--blue)}
+.st-part{background:var(--violet-light);color:var(--violet)}
+.st-rec{background:var(--green-light);color:var(--green)}
+.st-rem{background:var(--primary-light);color:var(--primary-dark)}
+.st-ref,.st-ann{background:var(--danger-light);color:var(--danger)}
+.group-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface-2);
+  border-radius:10px;margin:14px 0 8px;font-weight:800;flex-wrap:wrap;gap:8px}
+.group-head .tot{font-weight:600;color:var(--muted)}
+.budget{margin:10px 0}
+.budget .bar{height:10px;border-radius:6px;background:var(--border);overflow:hidden;margin-top:4px}
+.budget .bar > span{display:block;height:100%;background:var(--primary)}
+.budget.over .bar > span{background:var(--danger)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(10,20,16,.55);z-index:100;align-items:center;justify-content:center;padding:16px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:16px;padding:22px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,0,0,.35)}
+.modal h2{margin-bottom:12px}
+.modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.err{color:var(--danger);font-size:.82rem;margin-top:6px;display:none}
+.err.show{display:block}
+.ok-msg{background:var(--green-light);color:var(--green);border:1px solid var(--green);border-radius:10px;padding:12px 14px;font-size:.86rem;margin:10px 0}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#12241f;color:#fff;padding:11px 20px;
+  border-radius:9px;font-size:.88rem;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+.hint{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:.84rem;color:var(--muted);margin-bottom:14px}
+.inline-code-cell{width:90px}
+@media(max-width:640px){body{padding-top:60px}.toolbar-right{margin-left:0;width:100%}.logo-bar img{max-height:46px}}
+</style>
+</head>
+<body>
+<a href="../" id="homeBtn" class="home-btn" title="Retour au portail Atelier GMP">🏠 Accueil</a>
+<button id="themeToggle" class="theme-toggle" title="Thème clair / sombre" aria-label="Basculer le thème clair ou sombre" onclick="toggleTheme()">🌙</button>
+
+<div class="wrap">
+  <div class="logo-bar"><img src="logo-gmp.png" alt="GMP — IUT de Bordeaux"></div>
+  <div class="topbar">
+  <div class="brand">
+    <div class="dot">
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="Éléments standards (roulement à billes)">
+        <!-- bague extérieure -->
+        <circle cx="32" cy="32" r="24"/>
+        <!-- bague intérieure -->
+        <circle cx="32" cy="32" r="11"/>
+        <!-- billes -->
+        <circle cx="32" cy="14.5" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="44.4" cy="19.6" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="49.5" cy="32" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="44.4" cy="44.4" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="32" cy="49.5" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="19.6" cy="44.4" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="14.5" cy="32" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="19.6" cy="19.6" r="3" fill="currentColor" stroke="none"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Commandes d'éléments standards<span class="testflag" id="testFlag">Version test</span></h1>
+      <div class="sub" style="margin:0">Gestion des demandes d'achat de composants (visserie, roulements, paliers, ressorts…)</div>
+    </div>
+  </div>
+
+  <nav>
+    <button class="nav-btn active" data-view="nouvelle" onclick="showView('nouvelle')">➕ Nouvelle demande</button>
+    <button class="nav-btn" data-view="suivi" onclick="showView('suivi')">🔎 Suivi</button>
+    <button class="nav-btn tint" data-view="gestionnaire" onclick="showView('gestionnaire')">🛒 Espace gestionnaire</button>
+    <button class="nav-btn admin" data-view="admin" onclick="showView('admin')">⚙️ Admin</button>
+  </nav>
+  </div>
+
+  <!-- ══════════ NOUVELLE DEMANDE ══════════ -->
+  <section id="view-nouvelle" class="view active">
+    <div class="card" id="nouvelleGate">
+      <h2>Identifiez-vous</h2>
+      <div class="sub">La création d'une demande est réservée aux encadrants.</div>
+      <div class="grid2">
+        <label class="f">Encadrant
+          <select id="d-encadrant" onchange="onEncadrantChange()"></select></label>
+        <label class="f" id="d-encadrant-autre-wrap" style="display:none">Nom de l'encadrant
+          <input id="d-encadrant-autre" placeholder="Nom Prénom"></label>
+        <label class="f">Code PIN encadrant
+          <input id="d-pin" type="password" inputmode="numeric" placeholder="4 chiffres" autocomplete="off"></label>
+      </div>
+      <button class="btn primary" style="margin-top:12px" onclick="encLogin()">Entrer</button>
+      <div class="err" id="d-login-err"></div>
+    </div>
+
+    <div id="nouvellePanel" style="display:none">
+    <div class="card">
+      <h2>Contexte de la demande</h2>
+      <div class="sub" id="encWho"></div>
+      <div class="grid2">
+        <label class="f">Projet / groupe
+          <select id="d-groupe" onchange="onProjetChange()"></select></label>
+        <label class="f" id="d-groupe-autre-wrap" style="display:none">Nom du projet
+          <input id="d-groupe-autre" placeholder="ex. Porte A380" autocomplete="off"></label>
+        <label class="f">Parcours
+          <select id="d-parcours" onchange="renderBudgetHint()"></select></label>
+        <label class="f">Formation
+          <select id="d-formation"></select></label>
+      </div>
+      <div id="budgetHint"></div>
+    </div>
+
+    <div class="card">
+      <h2>Articles à commander</h2>
+      <div class="sub">Une ligne <b>fournisseur</b>, puis un ou plusieurs <b>articles</b> chez ce fournisseur.</div>
+      <div id="suppliers"></div>
+      <button class="btn ghost" onclick="addSupplier()">+ Ajouter un fournisseur</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:10px">
+        <div class="line-total">Total estimé : <span id="grandTotal">0,00 €</span></div>
+        <button class="btn primary" onclick="submitDemande()">Envoyer la demande</button>
+      </div>
+      <div class="err" id="d-err"></div>
+    </div>
+    </div>
+  </section>
+
+  <!-- ══════════ SUIVI ══════════ -->
+  <section id="view-suivi" class="view">
+    <div class="card">
+      <h2>Suivi des demandes</h2>
+      <div class="filters">
+        <input id="s-search" placeholder="Rechercher un projet, un encadrant, un article…" oninput="renderSuivi()" style="min-width:240px">
+        <select id="s-projet" onchange="renderSuivi()"><option value="">Tous les projets</option></select>
+        <select id="s-encadrant" onchange="renderSuivi()"><option value="">Tous les encadrants</option></select>
+        <select id="s-statut" onchange="renderSuivi()"><option value="">Tous les statuts</option></select>
+        <select id="s-parcours" onchange="renderSuivi()"><option value="">Tous les parcours</option></select>
+      </div>
+      <details class="statut-help">
+        <summary>Aide : que veut dire chaque statut ?</summary>
+        <div id="statutHelp"></div>
+      </details>
+      <div id="suiviBudgets"></div>
+      <div id="suiviList"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ GESTIONNAIRE ══════════ -->
+  <section id="view-gestionnaire" class="view">
+    <div class="card" id="gestGate">
+      <h2>Espace gestionnaire</h2>
+      <div class="sub">Réservé au magasinier / responsable achats.</div>
+      <div class="grid2">
+        <label class="f">Votre nom<select id="g-nom"></select></label>
+        <label class="f">Code opérateur<input id="g-code" type="password" inputmode="numeric" placeholder="4 chiffres"></label>
+      </div>
+      <button class="btn primary" style="margin-top:12px" onclick="gestLogin()">Entrer</button>
+      <div class="err" id="g-err"></div>
+    </div>
+
+    <div id="gestPanel" style="display:none">
+      <div class="stat-cards" id="gestStats"></div>
+      <div class="card">
+        <div class="filters">
+          <input id="f-search" placeholder="Rechercher…" oninput="renderGest()" style="min-width:180px">
+          <select id="f-statut" onchange="renderGest()"><option value="">Statut : tous</option></select>
+          <select id="f-projet" onchange="renderGest()"><option value="">Projet : tous</option></select>
+          <select id="f-encadrant" onchange="renderGest()"><option value="">Encadrant : tous</option></select>
+          <select id="f-parcours" onchange="renderGest()"><option value="">Parcours : tous</option></select>
+          <select id="f-formation" onchange="renderGest()"><option value="">Formation : toutes</option></select>
+          <select id="f-fournisseur" onchange="renderGest()"><option value="">Fournisseur : tous</option></select>
+          <div class="toolbar-right">
+            <button class="btn sm active" data-gv="date" onclick="setGestView('date')">Par date</button>
+            <button class="btn sm" data-gv="statut" onclick="setGestView('statut')">Par statut</button>
+            <button class="btn sm" data-gv="fournisseur" onclick="setGestView('fournisseur')">Par fournisseur</button>
+            <button class="btn sm" data-gv="projet" onclick="setGestView('projet')">Par projet</button>
+            <button class="btn sm" data-gv="encadrant" onclick="setGestView('encadrant')">Par encadrant</button>
+            <button class="btn sm" onclick="exportCSV()">Export CSV</button>
+            <button class="btn sm" onclick="exportXLSX()">Export Excel</button>
+          </div>
+        </div>
+        <div id="gestList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ADMIN ══════════ -->
+  <section id="view-admin" class="view">
+    <div class="card" id="adminGate">
+      <h2>Administration</h2>
+      <div class="sub">Mot de passe admin — ou mot de passe <b>super admin</b> (commun aux applis Atelier GMP) pour accéder en plus au choix des gestionnaires et au vidage des tables.</div>
+      <label class="f" style="max-width:260px">Mot de passe
+        <input id="a-pw" type="password" placeholder="mot de passe">
+      </label>
+      <button class="btn primary" style="margin-top:12px" onclick="adminLogin()">Entrer</button>
+      <div class="err" id="a-err"></div>
+    </div>
+
+    <div id="adminPanel" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <div class="mini" id="adminRoleTag"></div>
+        <button class="btn sm" onclick="adminLogout()">Se déconnecter</button>
+      </div>
+
+      <div class="card">
+        <h2>Fournisseurs</h2>
+        <div class="sub">Nom, site web et commentaire modifiables. Liste proposée dans le formulaire de demande.</div>
+        <div id="fournList"></div>
+        <div class="grid3" style="margin-top:12px">
+          <input id="nf-nom" placeholder="Nom du fournisseur">
+          <input id="nf-site" placeholder="Site web (facultatif)">
+          <input id="nf-notes" placeholder="Commentaire (facultatif)">
+          <button class="btn" onclick="addFournisseur()">Ajouter</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Budgets par parcours</h2>
+        <div class="sub">Limite en € pour l'année universitaire (laisser vide = pas de limite). Une alerte s'affiche au dépassement.</div>
+        <div id="budgetList"></div>
+        <div class="grid3" style="margin-top:12px">
+          <input id="nb-parcours" placeholder="Parcours (ex. II)">
+          <input id="nb-limite" type="number" step="1" placeholder="Limite €">
+          <button class="btn" onclick="saveBudget()">Enregistrer</button>
+        </div>
+      </div>
+
+      <div id="superOnly" style="display:none">
+        <div class="card">
+          <h2>Gestionnaires <span class="mini">— super admin</span></h2>
+          <div class="sub">Cochez, parmi les opérateurs de l'atelier, ceux qui peuvent gérer les commandes. Ils sont les seuls proposés à l'entrée de l'« Espace gestionnaire » (ils s'y connectent avec leur code opérateur habituel). Si aucun n'est coché, tous les opérateurs sont proposés.</div>
+          <div id="gestionnairesList"></div>
+        </div>
+
+        <div class="card">
+          <div class="pv-warn" style="background:var(--danger-light);border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:12px 14px;font-size:.86rem;margin-bottom:14px">
+            ⚠️ Le vidage d'une table est <b>définitif</b> et ne touche que ce module « Commandes d'éléments standards ».
+            Les tables des applis Usinage / Impression 3D ne sont pas concernées. Après un vidage de
+            <code>com_fournisseurs</code>, relancer <code>schema.sql</code> pour recharger la liste par défaut.
+          </div>
+          <h2>Vider les tables <span class="mini">— super admin</span></h2>
+          <div id="superTables"></div>
+          <button class="btn danger" style="margin-top:14px" onclick="wipeAllTables()">Tout vider (les 4 tables)…</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Modales -->
+<div class="overlay" id="ovConfirm"><div class="modal">
+  <h2 id="ovConfirmTitle">Confirmation</h2>
+  <div id="ovConfirmBody"></div>
+  <div class="actions">
+    <button class="btn" onclick="closeOverlay('ovConfirm')">Fermer</button>
+    <button class="btn primary" id="ovConfirmOk">OK</button>
+  </div>
+</div></div>
+
+<div class="overlay" id="ovEdit"><div class="modal">
+  <h2>Modifier la ligne</h2>
+  <div class="grid2">
+    <label class="f">Fournisseur<input id="e-fournisseur" list="dl-fourn"></label>
+    <label class="f">Référence<input id="e-reference"></label>
+    <label class="f">Quantité<input id="e-quantite" type="number" step="1"></label>
+    <label class="f">Coût unitaire €<input id="e-cu" type="number" step="0.01"></label>
+    <label class="f">Coût total €<input id="e-ct" type="number" step="0.01"></label>
+    <label class="f">Lien web<input id="e-lien"></label>
+  </div>
+  <label class="f" style="margin-top:10px">Intitulé & description<textarea id="e-intitule"></textarea></label>
+  <label class="f" style="margin-top:10px">Commentaire gestionnaire<textarea id="e-comg"></textarea></label>
+  <div class="actions">
+    <button class="btn danger" onclick="editSetStatut('annulee')">Annuler la ligne</button>
+    <button class="btn" onclick="editSetStatut('refusee')">Refuser</button>
+    <button class="btn" onclick="closeOverlay('ovEdit')">Fermer</button>
+    <button class="btn primary" onclick="saveEdit()">Enregistrer</button>
+  </div>
+  <div class="err" id="e-err"></div>
+</div></div>
+
+<div class="overlay" id="ovComment"><div class="modal">
+  <h2 id="ovCommentTitle">Commentaire</h2>
+  <label class="f">Votre message<textarea id="c-text"></textarea></label>
+  <div class="actions">
+    <button class="btn" onclick="closeOverlay('ovComment')">Fermer</button>
+    <button class="btn primary" onclick="saveComment()">Envoyer</button>
+  </div>
+  <div class="err" id="c-err"></div>
+</div></div>
+
+<datalist id="dl-fourn"></datalist>
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL  = 'https://ggmlfbxppgeivfvlxxrj.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnbWxmYnhwcGdlaXZmdmx4eHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNDY5NTIsImV4cCI6MjA5NzkyMjk1Mn0.HvPE2ewB8gFgVzj-xAb1YBxFfn8hTEwOwQLDfF1vgT0';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const FORMATIONS = ['BUT 1','BUT 2 Init','BUT 2 App','BUT 3 Init','BUT 3 App'];
+const PARCOURS_BASE = ['II','CPD','SNRV'];
+const STATUTS = {
+  demandee:{label:'Demandée',cls:'st-dem'},
+  commandee:{label:'Commandée',cls:'st-cmd'},
+  recue_partielle:{label:'Reçue partielle',cls:'st-part'},
+  recue_complete:{label:'Reçue',cls:'st-rec'},
+  remise:{label:'Remise à l’encadrant',cls:'st-rem'},
+  refusee:{label:'Refusée',cls:'st-ref'},
+  annulee:{label:'Annulée',cls:'st-ann'}
+};
+const ACTIVE_STATUTS = ['demandee','commandee','recue_partielle','recue_complete','remise'];
+const STATUT_HELP = {
+  demandee:'La demande est enregistrée. Le gestionnaire ne l’a pas encore traitée.',
+  commandee:'Le gestionnaire a passé la commande auprès du fournisseur.',
+  recue_partielle:'Une partie des articles est arrivée à l’atelier ; il en manque.',
+  recue_complete:'Tous les articles sont arrivés à l’atelier.',
+  remise:'Les pièces ont été remises à l’encadrant demandeur. Dossier terminé.',
+  refusee:'La demande n’a pas été retenue par le gestionnaire (voir son commentaire).',
+  annulee:'La demande a été annulée par l’encadrant.'
+};
+
+let COMMANDES = [];
+let FOURNISSEURS = [];
+let BUDGETS = {};        // parcours -> limite
+let OPERATEURS = [];     // tous les opérateurs (operateurs_public)
+let GESTIONNAIRES = [];  // opérateurs habilités aux commandes (com_gestionnaires)
+let ETUDIANTS = [];      // [{nom,prenom,projet,enc:[],formation}]
+let PROJETS = [];        // projets connus (table etudiants)
+let ENCADRANTS = [];
+let GROUPES = [];
+let _sid = 0;            // compteur de blocs fournisseur
+let _gestOk=false, _gestNom='', _adminOk=false, _adminRole='', _gestView='date';
+let _encOk=false, _encNom='', _encCode='';
+let _editId=null, _commentId=null, _commentField='', _fournEdit=[];
+
+/* ---------- utils ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const eur = n => (n==null||n===''||isNaN(n)) ? '—' : Number(n).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
+const nOrNull = v => (v===''||v==null||isNaN(Number(v))) ? null : Number(v);
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
+function toggleTheme(){ const r=document.documentElement; const n=r.getAttribute('data-theme')==='dark'?'light':'dark'; r.setAttribute('data-theme',n); try{localStorage.setItem('theme',n);}catch(e){} $('#themeToggle').textContent=n==='dark'?'☀️':'🌙'; }
+$('#themeToggle').textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙';
+function showView(v){
+  document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  $('#view-'+v).classList.add('active');
+  if(v==='suivi') renderSuivi();
+  if(v==='gestionnaire' && _gestOk) renderGest();
+}
+function openOverlay(id){ $('#'+id).classList.add('open'); }
+function closeOverlay(id){ $('#'+id).classList.remove('open'); }
+function yearStart(){ const d=new Date(); const y=d.getMonth()>=8?d.getFullYear():d.getFullYear()-1; return new Date(y,8,1); }
+
+/* ---------- chargement ---------- */
+async function loadAll(){
+  await Promise.all([loadCommandes(), loadFournisseurs(), loadBudgets(), loadEtudiants(), loadGestionnaires()]);
+  buildSelects();
+  renderStatutHelp();
+}
+async function loadCommandes(){
+  const {data,error} = await sb.from('commandes').select('*').order('created_at',{ascending:false});
+  if(error){ console.warn(error); toast('Base non initialisée ? Voir README (schema.sql).'); COMMANDES=[]; return; }
+  COMMANDES = data||[];
+  GROUPES = [...new Set([...PROJETS, ...COMMANDES.map(c=>c.groupe)])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr'));
+  refreshCurrentView();
+}
+async function loadFournisseurs(){
+  const {data} = await sb.from('com_fournisseurs').select('*').order('nom');
+  FOURNISSEURS = data||[];
+  const dl=$('#dl-fourn'); if(dl) dl.innerHTML = FOURNISSEURS.filter(f=>f.actif!==false).map(f=>`<option value="${esc(f.nom)}">`).join('');
+}
+async function loadBudgets(){
+  const {data} = await sb.from('com_budgets').select('*');
+  BUDGETS = {}; (data||[]).forEach(b=>{ BUDGETS[b.parcours]=b.limite; });
+}
+function formCanon(f){
+  f=(f||'').trim(); if(!f) return '';
+  if(/^BUT/i.test(f)) return f;
+  const m=f.match(/([123])\s*([IA])/i);
+  if(m) return 'BUT '+m[1]+(m[2].toUpperCase()==='I'?' Init':' App');
+  if(f==='1'||/^1\s*A/i.test(f)) return 'BUT 1';
+  return f;
+}
+async function loadEtudiants(){
+  try{
+    const {data} = await sb.from('etudiants').select('nom,prenom,projet,encadrant1,encadrant2,encadrant3,formation').order('projet');
+    ETUDIANTS = (data||[]).map(r=>({
+      nom:(r.nom||'').trim(), prenom:(r.prenom||'').trim(), projet:(r.projet||'').trim(),
+      enc:[r.encadrant1,r.encadrant2,r.encadrant3].map(x=>(x||'').trim()).filter(Boolean),
+      formation:formCanon(r.formation)
+    }));
+  }catch(e){ ETUDIANTS=[]; }
+  PROJETS = [...new Set(ETUDIANTS.map(e=>e.projet).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+  // Liste des encadrants = UNIQUEMENT celle gérée depuis la page principale (table etudiants)
+  ENCADRANTS = [...new Set([].concat(...ETUDIANTS.map(e=>e.enc)))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr'));
+}
+function encadrantsForProjet(p){
+  const s=new Set(); ETUDIANTS.filter(e=>e.projet===p).forEach(e=>e.enc.forEach(x=>s.add(x)));
+  return [...s];
+}
+function projetsForEncadrant(nom){
+  return [...new Set(ETUDIANTS.filter(e=>e.enc.includes(nom)).map(e=>e.projet).filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b,'fr'));
+}
+function formationForProjet(p){
+  const f=ETUDIANTS.find(e=>e.projet===p && e.formation); return f?f.formation:'';
+}
+function parcoursList(){
+  return [...new Set([...PARCOURS_BASE, ...Object.keys(BUDGETS), ...COMMANDES.map(c=>c.parcours)])].filter(Boolean).sort();
+}
+function refreshCurrentView(){
+  const v = document.querySelector('.view.active')?.id||'';
+  if(v==='view-suivi') renderSuivi();
+  if(v==='view-gestionnaire' && _gestOk) renderGest();
+  if(v==='view-admin' && _adminOk){
+    renderFournList(); renderBudgetList();
+    if(_adminRole==='super'){ renderGestionnairesList(); renderSuperTables(); }
+  }
+}
+
+/* ---------- selects ---------- */
+function opt(v,label){ return `<option value="${esc(v)}">${esc(label!=null?label:v)}</option>`; }
+function buildSelects(){
+  const forms=[...new Set([...FORMATIONS, ...COMMANDES.map(c=>c.formation)])].filter(Boolean);
+  const parc = parcoursList();
+  if(_encOk){
+    // encadrant identifié : ses selets projet/parcours/formation sont gérés par applyEncadrantScope()
+    applyEncadrantScope();
+  } else {
+    $('#d-formation').innerHTML = forms.map(f=>opt(f)).join('');
+    $('#d-parcours').innerHTML = parc.map(p=>opt(p)).join('') + opt('__autre','Autre…');
+    const keepG=$('#d-groupe').value;
+    $('#d-groupe').innerHTML = GROUPES.map(g=>opt(g)).join('') + opt('__autre','Autre projet…');
+    if(keepG) $('#d-groupe').value = keepG;
+  }
+  buildEncadrantSelect();
+  // filtres
+  const statutOpts = Object.entries(STATUTS).map(([k,v])=>opt(k,v.label)).join('');
+  $('#s-statut').innerHTML = '<option value="">Tous les statuts</option>'+statutOpts;
+  $('#f-statut').innerHTML = '<option value="">Statut : tous</option>'+statutOpts;
+  const pOpts = parc.map(p=>opt(p)).join('');
+  $('#s-parcours').innerHTML = '<option value="">Tous les parcours</option>'+pOpts;
+  $('#f-parcours').innerHTML = '<option value="">Parcours : tous</option>'+pOpts;
+  const gOpts = GROUPES.map(g=>opt(g)).join('');
+  $('#s-projet').innerHTML = '<option value="">Tous les projets</option>'+gOpts;
+  $('#f-projet').innerHTML = '<option value="">Projet : tous</option>'+gOpts;
+  const eOpts = [...new Set([...ENCADRANTS, ...COMMANDES.map(c=>c.encadrant)])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr')).map(e=>opt(e)).join('');
+  $('#s-encadrant').innerHTML = '<option value="">Tous les encadrants</option>'+eOpts;
+  $('#f-encadrant').innerHTML = '<option value="">Encadrant : tous</option>'+eOpts;
+  $('#f-formation').innerHTML = '<option value="">Formation : toutes</option>'+forms.map(f=>opt(f)).join('');
+  $('#f-fournisseur').innerHTML = '<option value="">Fournisseur : tous</option>'+[...new Set([...FOURNISSEURS.map(f=>f.nom), ...COMMANDES.map(c=>c.fournisseur)])].filter(Boolean).sort().map(f=>opt(f)).join('');
+  loadOperateurNames();
+}
+function buildEncadrantSelect(){
+  const keep=$('#d-encadrant').value;
+  $('#d-encadrant').innerHTML = ENCADRANTS.map(e=>opt(e)).join('') + opt('__autre','Autre…');
+  if(keep && [...$('#d-encadrant').options].some(o=>o.value===keep)) $('#d-encadrant').value=keep;
+}
+async function loadOperateurNames(){
+  try{
+    const {data} = await sb.from('operateurs_public').select('name').order('name');
+    OPERATEURS = (data||[]).map(o=>o.name).filter(Boolean);
+  }catch(e){ OPERATEURS = []; }
+  buildGestNomSelect();
+}
+async function loadGestionnaires(){
+  try{
+    const {data} = await sb.from('com_gestionnaires').select('nom').order('nom');
+    GESTIONNAIRES = (data||[]).map(g=>g.nom).filter(Boolean);
+  }catch(e){ GESTIONNAIRES = []; }
+  buildGestNomSelect();
+}
+function buildGestNomSelect(){
+  const src = GESTIONNAIRES.length ? GESTIONNAIRES : OPERATEURS;
+  const keep = $('#g-nom').value;
+  $('#g-nom').innerHTML = src.length ? src.map(n=>opt(n)).join('') : opt('',' ');
+  if(keep && src.includes(keep)) $('#g-nom').value = keep;
+}
+function renderGestionnairesList(){
+  if(!OPERATEURS.length){ $('#gestionnairesList').innerHTML = '<div class="hint">Aucun opérateur trouvé dans la base.</div>'; return; }
+  $('#gestionnairesList').innerHTML = OPERATEURS.map(n=>`
+    <label class="op-check"><input type="checkbox" ${GESTIONNAIRES.includes(n)?'checked':''} onchange="toggleGestionnaire('${esc(n).replace(/'/g,"\\'")}',this.checked)"> ${esc(n)}</label>`).join('');
+}
+async function toggleGestionnaire(nom, on){
+  const {error} = on
+    ? await sb.from('com_gestionnaires').upsert({nom})
+    : await sb.from('com_gestionnaires').delete().eq('nom',nom);
+  if(error){ toast(error.message); return; }
+  await loadGestionnaires();
+  renderGestionnairesList();
+  toast(on ? nom+' est gestionnaire' : nom+' retiré des gestionnaires');
+}
+function onEncadrantChange(){ $('#d-encadrant-autre-wrap').style.display = $('#d-encadrant').value==='__autre'?'flex':'none'; }
+// Restreint projets / parcours / formation aux projets encadrés par _encNom (table etudiants)
+function applyEncadrantScope(){
+  const mine = projetsForEncadrant(_encNom);
+  const projs = mine.length ? mine : GROUPES;              // repli : tous si encadrant hors liste
+  const keepG=$('#d-groupe').value;
+  $('#d-groupe').innerHTML = projs.map(g=>opt(g)).join('') + opt('__autre','Autre projet…');
+  if(keepG && projs.includes(keepG)) $('#d-groupe').value=keepG;
+
+  const parcSet = new Set();
+  const formSet = new Set();
+  projs.forEach(p=>{
+    ETUDIANTS.filter(e=>e.projet===p).forEach(e=>{ if(e.formation) formSet.add(e.formation); });
+    COMMANDES.filter(c=>c.groupe===p).forEach(c=>{ if(c.parcours) parcSet.add(c.parcours); if(c.formation) formSet.add(c.formation); });
+  });
+  const parcs = parcSet.size ? [...parcSet].sort() : parcoursList();
+  const forms = formSet.size ? [...formSet].sort() : [...new Set([...FORMATIONS, ...COMMANDES.map(c=>c.formation)])].filter(Boolean);
+  $('#d-parcours').innerHTML = parcs.map(p=>opt(p)).join('') + opt('__autre','Autre…');
+  $('#d-formation').innerHTML = forms.map(f=>opt(f)).join('');
+}
+function onProjetChange(){
+  const v=$('#d-groupe').value;
+  $('#d-groupe-autre-wrap').style.display = v==='__autre'?'flex':'none';
+  if(v && v!=='__autre'){
+    const hasOpt=(sel,val)=>val && [...$(sel).options].some(o=>o.value===val);
+    // priorité à l'historique des commandes de ce projet (libellés canoniques), sinon table etudiants
+    const past=COMMANDES.find(c=>c.groupe===v);
+    if(past && hasOpt('#d-parcours',past.parcours)) $('#d-parcours').value=past.parcours;
+    if(past && hasOpt('#d-formation',past.formation)) $('#d-formation').value=past.formation;
+    else if(hasOpt('#d-formation',formationForProjet(v))) $('#d-formation').value=formationForProjet(v);
+  }
+  renderBudgetHint();
+}
+async function encLogin(){
+  const err=$('#d-login-err'); err.classList.remove('show');
+  let nom=$('#d-encadrant').value;
+  if(nom==='__autre') nom=$('#d-encadrant-autre').value.trim();
+  const pin=$('#d-pin').value.trim();
+  if(!nom){ return fail(err,'Choisissez votre nom.'); }
+  if(!pin){ return fail(err,'Saisissez le code PIN encadrant.'); }
+  let ok=false;
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',code:pin}}); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
+  if(!ok){ return fail(err,'Code PIN encadrant incorrect.'); }
+  _encOk=true; _encNom=nom; _encCode=pin;
+  $('#nouvelleGate').style.display='none';
+  $('#nouvellePanel').style.display='block';
+  const mine = projetsForEncadrant(nom);
+  $('#encWho').innerHTML = `Demande créée par <b>${esc(nom)}</b> — <a href="#" onclick="encLogout();return false;">changer d'encadrant</a>. `
+    + (mine.length ? `Projets que vous encadrez : ${mine.length}.` : `Aucun projet trouvé à votre nom dans la liste — tous les projets sont proposés.`);
+  applyEncadrantScope();
+  if(!$('#suppliers').children.length) addSupplier();
+  onProjetChange();
+}
+function encLogout(){
+  _encOk=false; _encNom=''; _encCode='';
+  $('#d-pin').value='';
+  $('#nouvellePanel').style.display='none';
+  $('#nouvelleGate').style.display='block';
+}
+function renderStatutHelp(){
+  $('#statutHelp').innerHTML = Object.keys(STATUTS).map(k=>{
+    const st=STATUTS[k];
+    return `<div class="h-row"><span class="pill ${st.cls}">${st.label}</span><span class="d">${esc(STATUT_HELP[k]||'')}</span></div>`;
+  }).join('');
+}
+
+/* ---------- Nouvelle demande : fournisseurs + articles ---------- */
+function artTpl(){
+  return `<div class="art">
+    <div class="art-head"><span class="n">Article</span>
+      <span class="row-actions">
+        <button type="button" class="btn sm" onclick="dupArt(this)">Dupliquer</button>
+        <button type="button" class="btn sm danger" onclick="delArt(this)">Supprimer</button>
+      </span></div>
+    <div class="grid2">
+      <label class="f" style="grid-column:1/-1">Intitulé & description<input class="a-intitule" autocomplete="off"></label>
+      <label class="f">Référence<input class="a-reference" autocomplete="off"></label>
+      <label class="f">Quantité<input class="a-qte" type="number" step="1" min="1" value="1" oninput="recalc()"></label>
+      <label class="f">Prix unitaire estimé €<input class="a-cu" type="number" step="0.01" min="0" oninput="recalc()"></label>
+      <label class="f">Lien web (facultatif)<input class="a-lien" autocomplete="off" placeholder="https://…"></label>
+    </div>
+    <div style="text-align:right;margin-top:6px" class="mini">Total article : <b class="a-tot">0,00 €</b></div>
+  </div>`;
+}
+function addSupplier(){
+  const id=++_sid;
+  const div=document.createElement('div');
+  div.className='supplier'; div.dataset.s=id;
+  div.innerHTML = `<div class="supplier-head">
+      <label class="f">Fournisseur<input class="s-nom" list="dl-fourn" autocomplete="off" placeholder="Nom du fournisseur" oninput="onFournInput(this)"></label>
+      <button type="button" class="btn sm danger" onclick="delSupplier(${id})">Retirer ce fournisseur</button>
+    </div>
+    <div class="s-note mini"></div>
+    <div class="arts"></div>
+    <button type="button" class="btn ghost sm" onclick="addArt(${id})">+ Ajouter un article chez ce fournisseur</button>`;
+  $('#suppliers').appendChild(div);
+  addArt(id);
+}
+function onFournInput(inp){
+  const v=inp.value.trim().toLowerCase();
+  const f=FOURNISSEURS.find(x=>(x.nom||'').toLowerCase()===v);
+  const note=inp.closest('.supplier').querySelector('.s-note');
+  note.textContent = (f && f.notes) ? '💬 '+f.notes : '';
+}
+function supEl(id){ return $(`#suppliers .supplier[data-s="${id}"]`); }
+function delSupplier(id){
+  const el=supEl(id); if(!el) return;
+  if($('#suppliers').children.length<=1){ toast('Il faut au moins un fournisseur.'); return; }
+  el.remove(); recalc();
+}
+function addArt(id){
+  const wrap=supEl(id).querySelector('.arts');
+  wrap.insertAdjacentHTML('beforeend', artTpl());
+  renumberArts(supEl(id)); recalc();
+}
+function delArt(btn){
+  const art=btn.closest('.art'), sup=btn.closest('.supplier');
+  if(sup.querySelectorAll('.art').length<=1){ toast('Gardez au moins un article, ou retirez le fournisseur.'); return; }
+  art.remove(); renumberArts(sup); recalc();
+}
+function dupArt(btn){
+  const art=btn.closest('.art'), sup=btn.closest('.supplier');
+  art.insertAdjacentHTML('afterend', artTpl());
+  const dst=art.nextElementSibling;
+  ['a-intitule','a-reference','a-qte','a-cu','a-lien'].forEach(c=>{ dst.querySelector('.'+c).value = art.querySelector('.'+c).value; });
+  renumberArts(sup); recalc();
+}
+function renumberArts(sup){
+  sup.querySelectorAll('.art').forEach((a,i)=>{ a.querySelector('.art-head .n').textContent='Article '+(i+1); });
+}
+function readSuppliers(){
+  return [...$('#suppliers').querySelectorAll('.supplier')].map(s=>({
+    nom: s.querySelector('.s-nom').value.trim(),
+    arts: [...s.querySelectorAll('.art')].map(a=>({
+      intitule:  a.querySelector('.a-intitule').value.trim(),
+      reference: a.querySelector('.a-reference').value.trim(),
+      lien:      a.querySelector('.a-lien').value.trim(),
+      quantite:  nOrNull(a.querySelector('.a-qte').value)||1,
+      cout_unitaire: nOrNull(a.querySelector('.a-cu').value)
+    })).filter(x=>x.intitule)
+  }));
+}
+function recalc(){
+  let g=0;
+  $('#suppliers').querySelectorAll('.art').forEach(a=>{
+    const q=nOrNull(a.querySelector('.a-qte').value)||0, cu=nOrNull(a.querySelector('.a-cu').value)||0;
+    const t=q*cu; g+=t; a.querySelector('.a-tot').textContent=eur(t);
+  });
+  $('#grandTotal').textContent = eur(g);
+  renderBudgetHint(g);
+}
+function consumed(parcours){
+  const ys=yearStart();
+  return COMMANDES.filter(c=>c.parcours===parcours && ACTIVE_STATUTS.includes(c.statut) && new Date(c.created_at)>=ys)
+    .reduce((s,c)=>s+(Number(c.cout_total)||0),0);
+}
+function budgetBar(parcours, extra=0){
+  const lim = BUDGETS[parcours];
+  if(lim==null||lim==='') return '';
+  const used = consumed(parcours)+extra;
+  const pct = Math.min(100, lim>0 ? used/lim*100 : 0);
+  const over = used>lim;
+  return `<div class="budget ${over?'over':''}">
+    <div class="mini"><b>Budget ${esc(parcours)}</b> : ${eur(used)} / ${eur(lim)} ${over?'— <b>dépassement de '+eur(used-lim)+'</b>':'— reste '+eur(lim-used)}${extra?' <span class="mini">(demande en cours incluse)</span>':''}</div>
+    <div class="bar"><span style="width:${pct}%"></span></div>
+  </div>`;
+}
+function renderBudgetHint(extra){
+  const p=$('#d-parcours').value;
+  if(typeof extra!=='number'){
+    let g=0;
+    $('#suppliers').querySelectorAll('.art').forEach(a=>{ g+=(nOrNull(a.querySelector('.a-qte').value)||0)*(nOrNull(a.querySelector('.a-cu').value)||0); });
+    extra=g;
+  }
+  $('#budgetHint').innerHTML = (p && p!=='__autre') ? budgetBar(p, extra) : '';
+}
+
+async function submitDemande(){
+  const err=$('#d-err'); err.classList.remove('show');
+  if(!_encOk){ return fail(err,'Identifiez-vous d’abord.'); }
+  const encadrant=_encNom;
+  const formation=$('#d-formation').value;
+  let parcours=$('#d-parcours').value;
+  if(parcours==='__autre'){ parcours = (prompt('Nom du parcours ?')||'').trim(); if(!parcours) return; }
+  let groupe=$('#d-groupe').value;
+  if(groupe==='__autre') groupe=$('#d-groupe-autre').value.trim();
+  const sups=readSuppliers().filter(s=>s.arts.length);
+  if(!groupe){ return fail(err,'Choisissez le projet / groupe.'); }
+  if(!sups.length){ return fail(err,'Ajoutez au moins un article avec un intitulé.'); }
+  if(sups.some(s=>!s.nom)){ return fail(err,'Indiquez le nom du fournisseur pour chaque bloc.'); }
+
+  // numéro incrémental par groupe
+  let base = COMMANDES.filter(c=>(c.groupe||'').toLowerCase()===groupe.toLowerCase()).reduce((m,c)=>Math.max(m,c.numero||0),0);
+  const now=new Date().toISOString();
+  const rows=[];
+  sups.forEach(s=>s.arts.forEach(l=>{
+    rows.push({
+      numero: base + rows.length + 1, formation, parcours, groupe, encadrant,
+      fournisseur:s.nom, intitule:l.intitule, reference:l.reference, lien:l.lien,
+      quantite:l.quantite, cout_unitaire:l.cout_unitaire,
+      cout_total: l.cout_unitaire!=null ? +(l.cout_unitaire*l.quantite).toFixed(2) : null,
+      statut:'demandee',
+      historique:[{t:now,statut:'demandee',par:encadrant}]
+    });
+  }));
+  const {error} = await sb.from('commandes').insert(rows);
+  if(error){ return fail(err, 'Enregistrement impossible : '+error.message); }
+  $('#suppliers').innerHTML=''; _sid=0; addSupplier();
+  await loadCommandes();
+  toast(rows.length+' ligne(s) enregistrée(s) ✅');
+  showView('suivi');
+}
+function fail(el,msg){ el.textContent=msg; el.classList.add('show'); }
+
+/* ---------- SUIVI ---------- */
+function renderSuivi(){
+  const q=($('#s-search').value||'').toLowerCase().trim();
+  const fs=$('#s-statut').value, fp=$('#s-parcours').value, fpr=$('#s-projet').value, fe=$('#s-encadrant').value;
+  let rows = COMMANDES.filter(c=>{
+    if(fs && c.statut!==fs) return false;
+    if(fp && c.parcours!==fp) return false;
+    if(fpr && c.groupe!==fpr) return false;
+    if(fe && c.encadrant!==fe) return false;
+    if(q){ const hay=(c.groupe+' '+c.encadrant+' '+c.intitule+' '+c.reference+' '+c.fournisseur).toLowerCase(); if(!hay.includes(q)) return false; }
+    return true;
+  });
+  // budgets
+  const parc = [...new Set(rows.map(r=>r.parcours).filter(Boolean))].sort();
+  $('#suiviBudgets').innerHTML = parc.map(p=>budgetBar(p)).join('');
+  // groupé par groupe
+  const groups={};
+  rows.forEach(r=>{ (groups[r.groupe||'(sans groupe)']=groups[r.groupe||'(sans groupe)']||[]).push(r); });
+  const keys=Object.keys(groups).sort((a,b)=>a.localeCompare(b,'fr'));
+  if(!keys.length){ $('#suiviList').innerHTML='<div class="hint">Aucune demande.</div>'; return; }
+  $('#suiviList').innerHTML = keys.map(k=>{
+    const g=groups[k];
+    const tot=g.reduce((s,c)=>s+(Number(c.cout_total)||0),0);
+    const meta=g[0];
+    return `<div class="group-head"><span>${esc(k)} <span class="mini">— ${esc(meta.parcours||'')} · ${esc(meta.formation||'')} · ${esc(meta.encadrant||'')}</span></span>
+      <span class="tot">${g.length} ligne(s) · total ${eur(tot)}</span></div>
+      <div class="tablewrap"><table class="data">
+      <tr><th>N°</th><th>Article</th><th>Réf.</th><th>Qté</th><th>Coût</th><th>Statut</th><th>Étapes</th><th></th></tr>
+      ${g.sort((a,b)=>(a.numero||0)-(b.numero||0)).map(c=>rowSuivi(c)).join('')}
+      </table></div>`;
+  }).join('');
+}
+function steps(c){
+  const parts=[];
+  parts.push(fmtDate(c.created_at)+' demandée');
+  if(c.commandee_at) parts.push(fmtDate(c.commandee_at)+' commandée');
+  if(c.recue_at) parts.push(fmtDate(c.recue_at)+' reçue'+(c.recue_note?' ('+esc(c.recue_note)+')':''));
+  if(c.remise_at) parts.push(fmtDate(c.remise_at)+' remise');
+  return parts.join(' → ');
+}
+function fmtDate(s){ if(!s) return ''; const d=new Date(s); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}); }
+function rowSuivi(c){
+  const st=STATUTS[c.statut]||STATUTS.demandee;
+  const link = c.lien ? ` <a href="${esc(c.lien)}" target="_blank" rel="noopener">🔗</a>` : '';
+  const canCancel = c.statut==='demandee';
+  return `<tr>
+    <td>${c.numero||''}</td>
+    <td>${esc(c.intitule)}${link}${c.commentaire_gestionnaire?`<div class="ctx">🛒 ${esc(c.commentaire_gestionnaire)}</div>`:''}${c.commentaire_demandeur?`<div class="ctx">✏️ ${esc(c.commentaire_demandeur)}</div>`:''}<div class="ctx">${esc(c.fournisseur||'')}</div></td>
+    <td>${esc(c.reference||'')}</td>
+    <td>${c.quantite||''}</td>
+    <td>${eur(c.cout_total)}</td>
+    <td><span class="pill ${st.cls}">${st.label}</span></td>
+    <td class="mini">${steps(c)}</td>
+    <td>${canCancel?`<button class="btn sm danger" onclick="cancelLine(${c.id})">Annuler</button>`:''}</td>
+  </tr>`;
+}
+async function cancelLine(id){
+  const pin=prompt('Code PIN encadrant pour annuler cette ligne :'); if(!pin) return;
+  let ok=false; try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',code:pin.trim()}}); ok=!error&&!!(data&&data.ok);}catch(e){}
+  if(!ok){ toast('Code incorrect'); return; }
+  await patchStatut(id,'annulee','encadrant');
+  toast('Ligne annulée');
+}
+
+/* ---------- GESTIONNAIRE ---------- */
+async function gestLogin(){
+  const err=$('#g-err'); err.classList.remove('show');
+  const nom=$('#g-nom').value, code=$('#g-code').value.trim();
+  if(!code) return fail(err,'Saisissez votre code.');
+  let ok=false;
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'operateur',name:nom,code}}); ok=!error&&!!(data&&data.ok);}catch(e){}
+  if(!ok) return fail(err,'Nom ou code incorrect.');
+  _gestOk=true; _gestNom=nom;
+  $('#gestGate').style.display='none'; $('#gestPanel').style.display='block';
+  renderGest();
+}
+function gestFiltered(){
+  const q=($('#f-search').value||'').toLowerCase().trim();
+  const fs=$('#f-statut').value,fp=$('#f-parcours').value,ff=$('#f-formation').value,fo=$('#f-fournisseur').value,fe=$('#f-encadrant').value,fpr=$('#f-projet').value;
+  return COMMANDES.filter(c=>{
+    if(fs&&c.statut!==fs) return false;
+    if(fpr&&c.groupe!==fpr) return false;
+    if(fp&&c.parcours!==fp) return false;
+    if(ff&&c.formation!==ff) return false;
+    if(fo&&c.fournisseur!==fo) return false;
+    if(fe&&c.encadrant!==fe) return false;
+    if(q){ const hay=(c.groupe+' '+c.encadrant+' '+c.intitule+' '+c.reference+' '+c.fournisseur+' '+c.parcours).toLowerCase(); if(!hay.includes(q)) return false; }
+    return true;
+  });
+}
+function renderGest(){
+  if(!_gestOk) return;
+  const ys=yearStart();
+  const aCmd=COMMANDES.filter(c=>c.statut==='demandee').length;
+  const aRec=COMMANDES.filter(c=>c.statut==='commandee'||c.statut==='recue_partielle').length;
+  const aRet=COMMANDES.filter(c=>c.statut==='recue_complete').length;
+  const dep=COMMANDES.filter(c=>ACTIVE_STATUTS.includes(c.statut)&&new Date(c.created_at)>=ys).reduce((s,c)=>s+(Number(c.cout_total)||0),0);
+  $('#gestStats').innerHTML = [
+    ['À commander',aCmd],['En attente de réception',aRec],['À récupérer',aRet],['Dépensé depuis le 1ᵉʳ sept.',eur(dep)]
+  ].map(([k,v])=>`<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+
+  const rows=gestFiltered();
+  const GV = {
+    fournisseur:{key:c=>c.fournisseur, icon:'🏬'},
+    projet:     {key:c=>c.groupe,      icon:'📁'},
+    encadrant:  {key:c=>c.encadrant,   icon:'👤'}
+  };
+  if(_gestView==='statut'){
+    $('#gestList').innerHTML = renderByStatut(rows);
+  } else if(GV[_gestView]){
+    $('#gestList').innerHTML = renderGrouped(rows, GV[_gestView].key, GV[_gestView].icon);
+  } else {
+    $('#gestList').innerHTML = rows.length? gestTable(rows.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))) : '<div class="hint">Aucune ligne.</div>';
+  }
+}
+function renderByStatut(rows){
+  const order=['demandee','commandee','recue_partielle','recue_complete','remise','refusee','annulee'];
+  const by={}; rows.forEach(c=>{ (by[c.statut]=by[c.statut]||[]).push(c); });
+  const keys=[...order.filter(k=>by[k]&&by[k].length), ...Object.keys(by).filter(k=>!order.includes(k))];
+  if(!keys.length) return '<div class="hint">Aucune ligne.</div>';
+  return keys.map(k=>{
+    const g=by[k].slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+    const st=STATUTS[k]||{label:k,cls:'st-dem'};
+    const sub=g.reduce((s,c)=>s+(Number(c.cout_total)||0),0);
+    const toOrder=g.filter(c=>c.statut==='demandee').map(c=>c.id);
+    return `<div class="group-head"><span><span class="pill ${st.cls}">${st.label}</span> <span class="mini">— ${g.length} ligne(s)</span></span>
+      <span class="tot">sous-total ${eur(sub)}${toOrder.length?` · <button class="btn sm" onclick='bulkOrder(${JSON.stringify(toOrder)})'>Tout marquer commandé (${toOrder.length})</button>`:''}</span></div>
+      ${gestTable(g)}`;
+  }).join('');
+}
+function renderGrouped(rows, keyFn, icon){
+  const by={};
+  rows.forEach(c=>{ const k=(keyFn(c)||'').trim()||'(non renseigné)'; (by[k]=by[k]||[]).push(c); });
+  const keys=Object.keys(by).sort((a,b)=>a.localeCompare(b,'fr'));
+  if(!keys.length) return '<div class="hint">Aucune ligne.</div>';
+  return keys.map(k=>{
+    const g=by[k].slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+    const sub=g.reduce((s,c)=>s+(Number(c.cout_total)||0),0);
+    const toOrder=g.filter(c=>c.statut==='demandee').map(c=>c.id);
+    return `<div class="group-head"><span>${icon} ${esc(k)} <span class="mini">— ${g.length} ligne(s)</span></span>
+      <span class="tot">sous-total ${eur(sub)}${toOrder.length?` · <button class="btn sm" onclick='bulkOrder(${JSON.stringify(toOrder)})'>Tout marquer commandé (${toOrder.length})</button>`:''}</span></div>
+      ${gestTable(g)}`;
+  }).join('');
+}
+function setGestView(v){
+  _gestView=v;
+  document.querySelectorAll('[data-gv]').forEach(b=>b.classList.toggle('active', b.dataset.gv===v));
+  renderGest();
+}
+function gestTable(rows){
+  return `<div class="tablewrap"><table class="data">
+    <tr><th>Date</th><th>Contexte</th><th>Article &amp; fournisseur</th><th>Réf.</th><th>Qté</th><th>Coût</th><th>Statut</th><th>Actions</th></tr>
+    ${rows.map(c=>{
+      const st=STATUTS[c.statut]||STATUTS.demandee;
+      return `<tr>
+        <td class="mini">${fmtDate(c.created_at)}</td>
+        <td><b>${esc(c.groupe||'—')}</b><div class="ctx">${esc(c.formation||'')}${c.parcours?' · '+esc(c.parcours):''}</div><div class="ctx">${esc(c.encadrant||'')}</div></td>
+        <td>${esc(c.intitule)}${c.lien?` <a href="${esc(c.lien)}" target="_blank" rel="noopener">🔗</a>`:''}
+          <div class="ctx">🏬 ${esc(c.fournisseur||'—')}</div>
+          ${c.commentaire_gestionnaire?`<div class="ctx">🛒 ${esc(c.commentaire_gestionnaire)}</div>`:''}
+          ${c.commentaire_demandeur?`<div class="ctx">✏️ ${esc(c.commentaire_demandeur)}</div>`:''}</td>
+        <td>${esc(c.reference||'')}</td>
+        <td>${c.quantite||''}</td>
+        <td>${eur(c.cout_total)}</td>
+        <td><span class="pill ${st.cls}">${st.label}</span></td>
+        <td><div class="row-actions">
+          ${c.statut!=='demandee'?`<button class="btn sm" onclick="patchStatut(${c.id},'demandee')">Demandée</button>`:''}
+          ${c.statut!=='commandee'?`<button class="btn sm" onclick="patchStatut(${c.id},'commandee')">Commandé</button>`:''}
+          ${c.statut!=='recue_complete'?`<button class="btn sm" onclick="patchStatut(${c.id},'recue_complete')">Reçu</button>`:''}
+          ${c.statut!=='recue_partielle'?`<button class="btn sm" onclick="patchStatut(${c.id},'recue_partielle')">Partiel</button>`:''}
+          ${c.statut!=='remise'?`<button class="btn sm" onclick="patchStatut(${c.id},'remise')">Récupéré</button>`:''}
+          <button class="btn sm" onclick="openEdit(${c.id})">Éditer</button>
+          <button class="btn sm" onclick="openComment(${c.id},'gestionnaire')">Commenter</button>
+        </div></td>
+      </tr>`;
+    }).join('')}
+  </table></div>`;
+}
+
+async function patchStatut(id, statut, par){
+  const c=COMMANDES.find(x=>x.id===id); if(!c) return;
+  const now=new Date().toISOString();
+  const patch={statut, historique:[...(c.historique||[]),{t:now,statut,par:par||_gestNom||'gestionnaire'}]};
+  // Le gestionnaire peut passer à n'importe quel statut : on cale les dates d'étape en conséquence
+  // (remplissage des étapes antérieures, effacement des étapes postérieures).
+  if(statut==='demandee'){
+    patch.commandee_at=null; patch.recue_at=null; patch.remise_at=null; patch.recue_note='';
+  } else if(statut==='commandee'){
+    patch.commandee_at=c.commandee_at||now; patch.recue_at=null; patch.remise_at=null; patch.recue_note='';
+  } else if(statut==='recue_complete'||statut==='recue_partielle'){
+    patch.commandee_at=c.commandee_at||now; patch.recue_at=c.recue_at||now; patch.remise_at=null;
+    patch.recue_note = statut==='recue_complete'?'complet':'partiel';
+  } else if(statut==='remise'){
+    patch.commandee_at=c.commandee_at||now; patch.recue_at=c.recue_at||now; patch.remise_at=now;
+    if(!c.recue_note) patch.recue_note='complet';
+  }
+  // refusee / annulee : on ne touche pas aux dates d'étape
+  const {error}=await sb.from('commandes').update(patch).eq('id',id);
+  if(error){ toast('Erreur : '+error.message); return; }
+  await loadCommandes();
+}
+async function bulkOrder(ids){
+  const now=new Date().toISOString();
+  for(const id of ids){ const c=COMMANDES.find(x=>x.id===id); if(!c) continue;
+    await sb.from('commandes').update({statut:'commandee',commandee_at:now,historique:[...(c.historique||[]),{t:now,statut:'commandee',par:_gestNom||'gestionnaire'}]}).eq('id',id);
+  }
+  await loadCommandes(); toast(ids.length+' ligne(s) marquées commandées');
+}
+
+/* ---------- édition ---------- */
+function openEdit(id){
+  const c=COMMANDES.find(x=>x.id===id); if(!c) return;
+  _editId=id;
+  $('#e-fournisseur').value=c.fournisseur||''; $('#e-reference').value=c.reference||'';
+  $('#e-quantite').value=c.quantite??''; $('#e-cu').value=c.cout_unitaire??''; $('#e-ct').value=c.cout_total??'';
+  $('#e-lien').value=c.lien||''; $('#e-intitule').value=c.intitule||''; $('#e-comg').value=c.commentaire_gestionnaire||'';
+  $('#e-err').classList.remove('show');
+  openOverlay('ovEdit');
+}
+async function saveEdit(){
+  const c=COMMANDES.find(x=>x.id===_editId); if(!c) return;
+  const q=nOrNull($('#e-quantite').value)||1, cu=nOrNull($('#e-cu').value);
+  let ct=nOrNull($('#e-ct').value);
+  if(ct==null && cu!=null) ct=+(cu*q).toFixed(2);
+  const patch={
+    fournisseur:$('#e-fournisseur').value.trim(), reference:$('#e-reference').value.trim(),
+    quantite:q, cout_unitaire:cu, cout_total:ct, lien:$('#e-lien').value.trim(),
+    intitule:$('#e-intitule').value.trim(), commentaire_gestionnaire:$('#e-comg').value.trim()
+  };
+  const {error}=await sb.from('commandes').update(patch).eq('id',_editId);
+  if(error){ fail($('#e-err'),error.message); return; }
+  closeOverlay('ovEdit'); await loadCommandes(); toast('Ligne mise à jour');
+}
+async function editSetStatut(st){ await patchStatut(_editId, st); closeOverlay('ovEdit'); toast('Statut : '+STATUTS[st].label); }
+
+/* ---------- commentaires ---------- */
+function openComment(id, who){ _commentId=id; _commentField = who==='gestionnaire'?'commentaire_gestionnaire':'commentaire_demandeur';
+  const c=COMMANDES.find(x=>x.id===id); $('#c-text').value=c?.[_commentField]||''; $('#c-err').classList.remove('show'); openOverlay('ovComment'); }
+async function saveComment(){
+  const {error}=await sb.from('commandes').update({[_commentField]:$('#c-text').value.trim()}).eq('id',_commentId);
+  if(error){ fail($('#c-err'),error.message); return; }
+  closeOverlay('ovComment'); await loadCommandes(); toast('Commentaire enregistré');
+}
+
+/* ---------- exports ---------- */
+function exportRows(){
+  return gestFiltered().map(c=>({
+    Date:c.created_at?.slice(0,10)||'', Formation:c.formation, Parcours:c.parcours, Groupe:c.groupe, Encadrant:c.encadrant,
+    Fournisseur:c.fournisseur, Intitulé:c.intitule, Référence:c.reference, Lien:c.lien, Quantité:c.quantite,
+    'Coût unitaire':c.cout_unitaire??'', 'Coût total':c.cout_total??'', Statut:(STATUTS[c.statut]||{}).label||c.statut,
+    'Commandée le':c.commandee_at?.slice(0,10)||'', 'Reçue le':c.recue_at?.slice(0,10)||'', 'Remise le':c.remise_at?.slice(0,10)||'',
+    'Commentaire gestionnaire':c.commentaire_gestionnaire||''
+  }));
+}
+function exportCSV(){
+  const rows=exportRows(); if(!rows.length) return toast('Rien à exporter');
+  const head=Object.keys(rows[0]);
+  const csv=[head.join(';')].concat(rows.map(r=>head.map(h=>`"${String(r[h]??'').replace(/"/g,'""')}"`).join(';'))).join('\r\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='commandes_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+}
+function exportXLSX(){
+  const rows=exportRows(); if(!rows.length) return toast('Rien à exporter');
+  const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Commandes');
+  XLSX.writeFile(wb,'commandes_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+/* ---------- ADMIN ---------- */
+async function adminLogin(){
+  const err=$('#a-err'); err.classList.remove('show');
+  const code=$('#a-pw').value.trim(); if(!code) return fail(err,'Saisissez le mot de passe.');
+  let role=null;
+  try{ const res=await sb.functions.invoke('admin-op',{body:{action:'login',adminCode:code}}); if(!res.error&&res.data&&res.data.ok) role=res.data.role; }catch(e){}
+  if(!role) return fail(err,'Mot de passe incorrect.');
+  _adminOk=true; _adminRole=role; $('#a-pw').value='';
+  $('#adminGate').style.display='none'; $('#adminPanel').style.display='block';
+  const isSuper = role==='super';
+  $('#superOnly').style.display = isSuper ? 'block' : 'none';
+  $('#adminRoleTag').textContent = isSuper ? '🛡️ Connecté en super admin — accès complet (gestionnaires, vidage des tables).' : '⚙️ Connecté en admin.';
+  renderFournList(); renderBudgetList();
+  if(isSuper){ renderGestionnairesList(); renderSuperTables(); }
+}
+function adminLogout(){
+  _adminOk=false; _adminRole='';
+  $('#superOnly').style.display='none'; $('#a-pw').value='';
+  $('#adminPanel').style.display='none'; $('#adminGate').style.display='block';
+}
+function renderFournList(){
+  _fournEdit = [...FOURNISSEURS].sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+  $('#fournList').innerHTML = _fournEdit.length ? `<div class="tablewrap"><table class="data">
+    <tr><th>Nom</th><th>Site web</th><th>Commentaire</th><th>Actif</th><th></th></tr>
+    ${_fournEdit.map((f,i)=>`<tr>
+      <td><input id="ffn-${i}" value="${esc(f.nom)}" style="min-width:130px"></td>
+      <td><input id="ffs-${i}" value="${esc(f.site||'')}" placeholder="https://…" style="min-width:160px"></td>
+      <td><input id="ffc-${i}" value="${esc(f.notes||'')}" placeholder="—" style="min-width:150px"></td>
+      <td style="text-align:center"><input type="checkbox" ${f.actif!==false?'checked':''} onchange="toggleFourn(${i},this.checked)" style="width:auto"></td>
+      <td><div class="row-actions"><button class="btn sm" onclick="saveFourn(${i})">Enregistrer</button><button class="btn sm danger" onclick="delFourn(${i})">Suppr.</button></div></td>
+    </tr>`).join('')}
+  </table></div>` : '<div class="hint">Aucun fournisseur.</div>';
+}
+async function saveFourn(i){
+  const f=_fournEdit[i]; if(!f) return;
+  const nom=$('#ffn-'+i).value.trim(), site=$('#ffs-'+i).value.trim(), notes=$('#ffc-'+i).value.trim();
+  if(!nom) return toast('Le nom est requis');
+  if(nom===f.nom){
+    const {error}=await sb.from('com_fournisseurs').update({site, notes}).eq('nom',f.nom);
+    if(error) return toast(error.message);
+  } else {
+    const {error}=await sb.from('com_fournisseurs').upsert({nom, site, notes, actif:f.actif!==false});
+    if(error) return toast(error.message);
+    await sb.from('com_fournisseurs').delete().eq('nom',f.nom);
+  }
+  await loadFournisseurs(); renderFournList(); buildSelects(); toast('Fournisseur enregistré');
+}
+async function addFournisseur(){
+  const nom=$('#nf-nom').value.trim(); if(!nom) return;
+  const {error}=await sb.from('com_fournisseurs').upsert({nom,site:$('#nf-site').value.trim(),notes:$('#nf-notes').value.trim(),actif:true});
+  if(error) return toast(error.message);
+  $('#nf-nom').value=''; $('#nf-site').value=''; $('#nf-notes').value='';
+  await loadFournisseurs(); renderFournList(); buildSelects(); toast('Fournisseur ajouté');
+}
+async function toggleFourn(i,actif){ const f=_fournEdit[i]; if(!f) return; await sb.from('com_fournisseurs').update({actif}).eq('nom',f.nom); await loadFournisseurs(); buildSelects(); }
+async function delFourn(i){ const f=_fournEdit[i]; if(!f) return; if(!confirm('Supprimer '+f.nom+' ?')) return; await sb.from('com_fournisseurs').delete().eq('nom',f.nom); await loadFournisseurs(); renderFournList(); buildSelects(); }
+function renderBudgetList(){
+  const parc=[...new Set([...PARCOURS_BASE, ...Object.keys(BUDGETS), ...COMMANDES.map(c=>c.parcours)])].filter(Boolean).sort();
+  $('#budgetList').innerHTML = `<div class="tablewrap"><table class="data">
+    <tr><th>Parcours</th><th>Limite €</th><th>Consommé (année)</th><th></th></tr>
+    ${parc.map(p=>`<tr><td>${esc(p)}</td>
+      <td><input type="number" step="1" value="${BUDGETS[p]??''}" id="bl-${esc(p)}" style="width:120px"></td>
+      <td class="mini">${eur(consumed(p))}</td>
+      <td><button class="btn sm" onclick="saveBudgetRow('${esc(p)}')">Enregistrer</button></td></tr>`).join('')}
+  </table></div>`;
+}
+async function saveBudgetRow(p){
+  const v=nOrNull($('#bl-'+CSS.escape(p)).value);
+  const {error}=await sb.from('com_budgets').upsert({parcours:p,limite:v,maj_at:new Date().toISOString()});
+  if(error) return toast(error.message);
+  await loadBudgets(); renderBudgetList(); toast('Budget enregistré');
+}
+async function saveBudget(){
+  const p=$('#nb-parcours').value.trim(); if(!p) return;
+  const {error}=await sb.from('com_budgets').upsert({parcours:p,limite:nOrNull($('#nb-limite').value),maj_at:new Date().toISOString()});
+  if(error) return toast(error.message);
+  $('#nb-parcours').value=''; $('#nb-limite').value='';
+  await loadBudgets(); renderBudgetList(); toast('Budget enregistré');
+}
+/* ---------- SUPERADMIN (dans l'écran Admin, si mot de passe super) ---------- */
+const SA_TABLES = [
+  {t:'commandes',        label:'Demandes / lignes de commande', pk:'id',       min:-1,  reload:loadCommandes},
+  {t:'com_fournisseurs', label:'Fournisseurs',                  pk:'nom',      min:'',  reload:loadFournisseurs},
+  {t:'com_budgets',      label:'Budgets par parcours',          pk:'parcours', min:'',  reload:loadBudgets},
+  {t:'com_gestionnaires',label:'Gestionnaires',                 pk:'nom',      min:'',  reload:loadGestionnaires}
+];
+async function renderSuperTables(){
+  const rows = await Promise.all(SA_TABLES.map(async d=>{
+    let n='?'; try{ const {count}=await sb.from(d.t).select(d.pk,{count:'exact',head:true}); n=count??'?'; }catch(e){ n='—'; }
+    return `<div class="sa-row">
+      <span><b>${esc(d.label)}</b> <span class="mini">(${esc(d.t)}) — ${n} ligne(s)</span></span>
+      <button class="btn sm danger" onclick="wipeTable('${d.t}')">Vider</button>
+    </div>`;
+  }));
+  $('#superTables').innerHTML = rows.join('');
+}
+async function wipeTable(name){
+  if(_adminRole!=='super') return;
+  const d=SA_TABLES.find(x=>x.t===name); if(!d) return;
+  if(prompt(`Taper VIDER pour supprimer TOUT le contenu de « ${d.label} » (${d.t}) :`)!=='VIDER') return;
+  const {error}=await sb.from(d.t).delete().gt(d.pk, d.min);
+  if(error) return toast(error.message);
+  await d.reload();
+  buildSelects(); buildGestNomSelect(); refreshCurrentView();
+  renderSuperTables();
+  toast('Table « '+d.label+' » vidée');
+}
+async function wipeAllTables(){
+  if(_adminRole!=='super') return;
+  if(prompt('Taper TOUT VIDER pour supprimer le contenu des 4 tables de ce module :')!=='TOUT VIDER') return;
+  for(const d of SA_TABLES){
+    const {error}=await sb.from(d.t).delete().gt(d.pk, d.min);
+    if(error){ toast(d.t+' : '+error.message); return; }
+    await d.reload();
+  }
+  buildSelects(); buildGestNomSelect(); refreshCurrentView();
+  renderSuperTables();
+  toast('Les 4 tables ont été vidées');
+}
+
+/* ---------- realtime ---------- */
+sb.channel('commandes-rt')
+  .on('postgres_changes',{event:'*',schema:'public',table:'commandes'},()=>{ loadCommandes(); })
+  .on('postgres_changes',{event:'*',schema:'public',table:'com_gestionnaires'},()=>{ loadGestionnaires().then(()=>{ if(_adminOk && _adminRole==='super') renderGestionnairesList(); }); })
+  .subscribe();
+
+$('#ovConfirmOk'); // reserved
+loadAll();
+</script>
+</body>
+</html>
