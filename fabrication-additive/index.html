@@ -605,9 +605,9 @@
 <div class="overlay" id="ovOperateur">
   <div class="modal">
     <h2>🛠️ Espace opérateur</h2>
-    <div class="meta">Sélectionnez votre nom et saisissez votre code (le même que pour Réservation Machines).</div>
+    <div class="meta">Sélectionnez votre nom et saisissez votre code individuel opérateur (le même que pour les Réservations des machines-outils).</div>
     <select id="opNomSelect"></select>
-    <input type="password" id="opCodeInput" inputmode="numeric" maxlength="4" placeholder="••••" style="text-align:center;letter-spacing:.5em;font-size:1.3rem;margin-top:10px" onkeydown="if(event.key==='Enter')confirmOperateur()">
+    <input type="password" id="opCodeInput" inputmode="numeric" maxlength="4" placeholder="Code individuel opérateur" style="text-align:center;letter-spacing:normal;font-size:1rem;margin-top:10px" onkeydown="if(event.key==='Enter')confirmOperateur()">
     <div class="field-err" id="opErr">Nom ou code incorrect</div>
     <div class="modal-actions">
       <button class="btn btn-close" onclick="closeOverlay('ovOperateur')">Annuler</button>
@@ -1487,7 +1487,7 @@ async function validerLancer(){
 // ─────────────────────────────────────────────────────────────────────────
 //  SAISIE DE CODE (générique)
 // ─────────────────────────────────────────────────────────────────────────
-function askEncadrant(){ openCodeModal('encadrant','Espace encadrant','Code de validation à 4 chiffres.'); }
+function askEncadrant(){ openCodeModal('encadrant','Espace encadrant','Code PIN commun encadrants (4 chiffres) pour valider les demandes d\'impressions.'); }
 // Bouton ⚙ Admin : bascule comme dans l'appli usinage (connecté → déconnexion).
 function askAdmin(){
   if(_fabAdminCode){ logoutFabAdmin(); return; }
@@ -1534,7 +1534,7 @@ function openCodeModal(role,title,meta){
   const inp=document.getElementById('codeInput');
   inp.value=''; inp.classList.remove('err');
   if(role==='admin'){ inp.maxLength=20; inp.setAttribute('inputmode','text'); inp.placeholder='mot de passe'; inp.style.letterSpacing='normal'; inp.style.fontSize='1rem'; }
-  else { inp.maxLength=4; inp.setAttribute('inputmode','numeric'); inp.placeholder='••••'; inp.style.letterSpacing='.5em'; inp.style.fontSize='1.3rem'; }
+  else { inp.maxLength=4; inp.setAttribute('inputmode','numeric'); inp.placeholder='Code PIN commun encadrants'; inp.style.letterSpacing='normal'; inp.style.fontSize='1rem'; }
   document.getElementById('codeErr').classList.remove('show');
   openOverlay('ovCode'); setTimeout(()=>inp.focus(),50);
 }
