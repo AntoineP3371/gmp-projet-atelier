@@ -592,7 +592,7 @@
   <div class="modal">
     <h2 id="codeTitle">Code d'accès</h2>
     <div class="meta" id="codeMeta">Saisissez votre code à 4 chiffres.</div>
-    <input type="password" id="codeInput" inputmode="numeric" maxlength="4" placeholder="••••" style="text-align:center;letter-spacing:.5em;font-size:1.3rem" onkeydown="if(event.key==='Enter')confirmCode()">
+    <input type="password" id="codeInput" inputmode="numeric" maxlength="4" placeholder="••••" style="font-size:.9rem" onkeydown="if(event.key==='Enter')confirmCode()">
     <div class="field-err" id="codeErr">Code incorrect</div>
     <div class="modal-actions">
       <button class="btn btn-close" onclick="closeOverlay('ovCode')">Annuler</button>
@@ -607,7 +607,7 @@
     <h2>🛠️ Espace opérateur</h2>
     <div class="meta">Sélectionnez votre nom et saisissez votre code individuel opérateur (le même que pour les Réservations des machines-outils).</div>
     <select id="opNomSelect"></select>
-    <input type="password" id="opCodeInput" inputmode="numeric" maxlength="4" placeholder="Code individuel opérateur" style="text-align:center;letter-spacing:normal;font-size:1rem;margin-top:10px" onkeydown="if(event.key==='Enter')confirmOperateur()">
+    <input type="password" id="opCodeInput" inputmode="numeric" maxlength="4" placeholder="Code individuel opérateur" style="font-size:.9rem;margin-top:10px" onkeydown="if(event.key==='Enter')confirmOperateur()">
     <div class="field-err" id="opErr">Nom ou code incorrect</div>
     <div class="modal-actions">
       <button class="btn btn-close" onclick="closeOverlay('ovOperateur')">Annuler</button>
@@ -1533,8 +1533,8 @@ function openCodeModal(role,title,meta){
   document.getElementById('codeMeta').textContent=meta;
   const inp=document.getElementById('codeInput');
   inp.value=''; inp.classList.remove('err');
-  if(role==='admin'){ inp.maxLength=20; inp.setAttribute('inputmode','text'); inp.placeholder='mot de passe'; inp.style.letterSpacing='normal'; inp.style.fontSize='1rem'; }
-  else { inp.maxLength=4; inp.setAttribute('inputmode','numeric'); inp.placeholder='Code PIN commun encadrants'; inp.style.letterSpacing='normal'; inp.style.fontSize='1rem'; }
+  if(role==='admin'){ inp.maxLength=20; inp.setAttribute('inputmode','text'); inp.placeholder='mot de passe'; inp.style.letterSpacing='normal'; inp.style.fontSize='.9rem'; inp.style.textAlign='left'; }
+  else { inp.maxLength=4; inp.setAttribute('inputmode','numeric'); inp.placeholder='Code PIN commun encadrants'; inp.style.letterSpacing='normal'; inp.style.fontSize='.9rem'; inp.style.textAlign='left'; }
   document.getElementById('codeErr').classList.remove('show');
   openOverlay('ovCode'); setTimeout(()=>inp.focus(),50);
 }
