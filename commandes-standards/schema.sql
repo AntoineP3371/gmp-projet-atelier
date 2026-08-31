@@ -109,27 +109,31 @@ insert into public.com_fournisseurs (nom, site) values
   ('Autre (préciser)',    '')
 on conflict (nom) do nothing;
 
--- ---------- Sécurité (RLS) — PHASE TEST : écriture directe anon -----
+-- ---------- Sécurité (RLS) — VERSION PUBLIQUE : lecture anon, écritures via Edge Function -----
+-- Le public LIT les 4 tables ; toutes les ÉCRITURES passent par l'Edge Function
+-- « commande-op » (clé service). Aucune policy INSERT/UPDATE/DELETE = refus total pour anon.
+-- (Pour repasser en écriture directe pendant un test : remplacer les 4 policies SELECT
+--  par « for all using (true) with check (true) ».)
 alter table public.commandes         enable row level security;
 alter table public.com_fournisseurs  enable row level security;
 alter table public.com_budgets       enable row level security;
 alter table public.com_gestionnaires enable row level security;
 
 drop policy if exists commandes_all on public.commandes;
-create policy commandes_all on public.commandes
-  for all using (true) with check (true);
+drop policy if exists commandes_sel on public.commandes;
+create policy commandes_sel on public.commandes for select using (true);
 
 drop policy if exists com_fournisseurs_all on public.com_fournisseurs;
-create policy com_fournisseurs_all on public.com_fournisseurs
-  for all using (true) with check (true);
+drop policy if exists com_fournisseurs_sel on public.com_fournisseurs;
+create policy com_fournisseurs_sel on public.com_fournisseurs for select using (true);
 
 drop policy if exists com_budgets_all on public.com_budgets;
-create policy com_budgets_all on public.com_budgets
-  for all using (true) with check (true);
+drop policy if exists com_budgets_sel on public.com_budgets;
+create policy com_budgets_sel on public.com_budgets for select using (true);
 
 drop policy if exists com_gestionnaires_all on public.com_gestionnaires;
-create policy com_gestionnaires_all on public.com_gestionnaires
-  for all using (true) with check (true);
+drop policy if exists com_gestionnaires_sel on public.com_gestionnaires;
+create policy com_gestionnaires_sel on public.com_gestionnaires for select using (true);
 
 -- ---------- Temps réel (rafraîchissement des écrans) ---------------
 do $$

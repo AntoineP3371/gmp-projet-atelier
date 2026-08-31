@@ -36,7 +36,7 @@ Statuts : `demandee` → `commandee` → `recue_partielle` / `recue_complete` �
 
 ---
 
-## Mise en route (version test — pour toi seul)
+## Mise en route
 
 ### 1. Créer les tables dans Supabase
 
@@ -65,64 +65,46 @@ Puis ouvre <http://localhost:8765/commandes-standards/>
 
 (ou via la config `.claude/launch.json` déjà présente, entrée « reservation-machines »).
 
-### 4. En ligne (toi seul)
+### 3 bis. VERSION PUBLIQUE — verrouiller les écritures (2 opérations Supabase)
 
-Le dossier est poussé avec le reste du dépôt, donc accessible à
-`https://gmpbordeaux.fr/gmp-projet-atelier/commandes-standards/`
-**mais aucune carte ne pointe dessus depuis le portail** : seule cette URL, connue de toi, y donne accès.
+En version publique, la clé anon (visible dans le HTML) ne doit plus pouvoir écrire directement.
+Toutes les écritures passent par l'Edge Function **`commande-op`**.
+
+1. **Déployer l'Edge Function** — dashboard Supabase → **Edge Functions** → **Deploy a new function** →
+   nom exact **`commande-op`** → coller tout `supabase/functions/commande-op/index.ts` → **Deploy**.
+   (Les secrets `SUPERADMIN_PW_HASH` et `ADMIN_PW_HASH` sont déjà en place, partagés avec les autres applis.)
+2. **Fermer les écritures directes** — SQL Editor → coller tout **`secure.sql`** → **Run**.
+   → supprime les policies permissives, ne laisse qu'une lecture (`SELECT`) pour la clé anon.
+   (Le fichier `schema.sql` est déjà à jour pour un futur déploiement neuf.)
+
+Tant que ces 2 opérations ne sont pas faites, l'appli **charge** mais toute écriture affiche
+« Refusé : … » (l'Edge Function n'existe pas encore).
+
+### 4. En ligne
+
+Poussé avec le dépôt → `https://gmpbordeaux.fr/gmp-projet-atelier/commandes-standards/`,
+**avec une carte sur le portail** (`../index.html`, carte verte « Éléments standards »).
 
 ### Codes utilisés (déjà en place, rien à déployer)
 
 | Accès | Code | Vérifié par |
 |---|---|---|
-| Encadrant (créer / annuler une demande) | **code PIN encadrant commun** | Edge Function `verify-code` (kind `encadrant`) |
-| Gestionnaire | **code opérateur** (table `operateurs`) | Edge Function `verify-code` (kind `operateur`) |
-| Admin | **mot de passe admin** | Edge Function `admin-op` (action `login`) |
+| Encadrant (créer / annuler une demande) | **code PIN encadrant commun** | Edge Function `verify-code` puis re-vérifié par `commande-op` |
+| Gestionnaire | **code opérateur** (table `operateurs`) | idem |
+| Admin / Super admin | **mot de passe admin** / `super1234` | Edge Function `admin-op` (`login`) puis re-vérifié par `commande-op` |
 
 La liste des encadrants proposée vient de la table `etudiants` (colonnes `encadrant1/2/3`), déjà utilisée
-par l'appli Impression 3D. La liste des noms gestionnaires vient de `operateurs_public`.
+par l'appli Impression 3D. La liste des noms gestionnaires vient de `operateurs_public`, filtrée par
+`com_gestionnaires` (choix du super admin).
 
 ---
 
-## Sécurité — état actuel et passage en version publique
+## Reste optionnel (non fait)
 
-**Phase test :** les 3 nouvelles tables sont en **écriture directe** (policy RLS permissive), exactement
-comme l'était la table `demandes` avant sa sécurisation. C'est acceptable tant que l'URL n'est pas diffusée,
-mais l'advisor Supabase le signalera.
-
-**Check-list « passage en public » :**
-
-1. **Verrouiller les écritures** — créer une Edge Function `commande-op` (sur le modèle de `demande-op`) :
-   - `create` (public, vérifie le budget côté serveur), `statut`, `edit`, `commentaire`, `cancel`
-     (encadrant), gestion fournisseurs/budgets (admin).
-   - Puis sur les 3 tables : supprimer les policies `*_all`, ne garder qu'un `SELECT` anon
-     (`create policy ... for select using (true)`), et faire passer toutes les écritures du `index.html`
-     par `sb.functions.invoke('commande-op', …)`.
-2. **Ajouter la carte sur le portail** — dans `../index.html`, dupliquer une `.card` existante
-   (classe `usinage` / `additive`) en `.card.commandes`, couleur d'accent verte, lien
-   `href="commandes-standards/"`, texte « Commandes d'éléments standards ».
-   Icône assortie (même style que les deux autres, `viewBox 0 0 64 64`, `stroke-width="3"`) — roulement à billes :
-   ```html
-   <svg class="icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="Éléments standards">
-     <circle cx="32" cy="32" r="24"/>
-     <circle cx="32" cy="32" r="11"/>
-     <circle cx="32" cy="14.5" r="3" fill="currentColor" stroke="none"/>
-     <circle cx="44.4" cy="19.6" r="3" fill="currentColor" stroke="none"/>
-     <circle cx="49.5" cy="32" r="3" fill="currentColor" stroke="none"/>
-     <circle cx="44.4" cy="44.4" r="3" fill="currentColor" stroke="none"/>
-     <circle cx="32" cy="49.5" r="3" fill="currentColor" stroke="none"/>
-     <circle cx="19.6" cy="44.4" r="3" fill="currentColor" stroke="none"/>
-     <circle cx="14.5" cy="32" r="3" fill="currentColor" stroke="none"/>
-     <circle cx="19.6" cy="19.6" r="3" fill="currentColor" stroke="none"/>
-   </svg>
-   ```
-   (déjà utilisée dans l'en-tête de `index.html` du module).
-3. **Notifications e-mail (Resend, déjà configuré)** — option : prévenir l'encadrant quand sa commande
-   passe en `recue_complete` / `remise` (adresse dans une table verrouillée façon `demande_contacts`).
-4. **Sauvegarde** — l'Edge Function `backup` sauvegarde déjà *toutes* les tables : `commandes`,
-   `com_fournisseurs`, `com_budgets` seront incluses automatiquement.
-5. **Numéro de version** — passer `v0.1.0 (test)` → `v1.0.0` dans le `<footer>` et retirer le badge
-   « Version test » (`#testFlag`).
+- **Notifications e-mail (Resend, déjà configuré ailleurs)** — prévenir l'encadrant quand sa commande
+  passe en `recue_complete` / `remise` (adresse dans une table verrouillée façon `demande_contacts`).
+- **Sauvegarde** — l'Edge Function `backup` sauvegarde déjà *toutes* les tables : `commandes`,
+  `com_fournisseurs`, `com_budgets`, `com_gestionnaires` sont incluses automatiquement.
 
 ---
 
@@ -131,6 +113,9 @@ mais l'advisor Supabase le signalera.
 | Fichier | Rôle |
 |---|---|
 | `index.html` | l'appli complète (aucun build) |
-| `schema.sql` | création des 3 tables + fournisseurs pré-remplis (à lancer une fois) |
+| `schema.sql` | création des 4 tables + fournisseurs pré-remplis + RLS version publique (à lancer une fois) |
+| `secure.sql` | ferme les écritures directes sur une base déjà en phase test (à lancer une fois au passage public) |
+| `supabase/functions/commande-op/index.ts` | Edge Function qui porte toutes les écritures (à déployer) |
 | `import.sql` | reprise des 89 lignes du Google Sheet 2025-2026 (à lancer une fois, facultatif) |
+| `logo-gmp.png` | logo affiché en haut de page |
 | `README.md` | ce fichier |

@@ -63,8 +63,6 @@ h3{font-size:.98rem;font-weight:700}
 .brand .dot{flex-shrink:0;line-height:1;color:var(--primary);display:flex;align-items:center}
 .brand .dot svg{width:44px;height:44px;display:block}
 .s-note{color:var(--muted);margin:2px 0 8px;min-height:1em}
-.testflag{display:inline-block;margin-left:10px;font-size:.66rem;font-weight:800;letter-spacing:.08em;
-  text-transform:uppercase;background:var(--amber-light);color:var(--amber);padding:3px 9px;border-radius:20px;vertical-align:middle}
 nav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 0 auto}
 @media(max-width:760px){nav{width:100%;margin-left:0}nav .nav-btn{flex:1;justify-content:center}}
 .nav-btn{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:8px 15px;
@@ -190,7 +188,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
       </svg>
     </div>
     <div>
-      <h1>Commandes d'éléments standards<span class="testflag" id="testFlag">Version test</span></h1>
+      <h1>Commandes d'éléments standards</h1>
       <div class="sub" style="margin:0">Gestion des demandes d'achat de composants (visserie, roulements, paliers, ressorts…)</div>
     </div>
   </div>
@@ -455,9 +453,19 @@ let PROJETS = [];        // projets connus (table etudiants)
 let ENCADRANTS = [];
 let GROUPES = [];
 let _sid = 0;            // compteur de blocs fournisseur
-let _gestOk=false, _gestNom='', _adminOk=false, _adminRole='', _gestView='date';
+let _gestOk=false, _gestNom='', _gestCode='', _adminOk=false, _adminRole='', _adminPw='', _gestView='date';
 let _encOk=false, _encNom='', _encCode='';
 let _editId=null, _commentId=null, _commentField='', _fournEdit=[];
+
+/* Toutes les écritures passent par l'Edge Function commande-op (version publique). */
+async function op(action, args){
+  try{
+    const {data,error} = await sb.functions.invoke('commande-op', { body:{ action, ...(args||{}) } });
+    if(error){ toast('Erreur réseau : '+(error.message||error)); return null; }
+    if(!data || data.ok===false){ toast('Refusé : '+((data&&data.error)||'non autorisé')); return null; }
+    return data;
+  }catch(e){ toast('Erreur : '+e); return null; }
+}
 
 /* ---------- utils ---------- */
 const $ = s => document.querySelector(s);
@@ -609,10 +617,8 @@ function renderGestionnairesList(){
     <label class="op-check"><input type="checkbox" ${GESTIONNAIRES.includes(n)?'checked':''} onchange="toggleGestionnaire('${esc(n).replace(/'/g,"\\'")}',this.checked)"> ${esc(n)}</label>`).join('');
 }
 async function toggleGestionnaire(nom, on){
-  const {error} = on
-    ? await sb.from('com_gestionnaires').upsert({nom})
-    : await sb.from('com_gestionnaires').delete().eq('nom',nom);
-  if(error){ toast(error.message); return; }
+  const res=await op('gest-toggle', { nom, on, adminPw:_adminPw });
+  if(!res){ renderGestionnairesList(); return; }
   await loadGestionnaires();
   renderGestionnairesList();
   toast(on ? nom+' est gestionnaire' : nom+' retiré des gestionnaires');
@@ -808,25 +814,16 @@ async function submitDemande(){
   if(!sups.length){ return fail(err,'Ajoutez au moins un article avec un intitulé.'); }
   if(sups.some(s=>!s.nom)){ return fail(err,'Indiquez le nom du fournisseur pour chaque bloc.'); }
 
-  // numéro incrémental par groupe
-  let base = COMMANDES.filter(c=>(c.groupe||'').toLowerCase()===groupe.toLowerCase()).reduce((m,c)=>Math.max(m,c.numero||0),0);
-  const now=new Date().toISOString();
-  const rows=[];
-  sups.forEach(s=>s.arts.forEach(l=>{
-    rows.push({
-      numero: base + rows.length + 1, formation, parcours, groupe, encadrant,
-      fournisseur:s.nom, intitule:l.intitule, reference:l.reference, lien:l.lien,
-      quantite:l.quantite, cout_unitaire:l.cout_unitaire,
-      cout_total: l.cout_unitaire!=null ? +(l.cout_unitaire*l.quantite).toFixed(2) : null,
-      statut:'demandee',
-      historique:[{t:now,statut:'demandee',par:encadrant}]
-    });
-  }));
-  const {error} = await sb.from('commandes').insert(rows);
-  if(error){ return fail(err, 'Enregistrement impossible : '+error.message); }
+  const lines=[];
+  sups.forEach(s=>s.arts.forEach(l=>lines.push({
+    fournisseur:s.nom, intitule:l.intitule, reference:l.reference, lien:l.lien,
+    quantite:l.quantite, cout_unitaire:l.cout_unitaire
+  })));
+  const res = await op('create', { encCode:_encCode, ctx:{formation,parcours,groupe,encadrant}, lines });
+  if(!res){ return fail(err,'Code PIN encadrant incorrect, ou enregistrement impossible.'); }
   $('#suppliers').innerHTML=''; _sid=0; addSupplier();
   await loadCommandes();
-  toast(rows.length+' ligne(s) enregistrée(s) ✅');
+  toast((res.count||lines.length)+' ligne(s) enregistrée(s) ✅');
   showView('suivi');
 }
 function fail(el,msg){ el.textContent=msg; el.classList.add('show'); }
@@ -889,9 +886,9 @@ function rowSuivi(c){
 }
 async function cancelLine(id){
   const pin=prompt('Code PIN encadrant pour annuler cette ligne :'); if(!pin) return;
-  let ok=false; try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',code:pin.trim()}}); ok=!error&&!!(data&&data.ok);}catch(e){}
-  if(!ok){ toast('Code incorrect'); return; }
-  await patchStatut(id,'annulee','encadrant');
+  const res=await op('cancel', { id, encCode:pin.trim() });
+  if(!res) return;
+  await loadCommandes();
   toast('Ligne annulée');
 }
 
@@ -903,7 +900,7 @@ async function gestLogin(){
   let ok=false;
   try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'operateur',name:nom,code}}); ok=!error&&!!(data&&data.ok);}catch(e){}
   if(!ok) return fail(err,'Nom ou code incorrect.');
-  _gestOk=true; _gestNom=nom;
+  _gestOk=true; _gestNom=nom; _gestCode=code;
   $('#gestGate').style.display='none'; $('#gestPanel').style.display='block';
   renderGest();
 }
@@ -1010,34 +1007,14 @@ function gestTable(rows){
   </table></div>`;
 }
 
-async function patchStatut(id, statut, par){
-  const c=COMMANDES.find(x=>x.id===id); if(!c) return;
-  const now=new Date().toISOString();
-  const patch={statut, historique:[...(c.historique||[]),{t:now,statut,par:par||_gestNom||'gestionnaire'}]};
-  // Le gestionnaire peut passer à n'importe quel statut : on cale les dates d'étape en conséquence
-  // (remplissage des étapes antérieures, effacement des étapes postérieures).
-  if(statut==='demandee'){
-    patch.commandee_at=null; patch.recue_at=null; patch.remise_at=null; patch.recue_note='';
-  } else if(statut==='commandee'){
-    patch.commandee_at=c.commandee_at||now; patch.recue_at=null; patch.remise_at=null; patch.recue_note='';
-  } else if(statut==='recue_complete'||statut==='recue_partielle'){
-    patch.commandee_at=c.commandee_at||now; patch.recue_at=c.recue_at||now; patch.remise_at=null;
-    patch.recue_note = statut==='recue_complete'?'complet':'partiel';
-  } else if(statut==='remise'){
-    patch.commandee_at=c.commandee_at||now; patch.recue_at=c.recue_at||now; patch.remise_at=now;
-    if(!c.recue_note) patch.recue_note='complet';
-  }
-  // refusee / annulee : on ne touche pas aux dates d'étape
-  const {error}=await sb.from('commandes').update(patch).eq('id',id);
-  if(error){ toast('Erreur : '+error.message); return; }
-  await loadCommandes();
+async function patchStatut(id, statut){
+  // Le calage des dates d'étape est fait CÔTÉ SERVEUR (Edge Function commande-op).
+  const res=await op('statut', { id, statut, opName:_gestNom, opCode:_gestCode });
+  if(res) await loadCommandes();
 }
 async function bulkOrder(ids){
-  const now=new Date().toISOString();
-  for(const id of ids){ const c=COMMANDES.find(x=>x.id===id); if(!c) continue;
-    await sb.from('commandes').update({statut:'commandee',commandee_at:now,historique:[...(c.historique||[]),{t:now,statut:'commandee',par:_gestNom||'gestionnaire'}]}).eq('id',id);
-  }
-  await loadCommandes(); toast(ids.length+' ligne(s) marquées commandées');
+  const res=await op('bulk-order', { ids, opName:_gestNom, opCode:_gestCode });
+  if(res){ await loadCommandes(); toast(ids.length+' ligne(s) marquées commandées'); }
 }
 
 /* ---------- édition ---------- */
@@ -1060,8 +1037,8 @@ async function saveEdit(){
     quantite:q, cout_unitaire:cu, cout_total:ct, lien:$('#e-lien').value.trim(),
     intitule:$('#e-intitule').value.trim(), commentaire_gestionnaire:$('#e-comg').value.trim()
   };
-  const {error}=await sb.from('commandes').update(patch).eq('id',_editId);
-  if(error){ fail($('#e-err'),error.message); return; }
+  const res=await op('edit', { id:_editId, patch, opName:_gestNom, opCode:_gestCode });
+  if(!res){ fail($('#e-err'),'Modification refusée.'); return; }
   closeOverlay('ovEdit'); await loadCommandes(); toast('Ligne mise à jour');
 }
 async function editSetStatut(st){ await patchStatut(_editId, st); closeOverlay('ovEdit'); toast('Statut : '+STATUTS[st].label); }
@@ -1070,8 +1047,9 @@ async function editSetStatut(st){ await patchStatut(_editId, st); closeOverlay('
 function openComment(id, who){ _commentId=id; _commentField = who==='gestionnaire'?'commentaire_gestionnaire':'commentaire_demandeur';
   const c=COMMANDES.find(x=>x.id===id); $('#c-text').value=c?.[_commentField]||''; $('#c-err').classList.remove('show'); openOverlay('ovComment'); }
 async function saveComment(){
-  const {error}=await sb.from('commandes').update({[_commentField]:$('#c-text').value.trim()}).eq('id',_commentId);
-  if(error){ fail($('#c-err'),error.message); return; }
+  const field = _commentField==='commentaire_demandeur' ? 'demandeur' : 'gestionnaire';
+  const res=await op('comment', { id:_commentId, field, text:$('#c-text').value.trim(), opName:_gestNom, opCode:_gestCode });
+  if(!res){ fail($('#c-err'),'Commentaire refusé.'); return; }
   closeOverlay('ovComment'); await loadCommandes(); toast('Commentaire enregistré');
 }
 
@@ -1106,7 +1084,7 @@ async function adminLogin(){
   let role=null;
   try{ const res=await sb.functions.invoke('admin-op',{body:{action:'login',adminCode:code}}); if(!res.error&&res.data&&res.data.ok) role=res.data.role; }catch(e){}
   if(!role) return fail(err,'Mot de passe incorrect.');
-  _adminOk=true; _adminRole=role; $('#a-pw').value='';
+  _adminOk=true; _adminRole=role; _adminPw=code; $('#a-pw').value='';
   $('#adminGate').style.display='none'; $('#adminPanel').style.display='block';
   const isSuper = role==='super';
   $('#superOnly').style.display = isSuper ? 'block' : 'none';
@@ -1115,7 +1093,7 @@ async function adminLogin(){
   if(isSuper){ renderGestionnairesList(); renderSuperTables(); }
 }
 function adminLogout(){
-  _adminOk=false; _adminRole='';
+  _adminOk=false; _adminRole=''; _adminPw='';
   $('#superOnly').style.display='none'; $('#a-pw').value='';
   $('#adminPanel').style.display='none'; $('#adminGate').style.display='block';
 }
@@ -1136,25 +1114,19 @@ async function saveFourn(i){
   const f=_fournEdit[i]; if(!f) return;
   const nom=$('#ffn-'+i).value.trim(), site=$('#ffs-'+i).value.trim(), notes=$('#ffc-'+i).value.trim();
   if(!nom) return toast('Le nom est requis');
-  if(nom===f.nom){
-    const {error}=await sb.from('com_fournisseurs').update({site, notes}).eq('nom',f.nom);
-    if(error) return toast(error.message);
-  } else {
-    const {error}=await sb.from('com_fournisseurs').upsert({nom, site, notes, actif:f.actif!==false});
-    if(error) return toast(error.message);
-    await sb.from('com_fournisseurs').delete().eq('nom',f.nom);
-  }
+  const res=await op('fourn-save', { oldNom:f.nom, nom, site, notes, actif:f.actif!==false, adminPw:_adminPw });
+  if(!res) return;
   await loadFournisseurs(); renderFournList(); buildSelects(); toast('Fournisseur enregistré');
 }
 async function addFournisseur(){
   const nom=$('#nf-nom').value.trim(); if(!nom) return;
-  const {error}=await sb.from('com_fournisseurs').upsert({nom,site:$('#nf-site').value.trim(),notes:$('#nf-notes').value.trim(),actif:true});
-  if(error) return toast(error.message);
+  const res=await op('fourn-save', { nom, site:$('#nf-site').value.trim(), notes:$('#nf-notes').value.trim(), adminPw:_adminPw });
+  if(!res) return;
   $('#nf-nom').value=''; $('#nf-site').value=''; $('#nf-notes').value='';
   await loadFournisseurs(); renderFournList(); buildSelects(); toast('Fournisseur ajouté');
 }
-async function toggleFourn(i,actif){ const f=_fournEdit[i]; if(!f) return; await sb.from('com_fournisseurs').update({actif}).eq('nom',f.nom); await loadFournisseurs(); buildSelects(); }
-async function delFourn(i){ const f=_fournEdit[i]; if(!f) return; if(!confirm('Supprimer '+f.nom+' ?')) return; await sb.from('com_fournisseurs').delete().eq('nom',f.nom); await loadFournisseurs(); renderFournList(); buildSelects(); }
+async function toggleFourn(i,actif){ const f=_fournEdit[i]; if(!f) return; await op('fourn-toggle', { nom:f.nom, actif, adminPw:_adminPw }); await loadFournisseurs(); buildSelects(); }
+async function delFourn(i){ const f=_fournEdit[i]; if(!f) return; if(!confirm('Supprimer '+f.nom+' ?')) return; const res=await op('fourn-delete', { nom:f.nom, adminPw:_adminPw }); if(!res) return; await loadFournisseurs(); renderFournList(); buildSelects(); }
 function renderBudgetList(){
   const parc=[...new Set([...PARCOURS_BASE, ...Object.keys(BUDGETS), ...COMMANDES.map(c=>c.parcours)])].filter(Boolean).sort();
   $('#budgetList').innerHTML = `<div class="tablewrap"><table class="data">
@@ -1167,14 +1139,14 @@ function renderBudgetList(){
 }
 async function saveBudgetRow(p){
   const v=nOrNull($('#bl-'+CSS.escape(p)).value);
-  const {error}=await sb.from('com_budgets').upsert({parcours:p,limite:v,maj_at:new Date().toISOString()});
-  if(error) return toast(error.message);
+  const res=await op('budget-save', { parcours:p, limite:v, adminPw:_adminPw });
+  if(!res) return;
   await loadBudgets(); renderBudgetList(); toast('Budget enregistré');
 }
 async function saveBudget(){
   const p=$('#nb-parcours').value.trim(); if(!p) return;
-  const {error}=await sb.from('com_budgets').upsert({parcours:p,limite:nOrNull($('#nb-limite').value),maj_at:new Date().toISOString()});
-  if(error) return toast(error.message);
+  const res=await op('budget-save', { parcours:p, limite:nOrNull($('#nb-limite').value), adminPw:_adminPw });
+  if(!res) return;
   $('#nb-parcours').value=''; $('#nb-limite').value='';
   await loadBudgets(); renderBudgetList(); toast('Budget enregistré');
 }
@@ -1199,8 +1171,8 @@ async function wipeTable(name){
   if(_adminRole!=='super') return;
   const d=SA_TABLES.find(x=>x.t===name); if(!d) return;
   if(prompt(`Taper VIDER pour supprimer TOUT le contenu de « ${d.label} » (${d.t}) :`)!=='VIDER') return;
-  const {error}=await sb.from(d.t).delete().gt(d.pk, d.min);
-  if(error) return toast(error.message);
+  const res=await op('wipe', { table:d.t, adminPw:_adminPw });
+  if(!res) return;
   await d.reload();
   buildSelects(); buildGestNomSelect(); refreshCurrentView();
   renderSuperTables();
@@ -1209,11 +1181,9 @@ async function wipeTable(name){
 async function wipeAllTables(){
   if(_adminRole!=='super') return;
   if(prompt('Taper TOUT VIDER pour supprimer le contenu des 4 tables de ce module :')!=='TOUT VIDER') return;
-  for(const d of SA_TABLES){
-    const {error}=await sb.from(d.t).delete().gt(d.pk, d.min);
-    if(error){ toast(d.t+' : '+error.message); return; }
-    await d.reload();
-  }
+  const res=await op('wipe', { tables:SA_TABLES.map(d=>d.t), adminPw:_adminPw });
+  if(!res) return;
+  for(const d of SA_TABLES) await d.reload();
   buildSelects(); buildGestNomSelect(); refreshCurrentView();
   renderSuperTables();
   toast('Les 4 tables ont été vidées');

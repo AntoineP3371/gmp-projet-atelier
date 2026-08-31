@@ -18,6 +18,7 @@
     --primary:#0083ba; --primary-light:#e2f4fc; --primary-dark:#00688f;
     --text:#13303d; --muted:#5b7686;
     --additive:#7c3aed; --additive-light:#f1ecfe; --additive-dark:#5b21b6;
+    --com:#0e8f6e; --com-light:#e0f3ec; --com-dark:#0a6b52;
     --danger:#ef4444; --danger-light:#fee2e2;
     --admin:#7c3aed; --admin-dark:#5b21b6; --green:#16a34a;
     --radius:16px; --shadow:0 6px 26px rgba(0,40,60,.12);
@@ -30,7 +31,7 @@
   .brand img{max-height:76px;width:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,.1))}
   .brand h1{font-size:1.7rem;font-weight:800;letter-spacing:-.01em}
   .brand p{font-size:.95rem;color:var(--muted)}
-  .cards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;width:100%;max-width:760px}
+  .cards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;width:100%;max-width:1140px}
   .card{flex:1 1 300px;max-width:360px;background:var(--surface);border:1px solid var(--border);
     border-radius:var(--radius);box-shadow:var(--shadow);padding:30px 26px;text-decoration:none;color:inherit;
     display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;
@@ -38,21 +39,26 @@
   .card::before{content:"";position:absolute;top:0;left:0;right:0;height:6px}
   .card.usinage::before{background:var(--primary)}
   .card.additive::before{background:var(--additive)}
+  .card.commandes::before{background:var(--com)}
   .card:hover{transform:translateY(-5px);box-shadow:0 14px 40px rgba(0,40,60,.2)}
   .card.usinage:hover{border-color:var(--primary)}
   .card.additive:hover{border-color:var(--additive)}
+  .card.commandes:hover{border-color:var(--com)}
   .card .icon{width:78px;height:78px}
   .card.usinage .icon{color:var(--primary)}
   .card.additive .icon{color:var(--additive)}
+  .card.commandes .icon{color:var(--com)}
   .card .badge{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
     padding:4px 12px;border-radius:20px}
   .card.usinage .badge{background:var(--primary-light);color:var(--primary-dark)}
   .card.additive .badge{background:var(--additive-light);color:var(--additive-dark)}
+  .card.commandes .badge{background:var(--com-light);color:var(--com-dark)}
   .card h2{font-size:1.35rem;font-weight:800}
   .card p{font-size:.88rem;color:var(--muted);line-height:1.5}
   .card .go{margin-top:6px;font-weight:700;font-size:.92rem;display:inline-flex;align-items:center;gap:6px}
   .card.usinage .go{color:var(--primary-dark)}
   .card.additive .go{color:var(--additive-dark)}
+  .card.commandes .go{color:var(--com-dark)}
   .admin-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:32px}
   .admin-bar-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
   .admin-link{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:.85rem;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s}
@@ -112,6 +118,7 @@
     --text:#10222b; --muted:#5b7686;
     --danger:#c2352c; --danger-light:#fbe7e5;
     --additive:#6d4ae0; --additive-light:#edeafb; --additive-dark:#4b2fb0;
+    --com:#0e8f6e; --com-light:#e0f3ec; --com-dark:#0a6b52;
     --admin:#6d4ae0; --admin-dark:#4b2fb0; --green:#15803d;
   }
   body{
@@ -138,6 +145,7 @@
     --text:#e6eef2; --muted:#93aab7;
     --danger:#e4675e;
     --additive:#a791f0; --additive-light:#241d3a; --additive-dark:#cbbaf8;
+    --com:#3bbd97; --com-light:#12352a; --com-dark:#a7e6d2;
     --admin:#a791f0; --admin-dark:#cbbaf8; --green:#4fb166;
   }
   :root[data-theme="dark"] body{
@@ -228,6 +236,28 @@
       <p>Dépôt et suivi des demandes d'impression 3D (fichier STEP, visualisation, validation).</p>
       <span class="go">Accéder →</span>
     </a>
+
+    <a class="card commandes" href="commandes-standards/">
+      <svg class="icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="Éléments standards">
+        <!-- bague extérieure -->
+        <circle cx="32" cy="32" r="24"/>
+        <!-- bague intérieure -->
+        <circle cx="32" cy="32" r="11"/>
+        <!-- billes -->
+        <circle cx="32" cy="14.5" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="44.4" cy="19.6" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="49.5" cy="32" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="44.4" cy="44.4" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="32" cy="49.5" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="19.6" cy="44.4" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="14.5" cy="32" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="19.6" cy="19.6" r="3" fill="currentColor" stroke="none"/>
+      </svg>
+      <span class="badge">Éléments standards</span>
+      <h2>Demandes d'achat de composants</h2>
+      <p>Demandes d'achat de visserie, roulements, paliers, ressorts… par projet, et suivi des commandes.</p>
+      <span class="go">Accéder →</span>
+    </a>
   </div>
 
   <div class="admin-bar">
@@ -237,7 +267,7 @@
   </div>
 
   <footer>Atelier GMP — IUT Bordeaux</footer>
-  <div class="site-version">v3.4.6</div>
+  <div class="site-version">v3.5.0</div>
 
 <div class="pv-overlay" id="pvOverlay"><div class="pv-modal" id="pvModal"></div></div>
 <div class="pv-toast" id="pvToast"></div>
