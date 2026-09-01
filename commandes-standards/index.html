@@ -86,6 +86,7 @@ input,select,textarea{font-family:inherit;font-size:.92rem;color:var(--text);bac
   border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;width:100%;outline:none}
 input:focus,select:focus,textarea:focus{border-color:var(--primary)}
 textarea{resize:vertical;min-height:56px}
+select.locked,select:disabled{background:var(--surface-2);color:var(--text);opacity:1;cursor:default;border-style:dashed;appearance:none;-webkit-appearance:none}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:9px;font-size:.875rem;
   font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;
   transition:background .15s,border-color .15s,transform .1s}
@@ -236,6 +237,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
         <label class="f">Formation
           <select id="d-formation"></select></label>
       </div>
+      <div class="mini" id="d-ctx-note" style="margin-top:6px"></div>
       <div id="budgetHint"></div>
     </div>
 
@@ -569,8 +571,9 @@ function buildSelects(){
   const forms=[...new Set([...FORMATIONS, ...COMMANDES.map(c=>c.formation)])].filter(Boolean);
   const parc = parcoursList();
   if(_encOk){
-    // encadrant identifié : ses selets projet/parcours/formation sont gérés par applyEncadrantScope()
+    // encadrant identifié : projet/parcours/formation gérés par applyEncadrantScope() + verrou onProjetChange()
     applyEncadrantScope();
+    onProjetChange();
   } else {
     $('#d-formation').innerHTML = forms.map(f=>opt(f)).join('');
     $('#d-parcours').innerHTML = parc.map(p=>opt(p)).join('') + opt('__autre','Autre…');
@@ -670,12 +673,22 @@ function applyEncadrantScope(){
   $('#d-parcours').innerHTML = parcs.map(p=>opt(p)).join('') + opt('__autre','Autre…');
   $('#d-formation').innerHTML = forms.map(f=>opt(f)).join('');
 }
+function lockCtx(locked){
+  ['#d-parcours','#d-formation'].forEach(s=>{ const el=$(s); el.disabled=locked; el.classList.toggle('locked',locked); });
+}
 function onProjetChange(){
   const v=$('#d-groupe').value;
-  $('#d-groupe-autre-wrap').style.display = v==='__autre'?'flex':'none';
-  if(v && v!=='__autre'){
-    // Le parcours et la formation suivent la table de gestion des étudiants ;
-    // à défaut (projet absent de cette table), on retombe sur l'historique des commandes.
+  const isNew = v==='__autre';
+  $('#d-groupe-autre-wrap').style.display = isNew?'flex':'none';
+  if(isNew){
+    // Nouveau projet pour cette commande : l'encadrant renseigne librement nom + parcours + formation.
+    const parc=parcoursList();
+    $('#d-parcours').innerHTML = parc.map(p=>opt(p)).join('') + opt('__autre','Autre parcours…');
+    $('#d-formation').innerHTML = [...new Set([...FORMATIONS, ...COMMANDES.map(c=>c.formation)])].filter(Boolean).map(f=>opt(f)).join('');
+    lockCtx(false);
+    $('#d-ctx-note').textContent = 'Nouveau projet : renseignez le nom, le parcours et la formation.';
+  } else if(v){
+    // Projet de la liste : parcours + formation repris de la fiche projet, non modifiables.
     const setSel=(sel,val)=>{
       if(!val) return;
       if(![...$(sel).options].some(o=>o.value===val)) $(sel).insertAdjacentHTML('afterbegin', opt(val));
@@ -684,6 +697,11 @@ function onProjetChange(){
     const past=COMMANDES.find(c=>c.groupe===v);
     setSel('#d-parcours', parcoursForProjet(v) || (past && past.parcours) || '');
     setSel('#d-formation', formationForProjet(v) || (past && past.formation) || '');
+    lockCtx(true);
+    $('#d-ctx-note').textContent = 'Parcours et formation repris de la fiche projet (non modifiables).';
+  } else {
+    lockCtx(true);
+    $('#d-ctx-note').textContent = '';
   }
   renderBudgetHint();
 }
