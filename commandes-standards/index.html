@@ -233,9 +233,13 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
         <label class="f" id="d-groupe-autre-wrap" style="display:none">Nom du projet
           <input id="d-groupe-autre" placeholder="ex. Porte A380" autocomplete="off"></label>
         <label class="f">Parcours
-          <select id="d-parcours" onchange="renderBudgetHint()"></select></label>
+          <select id="d-parcours" onchange="toggleCtxAutre();renderBudgetHint()"></select></label>
+        <label class="f" id="d-parcours-autre-wrap" style="display:none">Nouveau parcours
+          <input id="d-parcours-autre" placeholder="ex. II" autocomplete="off"></label>
         <label class="f">Formation
-          <select id="d-formation"></select></label>
+          <select id="d-formation" onchange="toggleCtxAutre()"></select></label>
+        <label class="f" id="d-formation-autre-wrap" style="display:none">Nouvelle formation
+          <input id="d-formation-autre" placeholder="ex. BUT 2 Init" autocomplete="off"></label>
       </div>
       <div class="mini" id="d-ctx-note" style="margin-top:6px"></div>
       <div id="budgetHint"></div>
@@ -676,6 +680,10 @@ function applyEncadrantScope(){
 function lockCtx(locked){
   ['#d-parcours','#d-formation'].forEach(s=>{ const el=$(s); el.disabled=locked; el.classList.toggle('locked',locked); });
 }
+function toggleCtxAutre(){
+  $('#d-parcours-autre-wrap').style.display = (!$('#d-parcours').disabled && $('#d-parcours').value==='__autre') ? 'flex' : 'none';
+  $('#d-formation-autre-wrap').style.display = (!$('#d-formation').disabled && $('#d-formation').value==='__autre') ? 'flex' : 'none';
+}
 function onProjetChange(){
   const v=$('#d-groupe').value;
   const isNew = v==='__autre';
@@ -684,9 +692,9 @@ function onProjetChange(){
     // Nouveau projet pour cette commande : l'encadrant renseigne librement nom + parcours + formation.
     const parc=parcoursList();
     $('#d-parcours').innerHTML = parc.map(p=>opt(p)).join('') + opt('__autre','Autre parcours…');
-    $('#d-formation').innerHTML = [...new Set([...FORMATIONS, ...COMMANDES.map(c=>c.formation)])].filter(Boolean).map(f=>opt(f)).join('');
+    $('#d-formation').innerHTML = [...new Set([...FORMATIONS, ...COMMANDES.map(c=>c.formation)])].filter(Boolean).map(f=>opt(f)).join('') + opt('__autre','Autre formation…');
     lockCtx(false);
-    $('#d-ctx-note').textContent = 'Nouveau projet : renseignez le nom, le parcours et la formation.';
+    $('#d-ctx-note').textContent = 'Nouveau projet : renseignez le nom, le parcours et la formation. Choisissez « Autre… » pour saisir un parcours ou une formation qui n’existe pas encore.';
   } else if(v){
     // Projet de la liste : parcours + formation repris de la fiche projet, non modifiables.
     const setSel=(sel,val)=>{
@@ -703,6 +711,7 @@ function onProjetChange(){
     lockCtx(true);
     $('#d-ctx-note').textContent = '';
   }
+  toggleCtxAutre();
   renderBudgetHint();
 }
 async function encLogin(){
@@ -853,13 +862,16 @@ async function submitDemande(){
   const err=$('#d-err'); err.classList.remove('show');
   if(!_encOk){ return fail(err,'Identifiez-vous d’abord.'); }
   const encadrant=_encNom;
-  const formation=$('#d-formation').value;
+  let formation=$('#d-formation').value;
+  if(formation==='__autre') formation=$('#d-formation-autre').value.trim();
   let parcours=$('#d-parcours').value;
-  if(parcours==='__autre'){ parcours = (prompt('Nom du parcours ?')||'').trim(); if(!parcours) return; }
+  if(parcours==='__autre') parcours=$('#d-parcours-autre').value.trim();
   let groupe=$('#d-groupe').value;
   if(groupe==='__autre') groupe=$('#d-groupe-autre').value.trim();
   const sups=readSuppliers().filter(s=>s.arts.length);
-  if(!groupe){ return fail(err,'Choisissez le projet / groupe.'); }
+  if(!groupe){ return fail(err,'Choisissez le projet, ou saisissez le nom du nouveau projet.'); }
+  if(!parcours){ return fail(err,'Indiquez le parcours.'); }
+  if(!formation){ return fail(err,'Indiquez la formation.'); }
   if(!sups.length){ return fail(err,'Ajoutez au moins un article avec un intitulé.'); }
   if(sups.some(s=>!s.nom)){ return fail(err,'Indiquez le nom du fournisseur pour chaque bloc.'); }
 
