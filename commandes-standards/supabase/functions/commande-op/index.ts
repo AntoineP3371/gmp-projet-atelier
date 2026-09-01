@@ -100,6 +100,8 @@ Deno.serve(async (req) => {
           : 'non renseigné'
         const liste = rows.slice(0, 3).map((r) => `• ${r.intitule} ×${r.quantite} — ${r.fournisseur || '?'}`).join('\n')
         const reste = nbA - Math.min(nbA, 3)
+        // CallMeBot supprime les apostrophes droites (') des messages : on les remplace par
+        // l'apostrophe typographique (’), que son filtre laisse passer.
         const msg =
 `📦 Nouvelle demande d'achat — Atelier GMP
 
@@ -111,7 +113,7 @@ Total estimé : ${totalTxt}
 ${liste}${reste > 0 ? `\n(+${reste} autre(s))` : ''}
 
 Traiter la demande :
-gmpbordeaux.fr/gmp-projet-atelier/commandes-standards/`
+gmpbordeaux.fr/gmp-projet-atelier/commandes-standards/`.replace(/'/g, '’')
         const { data: ops } = await sb.from('operateurs').select('phone, apikey, notif_achats')
         for (const o of (ops || []) as any[]) {
           if (o.notif_achats && o.phone && o.apikey) {
