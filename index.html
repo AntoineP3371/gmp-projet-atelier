@@ -267,7 +267,7 @@
   </div>
 
   <footer>Atelier GMP — IUT Bordeaux</footer>
-  <div class="site-version">v4.1.3</div>
+  <div class="site-version">v4.2.0</div>
 
 <div class="pv-overlay" id="pvOverlay"><div class="pv-modal" id="pvModal"></div></div>
 <div class="pv-toast" id="pvToast"></div>
@@ -376,13 +376,13 @@ let _etudPending=null;
 let _etudList=[];
 let _etudExtra=[]; // demandeurs de projets créés via « Autre projet » (hors liste étudiants importée)
 function pvDownloadEtud(){
-  const rows=[["Nom","Prenom","Projet","Formation","Encadrant1","Encadrant2","Encadrant3"]];
-  (_etudList||[]).forEach(e=>rows.push([e.nom||'',e.prenom||'',e.projet||'',e.formation||'',e.encadrant1||'',e.encadrant2||'',e.encadrant3||'']));
+  const rows=[["Nom","Prenom","Projet","Formation","Parcours","Encadrant1","Encadrant2","Encadrant3"]];
+  (_etudList||[]).forEach(e=>rows.push([e.nom||'',e.prenom||'',e.projet||'',e.formation||'',e.parcours||'',e.encadrant1||'',e.encadrant2||'',e.encadrant3||'']));
   // Projets créés via « Autre projet » (hors liste importée) : section distincte en fin de fichier.
   if((_etudExtra||[]).length){
     rows.push([]);
-    rows.push(["Projets hors liste importée (créés via « Autre projet »)","","","","","",""]);
-    _etudExtra.forEach(e=>rows.push([e.nom||'',e.prenom||'',e.projet||'','','','','']));
+    rows.push(["Projets hors liste importée (créés via « Autre projet »)","","","","","","",""]);
+    _etudExtra.forEach(e=>rows.push([e.nom||'',e.prenom||'',e.projet||'','','','','','']));
   }
   const wb=XLSX.utils.book_new(); const ws=XLSX.utils.aoa_to_sheet(rows);
   ws['!cols']=[{wch:18},{wch:18},{wch:25},{wch:12},{wch:20},{wch:20},{wch:20}];
@@ -421,8 +421,8 @@ async function openEtudiants(){
   if(!et.length){ list="<div class='pv-count'>Aucun étudiant importé.</div>"; }
   else{
     list="<div class='pv-count'>"+et.length+" étudiant(s) — "+projets.length+" projet(s)</div>"+
-      "<div class='pv-tablewrap'><table class='pv-table'><thead><tr><th>Nom</th><th>Prénom</th><th>Projet</th><th>Formation</th><th>Encadrant 1</th><th>Encadrant 2</th><th>Encadrant 3</th></tr></thead><tbody>"+
-      et.map(e=>"<tr><td>"+esc(e.nom)+"</td><td>"+esc(e.prenom)+"</td><td>"+esc(e.projet)+"</td><td>"+esc(e.formation||'')+"</td><td>"+esc(e.encadrant1||'')+"</td><td>"+esc(e.encadrant2||'')+"</td><td>"+esc(e.encadrant3||'')+"</td></tr>").join('')+
+      "<div class='pv-tablewrap'><table class='pv-table'><thead><tr><th>Nom</th><th>Prénom</th><th>Projet</th><th>Formation</th><th>Parcours</th><th>Encadrant 1</th><th>Encadrant 2</th><th>Encadrant 3</th></tr></thead><tbody>"+
+      et.map(e=>"<tr><td>"+esc(e.nom)+"</td><td>"+esc(e.prenom)+"</td><td>"+esc(e.projet)+"</td><td>"+esc(e.formation||'')+"</td><td>"+esc(e.parcours||'')+"</td><td>"+esc(e.encadrant1||'')+"</td><td>"+esc(e.encadrant2||'')+"</td><td>"+esc(e.encadrant3||'')+"</td></tr>").join('')+
       "</tbody></table></div>";
   }
   const renameBlock = projets.length ?
@@ -442,7 +442,7 @@ async function openEtudiants(){
     ((et.length||_etudExtra.length)?"<div style='margin-top:6px'><button class='pv-btn' onclick='pvDownloadEtud()'>⬇ Télécharger la liste (xlsx)</button>"+(_etudExtra.length?"<span class='pv-meta' style='margin-left:8px'>+ "+_etudExtra.length+" projet(s) hors liste inclus</span>":"")+"</div>":"")+
     renameBlock+
     "<div style='font-weight:700;font-size:.85rem;margin:14px 0 4px'>Importer une liste (.xlsx)</div>"+
-    "<div class='pv-meta'>Colonnes : Nom, Prenom, Projet, Formation (2A, 2I ou 3A), Encadrant1, Encadrant2, Encadrant3.</div>"+
+    "<div class='pv-meta'>Colonnes : Nom, Prenom, Projet, Formation (2A, 2I ou 3A), Parcours, Encadrant1, Encadrant2, Encadrant3.</div>"+
     "<div class='pv-drop' id='etudDrop' onclick=\"document.getElementById('etudFile').click()\">📂 Cliquez ou glissez un fichier .xlsx ici</div>"+
     "<input type='file' id='etudFile' accept='.xlsx,.xls' style='display:none' onchange='pvParseEtud(this.files[0])'>"+
     "<div style='display:flex;gap:8px;flex-wrap:wrap'><button class='pv-btn' onclick='pvTemplate()'>⬇ Télécharger le modèle</button>"+
@@ -457,11 +457,11 @@ async function openEtudiants(){
 function pvTemplate(){
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([
-    ["Nom","Prenom","Projet","Formation","Encadrant1","Encadrant2","Encadrant3"],
-    ["MARTIN","Alice","Projet A","2A","Dubois Jean","Leroi Marie",""],
-    ["DUPONT","Bob","Projet A","2I","Dubois Jean","",""]
+    ["Nom","Prenom","Projet","Formation","Parcours","Encadrant1","Encadrant2","Encadrant3"],
+    ["MARTIN","Alice","Projet A","2A","II","Dubois Jean","Leroi Marie",""],
+    ["DUPONT","Bob","Projet A","2I","IEC","Dubois Jean","",""]
   ]);
-  ws['!cols']=[{wch:18},{wch:18},{wch:25},{wch:12},{wch:20},{wch:20},{wch:20}];
+  ws['!cols']=[{wch:18},{wch:18},{wch:25},{wch:12},{wch:12},{wch:20},{wch:20},{wch:20}];
   XLSX.utils.book_append_sheet(wb,ws,"Etudiants");
   XLSX.writeFile(wb,"modele_etudiants.xlsx");
 }
@@ -473,12 +473,13 @@ function pvParseEtud(file){
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
     if(rows.length<2){ pvToast('❌ Fichier vide ou invalide'); return; }
     const h=rows[0].map(x=>(x+'').trim().toLowerCase());
-    const iN=h.indexOf('nom'),iP=h.indexOf('prenom'),iPr=h.indexOf('projet'),iF=h.indexOf('formation'),i1=h.indexOf('encadrant1'),i2=h.indexOf('encadrant2'),i3=h.indexOf('encadrant3');
+    const iN=h.indexOf('nom'),iP=h.indexOf('prenom'),iPr=h.indexOf('projet'),iF=h.indexOf('formation'),iPar=h.indexOf('parcours'),i1=h.indexOf('encadrant1'),i2=h.indexOf('encadrant2'),i3=h.indexOf('encadrant3');
     if(iN<0||iP<0||iPr<0){ pvToast('❌ Colonnes requises : Nom, Prenom, Projet'); return; }
     const parsed=[];
     for(let i=1;i<rows.length;i++){ const r=rows[i]; const nom=(r[iN]+'').trim(),prenom=(r[iP]+'').trim(),projet=(r[iPr]+'').trim();
       if(nom&&prenom&&projet) parsed.push({nom,prenom,projet,
         formation:iF>=0?(r[iF]+'').trim():'',
+        parcours:iPar>=0?(r[iPar]+'').trim():'',
         enc1:i1>=0?(r[i1]+'').trim():'', enc2:i2>=0?(r[i2]+'').trim():'', enc3:i3>=0?(r[i3]+'').trim():''}); }
     if(!parsed.length){ pvToast('❌ Aucune ligne valide'); return; }
     _etudPending=parsed; pvPreviewEtud();
@@ -489,9 +490,9 @@ function pvPreviewEtud(){
   const d=_etudPending;
   pvOpen(
     "<h2>👨‍🎓 Aperçu de l'import</h2><div class='pv-count'>"+d.length+" étudiant(s) détecté(s)</div>"+
-    "<div class='pv-tablewrap'><table class='pv-table'><thead><tr><th>Nom</th><th>Prénom</th><th>Projet</th><th>Formation</th><th>Enc. 1</th><th>Enc. 2</th><th>Enc. 3</th></tr></thead><tbody>"+
-    d.slice(0,80).map(e=>"<tr><td>"+esc(e.nom)+"</td><td>"+esc(e.prenom)+"</td><td>"+esc(e.projet)+"</td><td>"+esc(e.formation)+"</td><td>"+esc(e.enc1)+"</td><td>"+esc(e.enc2)+"</td><td>"+esc(e.enc3)+"</td></tr>").join('')+
-    (d.length>80?"<tr><td colspan='7' style='text-align:center;color:var(--muted)'>…et "+(d.length-80)+" autres</td></tr>":"")+
+    "<div class='pv-tablewrap'><table class='pv-table'><thead><tr><th>Nom</th><th>Prénom</th><th>Projet</th><th>Formation</th><th>Parcours</th><th>Enc. 1</th><th>Enc. 2</th><th>Enc. 3</th></tr></thead><tbody>"+
+    d.slice(0,80).map(e=>"<tr><td>"+esc(e.nom)+"</td><td>"+esc(e.prenom)+"</td><td>"+esc(e.projet)+"</td><td>"+esc(e.formation)+"</td><td>"+esc(e.parcours||'')+"</td><td>"+esc(e.enc1)+"</td><td>"+esc(e.enc2)+"</td><td>"+esc(e.enc3)+"</td></tr>").join('')+
+    (d.length>80?"<tr><td colspan='8' style='text-align:center;color:var(--muted)'>…et "+(d.length-80)+" autres</td></tr>":"")+
     "</tbody></table></div>"+
     "<div class='pv-warn'>⚠️ L'import remplacera la liste existante.</div>"+
     "<div class='pv-actions'><button class='pv-btn' onclick='openEtudiants()'>← Retour</button><button class='pv-btn ok' onclick='pvConfirmEtud()'>✔ Confirmer l'import</button></div>"
@@ -499,7 +500,7 @@ function pvPreviewEtud(){
 }
 async function pvConfirmEtud(){
   pvToast('💾 Import en cours…');
-  const rows=_etudPending.map(e=>({nom:e.nom,prenom:e.prenom,projet:e.projet,formation:e.formation||'',encadrant1:e.enc1||'',encadrant2:e.enc2||'',encadrant3:e.enc3||''}));
+  const rows=_etudPending.map(e=>({nom:e.nom,prenom:e.prenom,projet:e.projet,formation:e.formation||'',parcours:e.parcours||'',encadrant1:e.enc1||'',encadrant2:e.enc2||'',encadrant3:e.enc3||''}));
   const res=await sb.functions.invoke('admin-operators',{ body:{ action:'etudiants-import', adminCode:_pvAdminPw, etudiants:rows } });
   if(res.error || !res.data || !res.data.ok){ pvToast('❌ Import échoué'+((res.data&&res.data.error)?' : '+res.data.error:'')); return; }
   pvToast('✅ '+rows.length+' étudiant(s) importé(s)'); openEtudiants();

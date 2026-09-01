@@ -122,6 +122,7 @@ Deno.serve(async (req) => {
         .map((e) => ({
           nom: e.nom.toString().trim(), prenom: e.prenom.toString().trim(), projet: e.projet.toString().trim(),
           formation: (e.formation ?? '').toString().trim(),
+          parcours: (e.parcours ?? '').toString().trim(),
           encadrant1: (e.encadrant1 ?? '').toString().trim(),
           encadrant2: (e.encadrant2 ?? '').toString().trim(),
           encadrant3: (e.encadrant3 ?? '').toString().trim(),

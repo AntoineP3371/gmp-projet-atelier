@@ -61,6 +61,7 @@ create index if not exists demandes_etudiant_idx on public.demandes (lower(etudi
 -- Colonnes ajoutées à la table etudiants (gestion depuis la page d'accueil) :
 -- formation de l'étudiant (2A, 2I, 3A...) et 3e encadrant possible.
 alter table public.etudiants add column if not exists formation  text default '';
+alter table public.etudiants add column if not exists parcours   text default '';
 alter table public.etudiants add column if not exists encadrant3 text default '';
 create index if not exists demandes_projet_idx   on public.demandes (projet);
 
