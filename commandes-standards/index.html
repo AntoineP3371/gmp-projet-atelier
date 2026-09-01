@@ -113,9 +113,12 @@ textarea{resize:vertical;min-height:56px}
 .art-head .n{font-weight:700;color:var(--muted);font-size:.82rem}
 .btn.ghost.sm{padding:7px;font-size:.82rem}
 .sa-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--surface-2)}
-.op-check{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;margin:0 8px 8px 0;border:1.5px solid var(--border);border-radius:9px;font-size:.88rem;font-weight:600;cursor:pointer;background:var(--surface-2)}
+.op-check{display:flex;align-items:center;gap:10px;padding:8px 12px;margin:0 0 8px;border:1.5px solid var(--border);border-radius:9px;font-size:.88rem;font-weight:600;background:var(--surface-2);flex-wrap:wrap}
+.op-check > label{display:inline-flex;align-items:center;gap:7px;cursor:pointer;flex:1;min-width:150px}
 .op-check input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
-.op-check:has(input:checked){border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark)}
+.op-check:has(> label input:checked){border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark)}
+.op-notif{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;font-weight:600;white-space:nowrap;cursor:pointer}
+.op-notif.muted{color:var(--muted);font-weight:400;cursor:default}
 details.statut-help{margin:6px 0 14px;font-size:.85rem}
 details.statut-help summary{cursor:pointer;font-weight:600;color:var(--primary-dark)}
 .statut-help .h-row{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border)}
@@ -353,7 +356,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
       <div id="superOnly" style="display:none">
         <div class="card">
           <h2>Gestionnaires <span class="mini">— super admin</span></h2>
-          <div class="sub">Cochez, parmi les opérateurs de l'atelier, ceux qui peuvent gérer les commandes. Ils sont les seuls proposés à l'entrée de l'« Espace gestionnaire » (ils s'y connectent avec leur code opérateur habituel). Si aucun n'est coché, tous les opérateurs sont proposés.</div>
+          <div class="sub">Cochez, parmi les opérateurs de l'atelier, ceux qui peuvent gérer les commandes. Ils sont les seuls proposés à l'entrée de l'« Espace gestionnaire » (ils s'y connectent avec leur code opérateur habituel). Si aucun n'est coché, tous les opérateurs sont proposés.<br><b>🔔 WhatsApp</b> : l'opérateur reçoit un message à chaque nouvelle demande d'achat (nécessite un numéro WhatsApp renseigné côté « opérateurs » du portail).</div>
           <div id="gestionnairesList"></div>
         </div>
 
@@ -447,7 +450,8 @@ const STATUT_HELP = {
 let COMMANDES = [];
 let FOURNISSEURS = [];
 let BUDGETS = {};        // parcours -> limite
-let OPERATEURS = [];     // tous les opérateurs (operateurs_public)
+let OPERATEURS = [];     // noms de tous les opérateurs (operateurs_public)
+let OPS_INFO = {};       // nom -> { has_whatsapp, notif_achats }
 let GESTIONNAIRES = [];  // opérateurs habilités aux commandes (com_gestionnaires)
 let ETUDIANTS = [];      // [{nom,prenom,projet,enc:[],formation}]
 let PROJETS = [];        // projets connus (table etudiants)
@@ -594,9 +598,11 @@ function buildEncadrantSelect(){
 }
 async function loadOperateurNames(){
   try{
-    const {data} = await sb.from('operateurs_public').select('name').order('name');
+    let {data,error} = await sb.from('operateurs_public').select('name, has_whatsapp, notif_achats').order('name');
+    if(error){ ({data} = await sb.from('operateurs_public').select('name').order('name')); } // repli si colonne pas encore ajoutée
     OPERATEURS = (data||[]).map(o=>o.name).filter(Boolean);
-  }catch(e){ OPERATEURS = []; }
+    OPS_INFO = {}; (data||[]).forEach(o=>{ OPS_INFO[o.name] = { has_whatsapp:!!o.has_whatsapp, notif_achats:!!o.notif_achats }; });
+  }catch(e){ OPERATEURS = []; OPS_INFO = {}; }
   buildGestNomSelect();
 }
 async function loadGestionnaires(){
@@ -614,8 +620,17 @@ function buildGestNomSelect(){
 }
 function renderGestionnairesList(){
   if(!OPERATEURS.length){ $('#gestionnairesList').innerHTML = '<div class="hint">Aucun opérateur trouvé dans la base.</div>'; return; }
-  $('#gestionnairesList').innerHTML = OPERATEURS.map(n=>`
-    <label class="op-check"><input type="checkbox" ${GESTIONNAIRES.includes(n)?'checked':''} onchange="toggleGestionnaire('${esc(n).replace(/'/g,"\\'")}',this.checked)"> ${esc(n)}</label>`).join('');
+  $('#gestionnairesList').innerHTML = OPERATEURS.map(n=>{
+    const j=n.replace(/'/g,"\\'");
+    const info=OPS_INFO[n]||{};
+    const wa = info.has_whatsapp
+      ? `<span class="op-notif"><input type="checkbox" ${info.notif_achats?'checked':''} onchange="toggleGestNotif('${j}',this.checked)"> 🔔 WhatsApp</span>`
+      : `<span class="op-notif muted" title="Aucun numéro WhatsApp pour cet opérateur">🔕 pas de WhatsApp</span>`;
+    return `<div class="op-check">
+      <label><input type="checkbox" ${GESTIONNAIRES.includes(n)?'checked':''} onchange="toggleGestionnaire('${j}',this.checked)"> ${esc(n)}</label>
+      ${wa}
+    </div>`;
+  }).join('');
 }
 async function toggleGestionnaire(nom, on){
   const res=await op('gest-toggle', { nom, on, adminPw:_adminPw });
@@ -623,6 +638,12 @@ async function toggleGestionnaire(nom, on){
   await loadGestionnaires();
   renderGestionnairesList();
   toast(on ? nom+' est gestionnaire' : nom+' retiré des gestionnaires');
+}
+async function toggleGestNotif(nom, on){
+  const res=await op('gest-notif', { nom, on, adminPw:_adminPw });
+  if(!res){ renderGestionnairesList(); return; }
+  if(OPS_INFO[nom]) OPS_INFO[nom].notif_achats=on;
+  toast(on ? nom+' recevra les demandes par WhatsApp' : nom+' ne recevra plus les demandes par WhatsApp');
 }
 function onEncadrantChange(){ $('#d-encadrant-autre-wrap').style.display = $('#d-encadrant').value==='__autre'?'flex':'none'; }
 // Restreint projets / parcours / formation aux projets encadrés par _encNom (table etudiants)

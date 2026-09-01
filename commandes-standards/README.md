@@ -99,6 +99,20 @@ par l'appli Impression 3D. La liste des noms gestionnaires vient de `operateurs_
 
 ---
 
+## Notification WhatsApp au(x) gestionnaire(s) — à chaque nouvelle demande
+
+À l'envoi d'une demande, l'Edge Function `commande-op` envoie un message WhatsApp (CallMeBot) aux
+opérateurs **abonnés**. Pour l'activer :
+
+1. **SQL** — coller tout `notif-achats.sql` dans le SQL Editor (ajoute `operateurs.notif_achats` +
+   l'expose dans la vue `operateurs_public`).
+2. **Redéployer l'Edge Function `commande-op`** (elle contient l'envoi + l'action `gest-notif`).
+3. Dans l'écran **Admin → super admin → Gestionnaires**, cocher **🔔 WhatsApp** en face des opérateurs à
+   prévenir (visible seulement s'ils ont un numéro renseigné côté « opérateurs » du portail).
+
+Message envoyé : « Nouvelle demande d'achat — Atelier GMP / Par : … / Projet : … / N article(s) chez M
+fournisseur(s) / Total estimé : … » + les 3 premiers articles + lien vers l'appli.
+
 ## Reste optionnel (non fait)
 
 - **Notifications e-mail (Resend, déjà configuré ailleurs)** — prévenir l'encadrant quand sa commande
@@ -115,7 +129,8 @@ par l'appli Impression 3D. La liste des noms gestionnaires vient de `operateurs_
 | `index.html` | l'appli complète (aucun build) |
 | `schema.sql` | création des 4 tables + fournisseurs pré-remplis + RLS version publique (à lancer une fois) |
 | `secure.sql` | ferme les écritures directes sur une base déjà en phase test (à lancer une fois au passage public) |
-| `supabase/functions/commande-op/index.ts` | Edge Function qui porte toutes les écritures (à déployer) |
+| `notif-achats.sql` | colonne `operateurs.notif_achats` + vue, pour la notif WhatsApp (à lancer une fois) |
+| `supabase/functions/commande-op/index.ts` | Edge Function qui porte toutes les écritures + la notif WhatsApp (à déployer) |
 | `import.sql` | reprise des 89 lignes du Google Sheet 2025-2026 (à lancer une fois, facultatif) |
 | `logo-gmp.png` | logo affiché en haut de page |
 | `README.md` | ce fichier |

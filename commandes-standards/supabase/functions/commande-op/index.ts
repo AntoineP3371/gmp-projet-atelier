@@ -89,6 +89,38 @@ Deno.serve(async (req) => {
       })
       const ins = await sb.from('commandes').insert(rows)
       if (ins.error) throw ins.error
+
+      // Notification WhatsApp (CallMeBot) aux gestionnaires abonnés — ne doit jamais faire échouer la demande.
+      try {
+        const nbA = rows.length
+        const fournSet = new Set(rows.map((r) => r.fournisseur).filter(Boolean))
+        const total = rows.reduce((s, r) => s + (Number(r.cout_total) || 0), 0)
+        const totalTxt = rows.some((r) => r.cout_total != null)
+          ? total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+          : 'non renseigné'
+        const liste = rows.slice(0, 3).map((r) => `• ${r.intitule} ×${r.quantite} — ${r.fournisseur || '?'}`).join('\n')
+        const reste = nbA - Math.min(nbA, 3)
+        const msg =
+`📦 Nouvelle demande d'achat — Atelier GMP
+
+Par : ${par || '?'}
+Projet : ${groupe}${ctx.parcours ? ' · ' + ctx.parcours : ''}${ctx.formation ? ' · ' + ctx.formation : ''}
+${nbA} article(s) chez ${fournSet.size} fournisseur(s)
+Total estimé : ${totalTxt}
+
+${liste}${reste > 0 ? `\n(+${reste} autre(s))` : ''}
+
+Traiter la demande :
+gmpbordeaux.fr/gmp-projet-atelier/commandes-standards/`
+        const { data: ops } = await sb.from('operateurs').select('phone, apikey, notif_achats')
+        for (const o of (ops || []) as any[]) {
+          if (o.notif_achats && o.phone && o.apikey) {
+            const u = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(o.phone)}&text=${encodeURIComponent(msg)}&apikey=${encodeURIComponent(o.apikey)}`
+            try { await fetch(u) } catch (_) { /* ignore un envoi raté */ }
+          }
+        }
+      } catch (_) { /* la notif ne bloque jamais la création */ }
+
       return json({ ok: true, count: rows.length })
     }
 
@@ -214,6 +246,15 @@ Deno.serve(async (req) => {
         ? await sb.from('com_gestionnaires').upsert([{ nom }])
         : await sb.from('com_gestionnaires').delete().eq('nom', nom)
       if (q.error) throw q.error
+      return json({ ok: true })
+    }
+    // Abonnement d'un opérateur aux notifications WhatsApp de nouvelle demande.
+    if (action === 'gest-notif') {
+      if (!(await adminInfo(b.adminPw)).isSuper) return json({ ok: false, error: 'auth' }, 401)
+      const nom = (b.nom ?? '').toString().trim()
+      if (!nom) return json({ ok: false, error: 'no-name' }, 400)
+      const { error } = await sb.from('operateurs').update({ notif_achats: !!b.on }).eq('name', nom)
+      if (error) throw error
       return json({ ok: true })
     }
     if (action === 'wipe') {
