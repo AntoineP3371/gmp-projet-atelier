@@ -523,11 +523,13 @@ function formCanon(f){
 }
 async function loadEtudiants(){
   try{
-    const {data} = await sb.from('etudiants').select('nom,prenom,projet,encadrant1,encadrant2,encadrant3,formation').order('projet');
+    let {data,error} = await sb.from('etudiants').select('nom,prenom,projet,encadrant1,encadrant2,encadrant3,formation,parcours').order('projet');
+    if(error){ ({data} = await sb.from('etudiants').select('nom,prenom,projet,encadrant1,encadrant2,encadrant3,formation').order('projet')); }
     ETUDIANTS = (data||[]).map(r=>({
       nom:(r.nom||'').trim(), prenom:(r.prenom||'').trim(), projet:(r.projet||'').trim(),
       enc:[r.encadrant1,r.encadrant2,r.encadrant3].map(x=>(x||'').trim()).filter(Boolean),
-      formation:formCanon(r.formation)
+      formation:formCanon(r.formation),
+      parcours:(r.parcours||'').trim()
     }));
   }catch(e){ ETUDIANTS=[]; }
   PROJETS = [...new Set(ETUDIANTS.map(e=>e.projet).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
@@ -544,6 +546,9 @@ function projetsForEncadrant(nom){
 }
 function formationForProjet(p){
   const f=ETUDIANTS.find(e=>e.projet===p && e.formation); return f?f.formation:'';
+}
+function parcoursForProjet(p){
+  const f=ETUDIANTS.find(e=>e.projet===p && e.parcours); return f?f.parcours:'';
 }
 function parcoursList(){
   return [...new Set([...PARCOURS_BASE, ...Object.keys(BUDGETS), ...COMMANDES.map(c=>c.parcours)])].filter(Boolean).sort();
@@ -657,7 +662,7 @@ function applyEncadrantScope(){
   const parcSet = new Set();
   const formSet = new Set();
   projs.forEach(p=>{
-    ETUDIANTS.filter(e=>e.projet===p).forEach(e=>{ if(e.formation) formSet.add(e.formation); });
+    ETUDIANTS.filter(e=>e.projet===p).forEach(e=>{ if(e.formation) formSet.add(e.formation); if(e.parcours) parcSet.add(e.parcours); });
     COMMANDES.filter(c=>c.groupe===p).forEach(c=>{ if(c.parcours) parcSet.add(c.parcours); if(c.formation) formSet.add(c.formation); });
   });
   const parcs = parcSet.size ? [...parcSet].sort() : parcoursList();
@@ -669,12 +674,16 @@ function onProjetChange(){
   const v=$('#d-groupe').value;
   $('#d-groupe-autre-wrap').style.display = v==='__autre'?'flex':'none';
   if(v && v!=='__autre'){
-    const hasOpt=(sel,val)=>val && [...$(sel).options].some(o=>o.value===val);
-    // priorité à l'historique des commandes de ce projet (libellés canoniques), sinon table etudiants
+    // Le parcours et la formation suivent la table de gestion des étudiants ;
+    // à défaut (projet absent de cette table), on retombe sur l'historique des commandes.
+    const setSel=(sel,val)=>{
+      if(!val) return;
+      if(![...$(sel).options].some(o=>o.value===val)) $(sel).insertAdjacentHTML('afterbegin', opt(val));
+      $(sel).value=val;
+    };
     const past=COMMANDES.find(c=>c.groupe===v);
-    if(past && hasOpt('#d-parcours',past.parcours)) $('#d-parcours').value=past.parcours;
-    if(past && hasOpt('#d-formation',past.formation)) $('#d-formation').value=past.formation;
-    else if(hasOpt('#d-formation',formationForProjet(v))) $('#d-formation').value=formationForProjet(v);
+    setSel('#d-parcours', parcoursForProjet(v) || (past && past.parcours) || '');
+    setSel('#d-formation', formationForProjet(v) || (past && past.formation) || '');
   }
   renderBudgetHint();
 }
