@@ -527,6 +527,8 @@
   <span class="legend-item"><span class="legend-dot" style="background:#f1f5f9;border-color:#94a3b8"></span>Bloqué</span>
 </div>
 
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.3.0</div>
+
 <div class="overlay" id="overlay" onclick="closeOnBg(event)">
   <div class="modal" id="modal"></div>
 </div>
@@ -1071,6 +1073,20 @@ function buildMultiMachineAgendaTable(machineList,days){
 
 function closeOnBg(e){ if(e.target===document.getElementById("overlay")) closeModal(); }
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+// Entrée dans un champ de code PIN = clic sur le bouton de validation de la fenêtre.
+document.addEventListener("keydown",function(e){
+  if(e.key!=="Enter") return;
+  var t=e.target;
+  if(!t || t.tagName!=="INPUT" || t.type!=="password") return;
+  var modal=t.closest("#modal"); if(!modal) return;
+  e.preventDefault();
+  // 1) bouton de validation situé dans le même bloc (ex. « Changer le mot de passe » super admin)
+  var grp=t.closest(".form-group");
+  var btn=grp && grp.querySelector(".btn-ok, .btn-admin-ok");
+  // 2) sinon, le bouton principal de la fenêtre (le dernier bouton de validation)
+  if(!btn){ var all=modal.querySelectorAll(".btn-ok, .btn-admin-ok"); if(all.length) btn=all[all.length-1]; }
+  if(btn) btn.click();
+});
 
 // ─── UTILITAIRES ───────────────────────────────────────────────────────────────
 function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -1097,7 +1113,6 @@ function toggleAdmin(){
       "<button class='btn btn-admin-ok' onclick='checkPw()'>Se connecter</button>"+
     "</div>"
   );
-  document.getElementById("apw").addEventListener("keydown",e=>{ if(e.key==="Enter") checkPw(); });
 }
 async function checkPw(){
   var _pw=document.getElementById("apw").value;

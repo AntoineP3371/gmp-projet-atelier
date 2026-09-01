@@ -596,6 +596,8 @@
 
 </div>
 
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.3.0</div>
+
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
   <div class="modal">
@@ -657,7 +659,7 @@
   <div class="modal">
     <h2>🔑 Code encadrant</h2>
     <div class="meta">Code à 4 chiffres demandé aux encadrants pour valider les demandes.</div>
-    <div class="form-group"><label>Code encadrant (4 chiffres)</label><input type="text" id="pCodeEnc" maxlength="4" inputmode="numeric"></div>
+    <div class="form-group"><label>Code encadrant (4 chiffres)</label><input type="text" id="pCodeEnc" maxlength="4" inputmode="numeric" onkeydown="if(event.key==='Enter')saveAdmin('ovCodeEnc')"></div>
     <div class="modal-actions">
       <button class="btn btn-close" onclick="closeOverlay('ovCodeEnc')">Fermer</button>
       <button class="btn btn-admin" onclick="saveAdmin('ovCodeEnc')">💾 Enregistrer</button>
@@ -728,8 +730,8 @@
     <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
       <div style="font-size:.8rem;font-weight:700;margin-bottom:4px">🔑 Changer le mot de passe admin</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <input type="password" id="fabNewPw" placeholder="Nouveau mot de passe (4 car. min.)" autocomplete="off" style="flex:1;min-width:150px">
-        <input type="password" id="fabNewPw2" placeholder="Confirmer" autocomplete="off" style="flex:1;min-width:120px">
+        <input type="password" id="fabNewPw" placeholder="Nouveau mot de passe (4 car. min.)" autocomplete="off" style="flex:1;min-width:150px" onkeydown="if(event.key==='Enter')fabChangeAdminPw()">
+        <input type="password" id="fabNewPw2" placeholder="Confirmer" autocomplete="off" style="flex:1;min-width:120px" onkeydown="if(event.key==='Enter')fabChangeAdminPw()">
         <button class="btn btn-admin" onclick="fabChangeAdminPw()">Changer</button>
       </div>
     </div>
