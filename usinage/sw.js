@@ -1,4 +1,4 @@
-const CACHE = 'reservation-gmp-v2.4';
+const CACHE = 'reservation-gmp-v2.5';
 const ASSETS = ['./', './index.html', './petitgmp.png', './BM_GMP_HD_1000.png', './manifest.json'];
 
 self.addEventListener('install', e => {

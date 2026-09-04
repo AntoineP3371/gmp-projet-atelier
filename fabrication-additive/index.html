@@ -596,7 +596,7 @@
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.3.1</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.3.2</div>
 
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
@@ -2283,6 +2283,7 @@ async function rechercherSuivi(silent){
   const {data,error}=await q;
   if(error){ box.innerHTML="<div class='empty'>Erreur : "+esc(error.message)+"</div>"; return; }
   if(!data.length){ lastSigSuivi=null; box.innerHTML=progress+"<div class='empty'>Aucune demande pour ce projet.</div>"; return; }
+  data.forEach(d=>demandesById[d.id]=d); // indispensable pour voirPhoto()/voir3D() depuis le Suivi
   const sig=n+'|'+file.map(x=>x.id).join(',')+'|'+data.map(demandeSig).join(';');
   if(sig===lastSigSuivi){ tickCountdowns(); return; } // rien n'a changé : pas de ré-affichage
   lastSigSuivi=sig;
