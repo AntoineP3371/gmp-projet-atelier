@@ -596,7 +596,7 @@
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.3.5</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.4.0</div>
 
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
@@ -846,6 +846,8 @@
       <button class="btn btn-ghost" onclick="telechargerStep(_lancerId)">⬇ Télécharger le STEP</button>
       <span class="duree-wrap" style="font-size:.9rem">Durée réelle : <input type="number" id="lancerH" min="0" style="width:64px" placeholder="h"> h <input type="number" id="lancerM" min="0" max="59" style="width:64px" placeholder="min"> min</span>
       <span class="duree-wrap" style="font-size:.9rem">Poids matière : <input type="number" id="lancerPoids" min="0" step="0.1" style="width:76px" placeholder="g"> g</span>
+      <span class="duree-wrap" style="font-size:.9rem">Épaisseur de couche : <input type="number" id="lancerEpaisseur" min="0" step="0.01" style="width:76px" placeholder="mm"> mm</span>
+      <span class="duree-wrap" style="font-size:.9rem">Taux de remplissage : <input type="number" id="lancerTaux" min="0" max="100" step="1" style="width:70px" placeholder="%"> %</span>
     </div>
     <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;gap:8px;border-top:1px solid var(--border);padding-top:12px">
       <button class="btn btn-amber" id="lancerAttInfo" onclick="modalStatut('attente_info')" title="Signaler que le demandeur doit venir vous voir pour confirmer des éléments">🙋 Att. info</button>
@@ -1435,7 +1437,9 @@ async function openLancerModal(id){
   const dv=d.duree_reelle_min||0;
   document.getElementById('lancerH').value = dv>0?Math.floor(dv/60):'';
   document.getElementById('lancerM').value = dv>0?dv%60:'';
-  document.getElementById('lancerPoids').value = (d.poids_matiere!=null && d.poids_matiere!=='')?d.poids_matiere:'';
+  document.getElementById('lancerPoids').value = (Number(d.poids_matiere)>0)?d.poids_matiere:'';
+  document.getElementById('lancerEpaisseur').value = (Number(d.epaisseur_couche)>0)?d.epaisseur_couche:'';
+  document.getElementById('lancerTaux').value = (Number(d.taux_remplissage)>0)?d.taux_remplissage:'';
   openOverlay('ovLancer');
   startLancerHeartbeat();
   const cont=document.getElementById('lancerViewer');
@@ -1480,15 +1484,29 @@ async function validerLancer(){
   const mm=Math.max(0, Math.round(num(document.getElementById('lancerM').value,0)));
   const duree=hh*60+mm;
   if(!duree){ showToast('⚠️ Indiquez la durée réelle (heures / minutes) avant de lancer'); return; }
+  // Poids matière : obligatoire.
+  const poids=Math.max(0, num(document.getElementById('lancerPoids').value, 0));
+  if(!poids){ showToast('⚠️ Indiquez le poids matière (g) avant de lancer'); return; }
+  // Épaisseur de couche (mm) et taux de remplissage (%) : facultatifs → si l'un manque, on demande confirmation.
+  const epaisseurRaw=document.getElementById('lancerEpaisseur').value.trim();
+  const tauxRaw=document.getElementById('lancerTaux').value.trim();
+  const epaisseur = epaisseurRaw===''?'':Math.max(0, num(epaisseurRaw, 0));
+  const taux = tauxRaw===''?'':Math.max(0, num(tauxRaw, 0));
+  if(epaisseurRaw==='' || tauxRaw===''){
+    const manquants=[];
+    if(epaisseurRaw==='') manquants.push('l’épaisseur de couche');
+    if(tauxRaw==='') manquants.push('le taux de remplissage');
+    const ok=await askConfirm('Vous n’avez pas renseigné '+manquants.join(' et ')+'.','Lancer l’impression sans compléter ces informations ?');
+    if(!ok) return;
+  }
   // Impression déjà lancée (minuteur déjà démarré) → demander confirmation avant de relancer.
   const d=demandesById[id];
   if(d && d.en_cours_at){
     const ok=await askConfirm('Cette impression est déjà lancée. Le minuteur repartira à zéro avec la nouvelle durée saisie.','Êtes-vous certain de vouloir relancer cette impression ?');
     if(!ok) return;
   }
-  const poids=Math.max(0, num(document.getElementById('lancerPoids').value, 0));
   busy(true,'Démarrage…');
-  const res=await sb.functions.invoke('demande-op',{ body:{ action:'lancer', id:id, duree:duree, poids:poids, operateur:currentOperateurNom, opCode:_operateurCode } });
+  const res=await sb.functions.invoke('demande-op',{ body:{ action:'lancer', id:id, duree:duree, poids:poids, epaisseur:epaisseur, taux:taux, operateur:currentOperateurNom, opCode:_operateurCode } });
   busy(false);
   if(res.error || !res.data || !res.data.ok){
     if(res.data && res.data.error==='locked'){ showToast('🔒 '+((res.data.by||'Un autre opérateur'))+' est en train de lancer cette demande.'); }

@@ -53,6 +53,9 @@ alter table public.demandes add column if not exists priorite             intege
 alter table public.demandes add column if not exists photo_file_id        text default '';        -- ID Drive de la photo de la pièce terminée
 alter table public.demandes add column if not exists photo_link           text default '';        -- lien Drive de la photo de la pièce terminée
 alter table public.demandes add column if not exists has_email            boolean default false;  -- drapeau PUBLIC : un e-mail est renseigné (l'adresse, elle, est dans demande_contacts)
+alter table public.demandes add column if not exists poids_matiere         double precision default 0; -- poids de matière consommée (g), saisi par l'opérateur au lancement
+alter table public.demandes add column if not exists epaisseur_couche      double precision default 0; -- épaisseur de couche (mm), saisie facultative au lancement
+alter table public.demandes add column if not exists taux_remplissage      double precision default 0; -- taux de remplissage / infill (%), saisie facultative au lancement
 
 -- Index pour le suivi étudiant (recherche par nom/prénom) et les listes
 create index if not exists demandes_statut_idx  on public.demandes (statut);

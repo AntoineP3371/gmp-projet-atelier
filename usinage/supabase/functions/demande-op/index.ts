@@ -158,6 +158,9 @@ Deno.serve(async (req) => {
       }
       // Poids de matière (g) : mis à jour uniquement s'il est fourni (ne pas écraser à zéro).
       if (b.poids != null && b.poids !== '') { const p = Number(b.poids); if (!isNaN(p) && p > 0) patch.poids_matiere = p }
+      // Épaisseur de couche (mm) et taux de remplissage (%) : facultatifs, mis à jour si fournis.
+      if (b.epaisseur != null && b.epaisseur !== '') { const e = Number(b.epaisseur); if (!isNaN(e) && e > 0) patch.epaisseur_couche = e }
+      if (b.taux != null && b.taux !== '') { const t = Number(b.taux); if (!isNaN(t) && t >= 0) patch.taux_remplissage = t }
       const { error } = await sb.from('demandes').update(patch).eq('id', b.id)
       if (error) throw error
       return json({ ok: true })
