@@ -47,6 +47,36 @@
   .carousel-banner-right .carousel-qr{margin-bottom:0;text-align:right}
   .carousel-banner-right .carousel-qr img{width:240px;height:240px;display:block}
   .carousel-close-left{align-self:flex-start;flex-shrink:0}
+  /* Carrousel « aujourd'hui » (option B : machines en lignes, créneaux du jour côte à côte, sans défilement) */
+  .modal.fullscreen:has(.tcar){overflow:hidden;padding:16px}
+  .tcar{display:flex;flex-direction:column;height:100%;gap:10px}
+  .tcar-bar{display:flex;align-items:center;gap:16px;flex-shrink:0;border-bottom:2px solid var(--border);padding-bottom:10px}
+  .tcar-close{flex-shrink:0}
+  .tcar-logo{height:44px;width:auto;object-fit:contain;flex-shrink:0}
+  .tcar-head{flex:1;min-width:0}
+  .tcar-title{font-size:clamp(1.1rem,2.6vh,1.6rem);font-weight:800;color:var(--text);line-height:1.1}
+  .tcar-sub{font-size:clamp(.8rem,1.7vh,1rem);color:var(--muted)}
+  .tcar-qr{height:64px;width:64px;flex-shrink:0;display:block}
+  .tcar-body{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
+  .tcar-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+  .tcar-row{flex:1 1 0;display:grid;grid-template-columns:clamp(110px,13vw,180px) 1fr;gap:8px;min-height:0}
+  .tcar-mlabel{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:6px 10px;border-left:5px solid var(--border);border-radius:0 8px 8px 0;overflow:hidden;font-weight:700;font-size:clamp(.8rem,1.9vh,1.05rem);color:var(--text);word-break:break-word}
+  .tcar-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.15)}
+  .tcar-panne{font-size:.8rem;font-weight:700;color:#b91c1c}
+  .tcar-slots{display:grid;gap:8px;min-height:0}
+  .tcar-cell{border-radius:8px;padding:6px 10px;display:flex;flex-direction:column;gap:1px;overflow:hidden;min-height:0}
+  .tcar-t{font-size:clamp(.65rem,1.4vh,.8rem);font-weight:700;color:var(--muted);letter-spacing:.02em}
+  .tcar-cell.free{background:var(--surface);border:1px solid var(--border);justify-content:center;align-items:center}
+  .tcar-freemsg{font-size:clamp(.8rem,1.8vh,1rem);color:var(--free-text);font-weight:600}
+  .tcar-cell.blk{background:#eef2f6;color:#64748b;justify-content:center}
+  .tcar-blkmsg{font-size:clamp(.8rem,1.8vh,1rem);font-weight:600}
+  .tcar-cell.booked{justify-content:flex-start}
+  .tcar-nm{font-weight:800;font-size:clamp(.85rem,2vh,1.15rem);line-height:1.15;color:#1e3a8a}
+  .tcar-op{font-size:clamp(.75rem,1.6vh,.95rem);color:#4b5563;font-weight:600}
+  .tcar-pj{font-size:clamp(.72rem,1.5vh,.9rem);color:var(--muted);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tcar-foot{flex-shrink:0;font-size:.75rem;color:var(--muted);text-align:right}
+  :root[data-theme="dark"] .tcar-nm{color:#8fb8f0}
+  :root[data-theme="dark"] .tcar-cell.blk{background:#1a2832;color:#94a3b8}
   /* Le chatbot ne doit pas s'afficher par-dessus le carrousel plein écran */
   body.carousel-open #chatFab,body.carousel-open #chatPanel{display:none!important}
   header .icon{height:44px;width:auto;background:none;border-radius:0;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -72,6 +102,12 @@
   .toolbar-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .toolbar-filters{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
   .toolbar-btns{display:flex;align-items:center;gap:6px}
+  /* Barre de catégories (filtre du planning) */
+  .cat-bar{display:flex;flex-wrap:wrap;gap:6px;margin:-8px 0 16px;align-items:center}
+  .cat-bar-label{font-size:.75rem;font-weight:700;color:var(--muted);margin-right:2px}
+  .cat-btn{background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px 14px;font-size:.8rem;font-weight:600;color:var(--text);cursor:pointer;transition:background .12s,border-color .12s,color .12s}
+  .cat-btn:hover{border-color:var(--primary)}
+  .cat-btn.active{background:var(--primary);border-color:var(--primary);color:#fff}
   .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;border-radius:7px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s,transform .1s}
   .btn:active{transform:scale(.97)}
   .btn-nav{background:var(--bg);color:var(--text);border:1px solid var(--border)}
@@ -127,6 +163,7 @@
   .overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:100;align-items:center;justify-content:center}
   .overlay.open{display:flex}
   .modal{background:var(--surface);border-radius:14px;padding:28px 28px 22px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.18);position:relative;animation:pop .18s ease;max-height:90vh;overflow-y:auto}
+  .modal.wide{max-width:min(660px,calc(100vw - 20px))}
   .modal.fullscreen{max-width:none;max-height:none;height:100%;border-radius:0;padding:20px;}
   .modal.fullscreen .table-wrap{max-height:calc(100vh - 200px);overflow:auto}
   #grid table{border-collapse:separate;border-spacing:0}
@@ -170,9 +207,13 @@
   .booking-info .row span:first-child{color:var(--muted);font-weight:600;min-width:80px}
   .booking-info .row span:last-child{color:var(--text);font-weight:500}
   .pin-error{font-size:.82rem;color:var(--danger);margin-top:6px;display:none}
-  .machine-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
-  .machine-item{display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px}
-  .machine-item input.mname{flex:1;border:1.5px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.88rem;color:var(--text);background:#fff;outline:none;font-family:inherit}
+  .machine-list{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+  .machine-item{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px}
+  .mfield{display:inline-flex;align-items:center;gap:5px;flex-shrink:0}
+  .machine-item input.mcat{width:150px;border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;font-size:.82rem;color:var(--text);background:#fff;outline:none;font-family:inherit}
+  .machine-item input.mcat:focus{border-color:var(--admin)}
+  :root[data-theme="dark"] .machine-item input.mcat{background:var(--surface);color:var(--text)}
+  .machine-item input.mname{flex:1 1 100%;border:1.5px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.88rem;color:var(--text);background:#fff;outline:none;font-family:inherit}
   .machine-item input.mname:focus{border-color:var(--admin)}
   .machine-item input[type=color]{width:38px;height:32px;border:1.5px solid var(--border);border-radius:6px;padding:2px;cursor:pointer;background:#fff;flex-shrink:0}
   .color-label{font-size:.72rem;color:var(--muted);font-weight:600;white-space:nowrap}
@@ -305,7 +346,7 @@
   /* ── Impression ── */
   @page{margin:1cm;size:landscape}
   @media print{
-    header .header-qr,.toolbar,.admin-banner,.legend,#chatFab,#chatPanel,.toast,.day-tabs,.slot-admin-actions{display:none!important}
+    header .header-qr,.toolbar,.cat-bar,.admin-banner,.legend,#chatFab,#chatPanel,.toast,.day-tabs,.slot-admin-actions{display:none!important}
     #mainWrap{display:none!important}
     #printContainer{display:block!important}
     .print-page{page-break-after:always}
@@ -519,6 +560,7 @@
   </div>
 </div>
 
+<div class="cat-bar" id="catBar" hidden></div>
 <div class="day-tabs" id="dayTabs"></div>
 <div id="printContainer"></div>
 <div class="table-wrap" id="mainWrap"><div id="grid"><div class="loading-bar"><div class="spinner"></div> Chargement des données…</div></div></div>
@@ -530,7 +572,7 @@
   <span class="legend-item"><span class="legend-dot" style="background:#f1f5f9;border-color:#94a3b8"></span>Bloqué</span>
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.3.3</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.3.4</div>
 
 <div class="overlay" id="overlay" onclick="closeOnBg(event)">
   <div class="modal" id="modal"></div>
@@ -619,6 +661,8 @@ let machineStatus  = {}; // { machineName: 'ok'|'panne'|'maintenance' }
 let machineStatusReason = {};
 let machineStatusDate  = {}; // { machineName: 'YYYY-MM-DD' } date de déclaration panne
 let machineSlotHours   = {}; // { machineName: 1|2|4 } taille de créneau (4 h par défaut)
+let machineCategories  = {}; // { machineName: 'Fraisage' } catégorie (chaîne vide = aucune)
+let categoryFilter     = ''; // catégorie active dans la barre au-dessus du planning ('' = toutes)
 // Nouvelles variables
 let carouselPages = null;  // null = auto (3 machines/page), sinon tableau de tableaux de machines
 let history48h    = [];    // historique des 48 dernières heures
@@ -700,6 +744,7 @@ async function loadMachines(){
     machines = ["Machine A","Machine B","Machine C"];
     machineColors = {};
     machineSlotHours = {};
+    machineCategories = {};
     machines.forEach((m,i)=>{ machineColors[m]=DEFAULT_COLORS[i]; });
   } else {
     machines = data.map(r=>r.name);
@@ -708,13 +753,46 @@ async function loadMachines(){
     machineStatusReason = {};
     machineStatusDate = {};
     machineSlotHours = {};
+    machineCategories = {};
     data.forEach(r=>{
       machineColors[r.name]=r.color;
       var sh=parseInt(r.slot_hours,10);
       machineSlotHours[r.name]=(sh===1||sh===2||sh===4)?sh:4;
+      machineCategories[r.name]=(r.category||'').toString().trim();
       if(r.status && r.status!=='ok'){ machineStatus[r.name]=r.status; machineStatusReason[r.name]=r.status_reason||''; machineStatusDate[r.name]=r.status_date||fmt(new Date()); }
     });
   }
+  // Si la catégorie active n'existe plus (machine supprimée / renommée), revenir à « Toutes ».
+  if(categoryFilter && machineCategoryList().indexOf(categoryFilter)<0) categoryFilter='';
+}
+
+// ─── CATÉGORIES DE MACHINES ───────────────────────────────────────────────────
+// Liste ordonnée (ordre des machines) des catégories non vides.
+function machineCategoryList(){
+  var seen={}, out=[];
+  machines.forEach(function(m){
+    var c=(machineCategories[m]||'').trim();
+    if(c && !seen[c]){ seen[c]=1; out.push(c); }
+  });
+  return out;
+}
+// Machines à afficher dans le planning selon la catégorie active.
+function visibleMachines(){
+  if(!categoryFilter) return machines;
+  return machines.filter(function(m){ return (machineCategories[m]||'').trim()===categoryFilter; });
+}
+function setCategoryFilter(c){ categoryFilter=(categoryFilter===c)?'':c; renderCatBar(); render(); }
+function renderCatBar(){
+  var bar=document.getElementById('catBar'); if(!bar) return;
+  var cats=machineCategoryList();
+  if(cats.length<1){ bar.innerHTML=''; bar.hidden=true; categoryFilter=''; return; }
+  bar.hidden=false;
+  var html="<span class='cat-bar-label'>Catégorie :</span>";
+  html+="<button class='cat-btn"+(categoryFilter?'':' active')+"' onclick=\"setCategoryFilter('')\">Toutes</button>";
+  cats.forEach(function(c){
+    html+="<button class='cat-btn"+(categoryFilter===c?' active':'')+"' onclick='setCategoryFilter(\""+jsesc(c)+"\")'>"+esc(c)+"</button>";
+  });
+  bar.innerHTML=html;
 }
 
 // ─── RECHERCHE ─────────────────────────────────────────────────────────────────
@@ -1033,15 +1111,16 @@ async function dbDeleteDisabled(machine,date,slot){
 // (voir saveOperateurs) — plus d'écriture directe depuis le navigateur.
 
 // ─── MODAL ─────────────────────────────────────────────────────────────────────
-function openModal(html,fullscreen){
+function openModal(html,fullscreen,wide){
   var modal=document.getElementById("modal");
   modal.innerHTML=html;
   modal.classList.toggle("fullscreen",!!fullscreen);
+  modal.classList.toggle("wide",!!wide);
   document.getElementById("overlay").classList.add("open");
   var f=document.querySelector("#modal input");
   if(f) setTimeout(()=>f.focus(),80);
 }
-function closeModal(){ var wasSuper=(openModalName==='superadmin'); document.getElementById("overlay").classList.remove("open"); document.getElementById("modal").classList.remove("fullscreen"); document.body.classList.remove('carousel-open'); stopCarousel(); openModalName=null; sessionStorage.removeItem('pendingModal'); if(wasSuper && isAdmin){ logoutAdmin(); showToast("↩ Déconnecté du mode admin"); } }
+function closeModal(){ var wasSuper=(openModalName==='superadmin'); document.getElementById("overlay").classList.remove("open"); document.getElementById("modal").classList.remove("fullscreen"); document.getElementById("modal").classList.remove("wide"); document.body.classList.remove('carousel-open'); stopCarousel(); openModalName=null; sessionStorage.removeItem('pendingModal'); if(wasSuper && isAdmin){ logoutAdmin(); showToast("↩ Déconnecté du mode admin"); } }
 function stopCarousel(){ if(carouselTimer){ clearInterval(carouselTimer); carouselTimer=null; } }
 function startMachineCarousel(){ stopCarousel(); if(!machines.length){ alert("Aucune machine."); return; } openModalName='carouselview'; carouselIndex=0; document.body.classList.add('carousel-open'); openFullScreenCarouselPage(); carouselTimer=setInterval(nextCarouselPage,5000); }
 function getCarouselPages(){
@@ -1052,56 +1131,74 @@ function nextCarouselPage(){ var pages=getCarouselPages(); carouselIndex=(carous
 function openFullScreenCarouselPage(){ openModal(buildFullscreenMachineAgenda(),true); }
 function getTwoWeekDays(){ var days=[]; var d=new Date(currentMon); while(days.length<10){ var day=new Date(d); if(day.getDay()!==0&&day.getDay()!==6) days.push(day); d.setDate(d.getDate()+1); } return days; }
 
+// Carrousel : vue plein écran recentrée sur la SEULE journée en cours.
+// Mise en page « option B » : une ligne par machine, les créneaux du jour côte à côte.
+// Toute la hauteur disponible est répartie à parts égales entre les lignes → aucun défilement
+// (l'écran déporté ne peut pas scroller). Si une page est trop dense, réduire le nombre de
+// machines de la page dans la configuration du carrousel.
 function buildFullscreenMachineAgenda(){
   var pages=getCarouselPages();
   var page=pages[carouselIndex]||[];
-  var days=getTwoWeekDays();
-  var start=days[0],end=days[days.length-1];
-  var qrHtml="<div class='carousel-qr'><img src='"+(window.QR_DATA_URL||'')+"' style='width:240px;height:240px;display:block'></div>";
-  var html=
-    "<div class='carousel-banner'>"+
-      "<button class='btn btn-close carousel-close-left' onclick='closeModal()'>✕ Fermer</button>"+
-      "<div class='carousel-banner-logo'><img src='"+BM_LOGO_B64+"' style='height:160px;max-width:320px;object-fit:contain;display:block'></div>"+
-      "<div class='carousel-banner-info'>"+
-        "<div class='carousel-banner-title'>Planning de réservations des machines</div>"+
-        "<div class='carousel-banner-subtitle'>"+start.toLocaleDateString('fr-FR')+" – "+end.toLocaleDateString('fr-FR')+" &nbsp;·&nbsp; page "+(carouselIndex+1)+" / "+pages.length+"</div>"+
+  var today=new Date();
+  var dLabel=today.toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long'});
+  dLabel=dLabel.charAt(0).toUpperCase()+dLabel.slice(1);
+  var qr=window.QR_DATA_URL||'';
+  return ""+
+    "<div class='tcar'>"+
+      "<div class='tcar-bar'>"+
+        "<button class='btn btn-close tcar-close' onclick='closeModal()'>✕ Fermer</button>"+
+        "<img class='tcar-logo' src='"+BM_LOGO_B64+"' alt=''>"+
+        "<div class='tcar-head'>"+
+          "<div class='tcar-title'>Réservations du jour</div>"+
+          "<div class='tcar-sub'>"+dLabel+(pages.length>1?" &nbsp;·&nbsp; page "+(carouselIndex+1)+" / "+pages.length:"")+"</div>"+
+        "</div>"+
+        (qr?"<img class='tcar-qr' src='"+qr+"' alt='QR'>":"")+
       "</div>"+
-      "<div class='carousel-banner-right'>"+qrHtml+"</div>"+
-    "</div>"+
-    "<div class='table-wrap'>"+buildMultiMachineAgendaTable(page,days)+"</div>"+
-    "<div style='font-size:.78rem;color:var(--muted);margin-top:10px;text-align:right'>Lecture seule · actualisation automatique</div>";
-  return html;
+      buildTodayCarouselRows(page)+
+      "<div class='tcar-foot'>Lecture seule · actualisation automatique</div>"+
+    "</div>";
 }
 
-function buildMultiMachineAgendaTable(machineList,days){
-  var html="<table><thead><tr><th>Machine / Créneau</th>";
-  days.forEach(d=>{ html+="<th>"+d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'})+"</th>"; });
-  html+="</tr></thead><tbody>";
-  machineList.forEach(machine=>{
+function buildTodayCarouselRows(machineList){
+  var ds=fmt(new Date());
+  var html="<div class='tcar-body'>";
+  if(!machineList.length){
+    html+="<div class='tcar-empty'>Aucune machine sur cette page.</div></div>";
+    return html;
+  }
+  machineList.forEach(function(machine){
     var color=getMachineColor(machine);
-    var colorLabel=hexToRgba(color,0.10);
     var mSlots=slotsFor(machine);
-    mSlots.forEach((slot,idx)=>{
-      html+="<tr"+(idx===0?" class='machine-start'":"")+">";
-      if(idx===0) html+="<td class='machine-label' rowspan='"+mSlots.length+"' style='background:"+colorLabel+";border-left:4px solid "+color+"'><span class='machine-color-dot' style='background:"+color+"'></span>"+esc(machine)+"</td>";
-      days.forEach(day=>{
-        var key=machine+"|"+fmt(day)+"|"+slot;
-        var r=bookings[key],bl=disabled[key];
-        var tc=isToday(day)?" today-col":"";
-        var cls,content,inlineStyle="";
-        if(bl){ cls="disabled"+tc; var blReason=bl.reason||''; content="<div class='slot-time'>"+slot+"</div><div class='slot-disabled-label'>🔒 "+(blReason?esc(blReason):'Bloqué')+"</div>"; }
-        else if(r){ cls="booked"+tc; inlineStyle=" style='background:"+hexToRgba(color,0.12)+";border-left:3px solid "+color+"!important'";
-          content="<div class='slot-time'>"+slot+"</div>"+
-            "<div class='slot-name'>"+esc(r.nom)+" "+esc(r.prenom)+"</div>"+
-            (r.operateur?"<div class='slot-operateur'>"+esc(r.operateur)+"</div>":"")+
-            (r.projet?"<div class='slot-projet'><span class='slot-projet-nom'>"+esc(r.projet)+"</span>"+([r.encadrant1,r.encadrant2,r.encadrant3].filter(Boolean).length?"<div class='slot-encadrants'>"+[r.encadrant1,r.encadrant2,r.encadrant3].filter(Boolean).map(function(x){return esc(encAbrege(x));}).join('<br>')+"</div>":"")+"</div>":""); }
-        else { cls="free"+tc; content="<div class='slot-time'>"+slot+"</div><div class='slot-free-label'>Libre</div>"; }
-        html+="<td><div class='slot-cell "+cls+"'"+inlineStyle+">"+content+"</div></td>";
-      });
-      html+="</tr>";
+    var st=machineStatus[machine]||'ok';
+    var isPanne=st!=='ok' && ds>=(machineStatusDate[machine]||'0000-00-00');
+    html+="<div class='tcar-row'>";
+    html+="<div class='tcar-mlabel' style='border-left-color:"+color+";background:"+blendWithSurface(color,0.10)+"'>"+
+            "<span><span class='tcar-dot' style='background:"+color+"'></span>"+esc(machine)+"</span>"+
+            (isPanne?"<span class='tcar-panne'>🔧 "+esc(st.charAt(0).toUpperCase()+st.slice(1))+"</span>":"")+
+          "</div>";
+    html+="<div class='tcar-slots' style='grid-template-columns:repeat("+mSlots.length+",minmax(0,1fr))'>";
+    mSlots.forEach(function(slot){
+      var key=machine+"|"+ds+"|"+slot;
+      var r=bookings[key], bl=disabled[key];
+      if(bl){
+        html+="<div class='tcar-cell blk'><span class='tcar-t'>"+slot+"</span><span class='tcar-blkmsg'>🔒 "+(bl.reason?esc(bl.reason):'Bloqué')+"</span></div>";
+      } else if(r){
+        var enc=[r.encadrant1,r.encadrant2,r.encadrant3].filter(Boolean).map(function(x){return esc(encAbrege(x));}).join(' · ');
+        html+="<div class='tcar-cell booked' style='border-left:5px solid "+color+";background:"+hexToRgba(color,0.12)+"'>"+
+                "<span class='tcar-t'>"+slot+"</span>"+
+                "<span class='tcar-nm'>"+esc(r.nom)+" "+esc(r.prenom)+"</span>"+
+                (r.operateur?"<span class='tcar-op'>"+esc(r.operateur)+"</span>":"")+
+                (r.projet?"<span class='tcar-pj'>"+esc(r.projet)+(enc?" — "+enc:"")+"</span>":(enc?"<span class='tcar-pj'>"+enc+"</span>":""))+
+              "</div>";
+      } else if(isPanne){
+        html+="<div class='tcar-cell blk'><span class='tcar-t'>"+slot+"</span><span class='tcar-blkmsg'>🔧 Indisponible</span></div>";
+      } else {
+        html+="<div class='tcar-cell free'><span class='tcar-t'>"+slot+"</span><span class='tcar-freemsg'>Libre</span></div>";
+      }
     });
+    html+="</div></div>";
   });
-  html+="</tbody></table>";
+  html+="</div>";
   return html;
 }
 
@@ -1250,23 +1347,27 @@ function openMachineManager(){ openModalName='machines';
     return "<div class='machine-item' id='mrow-"+i+"' draggable='true' data-orig=\""+esc(m)+"\" ondragstart='dragStart(event,"+i+")' ondragover='dragOver(event)' ondrop='dragDrop(event,"+i+")' ondragleave='dragLeave(event)'>"+
       "<span class='drag-handle' title='Glisser pour réordonner'>⠿</span>"+
       "<input type='text' class='mname' id='mname-"+i+"' value='"+esc(m)+"' placeholder='Nom de la machine'>"+
-      "<span class='color-label'>Couleur&nbsp;</span>"+
-      "<input type='color' id='mcolor-"+i+"' value='"+color+"'>"+
-      "<span class='color-label' title='Durée de chaque créneau réservable'>Créneau&nbsp;</span>"+
-      "<select class='mslot' id='mslot-"+i+"'>"+slotHoursOptionsHtml(machineSlotHours[m]||4)+"</select>"+
-      "<button class='icon-btn remove' onclick='removeMRow("+i+")'>✕</button>"+
+      "<span class='mfield'><span class='color-label'>Couleur</span>"+
+        "<input type='color' id='mcolor-"+i+"' value='"+color+"'></span>"+
+      "<span class='mfield'><span class='color-label' title='Durée de chaque créneau réservable'>Créneau</span>"+
+        "<select class='mslot' id='mslot-"+i+"'>"+slotHoursOptionsHtml(machineSlotHours[m]||4)+"</select></span>"+
+      "<span class='mfield'><span class='color-label' title='Catégorie de la machine (bouton de filtre au-dessus du planning)'>Catégorie</span>"+
+        "<input type='text' class='mcat' id='mcat-"+i+"' list='mmCatList' value=\""+esc(machineCategories[m]||'')+"\" placeholder='(aucune)'></span>"+
+      "<button class='icon-btn remove' onclick='removeMRow("+i+")' title='Supprimer cette machine'>✕</button>"+
     "</div>";
   }).join("");
+  var catOpts=machineCategoryList().map(function(c){ return "<option value=\""+esc(c)+"\"></option>"; }).join("");
   openModal(
     "<h2>✏️ Gérer les machines</h2>"+
-    "<div class='meta'>Glissez-déposez les lignes pour réordonner. Renommez, changez la couleur, ou choisissez la durée des créneaux réservables (1 h, 2 h ou 4 h — 4 h par défaut, soit 08h-12h et 14h-18h). Changer la durée n'affecte pas les réservations déjà prises : celles dont l'horaire ne correspond plus à la nouvelle grille n'apparaîtront plus dans le planning.</div>"+
+    "<div class='meta'>Glissez-déposez les lignes pour réordonner. Renommez, changez la couleur, la durée des créneaux réservables (1 h / 2 h / 4 h — 4 h par défaut, soit 08h-12h et 14h-18h), ou la <strong>catégorie</strong>. Les catégories saisies apparaissent en boutons juste au-dessus du planning : cliquer un bouton n'affiche que les machines de cette catégorie. Laissez vide pour qu'une machine ne relève d'aucune catégorie. Changer la durée n'affecte pas les réservations déjà prises : celles dont l'horaire ne correspond plus à la nouvelle grille n'apparaîtront plus dans le planning.</div>"+
+    "<datalist id='mmCatList'>"+catOpts+"</datalist>"+
     "<div class='machine-list' id='mlist'>"+rows+"</div>"+
     "<button class='btn-add' onclick='addMRow()'>+ Ajouter une machine</button>"+
     "<div class='modal-actions' style='margin-top:18px'>"+
       "<button class='btn btn-close' onclick='closeModal()'>Annuler</button>"+
       "<button class='btn btn-admin-ok' onclick='saveMachines()'>✔ Enregistrer</button>"+
     "</div>"
-  );
+  , false, true);
 }
 
 // ─── DRAG & DROP ──────────────────────────────────────────────────────────────
@@ -1288,17 +1389,18 @@ function dragDrop(e, targetIndex){
   else { list.insertBefore(srcItem, tgtItem); }
   dragSrcIndex=null;
 }
-function addMRow(){ var list=document.getElementById("mlist"); var i=list.children.length; var color=DEFAULT_COLORS[i%DEFAULT_COLORS.length]; var d=document.createElement("div"); d.className="machine-item"; d.id="mrow-"+i; d.draggable=true; d.setAttribute("ondragstart","dragStart(event,"+i+")"); d.setAttribute("ondragover","dragOver(event)"); d.setAttribute("ondrop","dragDrop(event,"+i+")"); d.setAttribute("ondragleave","dragLeave(event)"); d.innerHTML="<span class='drag-handle' title='Glisser pour réordonner'>⠿</span><input type='text' class='mname' id='mname-"+i+"' placeholder='Nom de la machine'><span class='color-label'>Couleur&nbsp;</span><input type='color' id='mcolor-"+i+"' value='"+color+"'><span class='color-label' title='Durée de chaque créneau réservable'>Créneau&nbsp;</span><select class='mslot' id='mslot-"+i+"'>"+slotHoursOptionsHtml(4)+"</select><button class='icon-btn remove' onclick='removeMRow("+i+")'>✕</button>"; list.appendChild(d); }
+function addMRow(){ var list=document.getElementById("mlist"); var i=list.children.length; var color=DEFAULT_COLORS[i%DEFAULT_COLORS.length]; var d=document.createElement("div"); d.className="machine-item"; d.id="mrow-"+i; d.draggable=true; d.setAttribute("ondragstart","dragStart(event,"+i+")"); d.setAttribute("ondragover","dragOver(event)"); d.setAttribute("ondrop","dragDrop(event,"+i+")"); d.setAttribute("ondragleave","dragLeave(event)"); d.innerHTML="<span class='drag-handle' title='Glisser pour réordonner'>⠿</span><input type='text' class='mname' id='mname-"+i+"' placeholder='Nom de la machine'><span class='mfield'><span class='color-label'>Couleur</span><input type='color' id='mcolor-"+i+"' value='"+color+"'></span><span class='mfield'><span class='color-label' title='Durée de chaque créneau réservable'>Créneau</span><select class='mslot' id='mslot-"+i+"'>"+slotHoursOptionsHtml(4)+"</select></span><span class='mfield'><span class='color-label' title='Catégorie de la machine (bouton de filtre au-dessus du planning)'>Catégorie</span><input type='text' class='mcat' id='mcat-"+i+"' list='mmCatList' placeholder='(aucune)'></span><button class='icon-btn remove' onclick='removeMRow("+i+")' title='Supprimer cette machine'>✕</button>"; list.appendChild(d); }
 function removeMRow(i){ var r=document.getElementById("mrow-"+i); if(r) r.remove(); }
 async function saveMachines(){
   var items=document.querySelectorAll("#mlist .machine-item");
   var machinesArr=[],renames=[];
   items.forEach(function(item,i){
-    var nameInp=item.querySelector(".mname"),colorInp=item.querySelector("input[type=color]"),slotInp=item.querySelector("select.mslot");
+    var nameInp=item.querySelector(".mname"),colorInp=item.querySelector("input[type=color]"),slotInp=item.querySelector("select.mslot"),catInp=item.querySelector("input.mcat");
     var v=nameInp?nameInp.value.trim():"";
     var sh=slotInp?parseInt(slotInp.value,10):4; if(sh!==1&&sh!==2&&sh!==4) sh=4;
+    var cat=catInp?catInp.value.trim().slice(0,60):"";
     if(v){
-      machinesArr.push({name:v, color:colorInp?colorInp.value:"#3b82f6", position:i, slot_hours:sh});
+      machinesArr.push({name:v, color:colorInp?colorInp.value:"#3b82f6", position:i, slot_hours:sh, category:cat});
       var orig=item.getAttribute('data-orig')||"";
       if(orig && orig!==v) renames.push({from:orig,to:v});
     }
@@ -1310,7 +1412,8 @@ async function saveMachines(){
   showToast("💾 Enregistrement…");
   var res=await sb.functions.invoke('admin-op',{ body:{ action:'saveMachines', adminCode:getAdminPw(), machines:machinesArr, renames:renames } });
   if(res.error || !res.data || !res.data.ok){ showToast("❌ Échec"+((res.data&&res.data.error)?" : "+res.data.error:"")); return; }
-  machines=names; machineColors={}; machineSlotHours={}; machinesArr.forEach(function(m){ machineColors[m.name]=m.color; machineSlotHours[m.name]=m.slot_hours||4; });
+  machines=names; machineColors={}; machineSlotHours={}; machineCategories={}; machinesArr.forEach(function(m){ machineColors[m.name]=m.color; machineSlotHours[m.name]=m.slot_hours||4; machineCategories[m.name]=m.category||''; });
+  if(categoryFilter && machineCategoryList().indexOf(categoryFilter)<0) categoryFilter='';
   await loadMachines(); if(renames.length){ await loadBookings(); await loadDisabled(); }
   closeModal(); render(); showToast("✅ Machines enregistrées"+(renames.length?" (réservations mises à jour)":""));
 }
@@ -2205,7 +2308,11 @@ function render(){
   });
   html+="</tr></thead><tbody>";
 
-  machines.forEach(machine=>{
+  var _vm=visibleMachines();
+  if(!_vm.length){
+    html+="<tr><td colspan='"+(week.length+1)+"' style='padding:22px;text-align:center;color:var(--muted)'>Aucune machine dans cette catégorie.</td></tr>";
+  }
+  _vm.forEach(machine=>{
     var color=getMachineColor(machine);
     var colorLight=hexToRgba(color,0.12);
     var colorLabel=blendWithSurface(color,0.10);
@@ -2268,6 +2375,7 @@ function render(){
   grid.innerHTML=html;
   if(isAdmin) grid.classList.add("is-admin");
   else grid.classList.remove("is-admin");
+  renderCatBar();
   buildDayTabs();
   applySelectedDay();
   bindDaySwipe();
