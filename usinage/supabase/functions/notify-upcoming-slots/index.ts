@@ -1,9 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Créneaux et leur heure de début en minutes depuis minuit
-const SLOT_STARTS: Record<string, number> = {
-  '08h-12h': 8 * 60,
-  '14h-18h': 14 * 60,
+// Heure de début d'un créneau (minutes depuis minuit) déduite de son libellé.
+// Gère "08h-12h", "08h-09h", "14h-16h", "08h30-09h30"… (les tailles 1 h / 2 h / 4 h sont toutes couvertes).
+function slotStartMin(slot: string): number {
+  const m = String(slot).match(/^(\d{1,2})h(\d{2})?/)
+  if (!m) return -1
+  return parseInt(m[1], 10) * 60 + (m[2] ? parseInt(m[2], 10) : 0)
 }
 
 Deno.serve(async () => {
@@ -30,39 +32,39 @@ Deno.serve(async () => {
   const opMap: Record<string, { phone: string; apikey: string }> =
     Object.fromEntries((ops || []).map((o: any) => [o.name, o]))
 
+  // Toutes les réservations du jour : on calcule l'heure de début à partir du libellé du créneau,
+  // ce qui fonctionne quelle que soit la taille de créneau de la machine (1 h, 2 h ou 4 h).
+  const { data: bookings, error: bookErr } = await sb
+    .from('bookings')
+    .select('machine, slot, nom, prenom, operateur, projet')
+    .eq('date', today)
+
+  if (bookErr) return new Response(JSON.stringify({ error: bookErr.message }), { status: 500 })
+
   const notified: string[] = []
 
-  for (const [slot, slotMin] of Object.entries(SLOT_STARTS)) {
-    const diff = slotMin - nowMin
+  for (const b of (bookings || []) as any[]) {
+    const startMin = slotStartMin(b.slot)
+    if (startMin < 0) continue
 
-    // Exactement 20 minutes avant le début du créneau (1 seul envoi)
-    if (diff !== 20) continue
+    // Exactement 20 minutes avant le début du créneau (1 seul envoi par exécution planifiée)
+    if (startMin - nowMin !== 20) continue
 
-    const { data: bookings, error: bookErr } = await sb
-      .from('bookings')
-      .select('machine, nom, prenom, operateur, projet')
-      .eq('date', today)
-      .eq('slot', slot)
+    const op = opMap[b.operateur]
+    if (!op?.phone || !op?.apikey) continue
 
-    if (bookErr) continue
+    const msg =
+      `Rappel : votre créneau ${b.slot} sur ${b.machine} commence dans 20 min. ` +
+      `Réservé par ${b.nom} ${b.prenom} (${b.projet}).`
 
-    for (const b of (bookings || []) as any[]) {
-      const op = opMap[b.operateur]
-      if (!op?.phone || !op?.apikey) continue
+    const url =
+      `https://api.callmebot.com/whatsapp.php` +
+      `?phone=${encodeURIComponent(op.phone)}` +
+      `&text=${encodeURIComponent(msg)}` +
+      `&apikey=${encodeURIComponent(op.apikey)}`
 
-      const msg =
-        `Rappel : votre créneau ${slot} sur ${b.machine} commence dans 20 min. ` +
-        `Réservé par ${b.nom} ${b.prenom} (${b.projet}).`
-
-      const url =
-        `https://api.callmebot.com/whatsapp.php` +
-        `?phone=${encodeURIComponent(op.phone)}` +
-        `&text=${encodeURIComponent(msg)}` +
-        `&apikey=${encodeURIComponent(op.apikey)}`
-
-      await fetch(url)
-      notified.push(`${b.machine} / ${slot} → ${b.operateur}`)
-    }
+    await fetch(url)
+    notified.push(`${b.machine} / ${b.slot} → ${b.operateur}`)
   }
 
   return new Response(JSON.stringify({ ok: true, heureParis: `${parts.hour}:${parts.minute}`, notified }), {

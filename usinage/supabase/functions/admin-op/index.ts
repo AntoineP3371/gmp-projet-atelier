@@ -8,7 +8,7 @@
 //
 // Actions admin :
 //   login         {} -> { ok, role:'super'|'admin'|null }   (vérifie le mot de passe, public)
-//   saveMachines  { machines:[{name,color,position}], renames:[{from,to}] }
+//   saveMachines  { machines:[{name,color,position,slot_hours}], renames:[{from,to}] }   slot_hours ∈ {1,2,4} (défaut 4)
 //   machineStatus { machine, status, status_reason, status_date }
 //   block / unblock / blockHalfDay, params-list / params-save, limits-save
 // Actions SUPER ADMIN (adminCode = mot de passe super admin) :
@@ -128,6 +128,7 @@ Deno.serve(async (req) => {
           name: m.name.toString().trim(),
           color: (m.color || '#3b82f6').toString(),
           position: Number.isFinite(m.position) ? m.position : i,
+          slot_hours: [1, 2, 4].includes(Number(m.slot_hours)) ? Number(m.slot_hours) : 4,
           status: st[m.name]?.status || 'ok',
           status_reason: st[m.name]?.status_reason || '',
           status_date: st[m.name]?.status_date || null,
