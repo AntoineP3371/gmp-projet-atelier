@@ -170,44 +170,44 @@
   /* Badges de statut */
   .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.74rem;font-weight:700;white-space:nowrap}
   .badge.en_attente{background:var(--amber-light);color:var(--amber)}
-  .badge.validee{background:var(--primary-light);color:var(--primary-dark)}
+  .badge.validee{background:#ffedd5;color:#c2410c}
   .badge.en_cours{background:#e0e7ff;color:#4338ca}
   .badge.imprimee{background:var(--green-light);color:var(--green)}
   .badge.refusee{background:var(--danger-light);color:var(--danger)}
-  .badge.attente_info{background:#ffedd5;color:#c2410c}
+  .badge.attente_info{background:#fef9c3;color:#a16207}
 
   /* Liste de demandes (encadrant / suivi) */
   .demande-card{border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;background:var(--surface);border-left-width:5px}
   .demande-card.st-en_attente{background:#fffbeb;border-left-color:var(--amber)}
-  .demande-card.st-validee{background:#f0f9ff;border-left-color:var(--primary)}
+  .demande-card.st-validee{background:#fff4ea;border-left-color:#ea580c}
   .demande-card.st-en_cours{background:#eef2ff;border-left-color:#4338ca}
   .demande-card.st-imprimee{background:#f0fdf4;border-left-color:var(--green)}
   .demande-card.st-refusee{background:#fef2f2;border-left-color:var(--danger)}
-  .demande-card.st-attente_info{background:#fff7ed;border-left-color:#ea580c}
+  .demande-card.st-attente_info{background:#fefce8;border-left-color:#ca8a04}
   .op-table tbody tr.st-en_attente td{background:#fffbeb}
-  .op-table tbody tr.st-validee td{background:#f0f9ff}
+  .op-table tbody tr.st-validee td{background:#fff4ea}
   .op-table tbody tr.st-en_cours td{background:#eef2ff}
   .op-table tbody tr.st-imprimee td{background:#f0fdf4}
   .op-table tbody tr.st-refusee td{background:#fef2f2}
-  .op-table tbody tr.st-attente_info td{background:#fff7ed}
+  .op-table tbody tr.st-attente_info td{background:#fefce8}
   .com-meta{display:block;font-size:.68rem;color:var(--muted);margin-top:2px}
   .enc-section{font-weight:700;font-size:1rem;color:var(--primary-dark);background:var(--primary-light);border-radius:8px;padding:8px 12px;margin:16px 0 8px}
   .enc-section-count{font-weight:400;color:var(--muted);font-size:.85rem}
   .op-table tbody tr.st-en_attente td:first-child,.op-table tbody tr.st-validee td:first-child,.op-table tbody tr.st-en_cours td:first-child,.op-table tbody tr.st-imprimee td:first-child,.op-table tbody tr.st-refusee td:first-child,.op-table tbody tr.st-attente_info td:first-child{border-left:4px solid transparent}
   .op-table tbody tr.st-en_attente td:first-child{border-left-color:var(--amber)}
-  .op-table tbody tr.st-validee td:first-child{border-left-color:var(--primary)}
+  .op-table tbody tr.st-validee td:first-child{border-left-color:#ea580c}
   .op-table tbody tr.st-en_cours td:first-child{border-left-color:#4338ca}
   .op-table tbody tr.st-imprimee td:first-child{border-left-color:var(--green)}
   .op-table tbody tr.st-refusee td:first-child{border-left-color:var(--danger)}
-  .op-table tbody tr.st-attente_info td:first-child{border-left-color:#ea580c}
+  .op-table tbody tr.st-attente_info td:first-child{border-left-color:#ca8a04}
   @media(max-width:640px){
     .op-table tbody tr.st-en_attente,.op-table tbody tr.st-validee,.op-table tbody tr.st-en_cours,.op-table tbody tr.st-imprimee,.op-table tbody tr.st-refusee,.op-table tbody tr.st-attente_info{border-left-width:5px}
     .op-table tbody tr.st-en_attente{background:#fffbeb;border-left-color:var(--amber)}
-    .op-table tbody tr.st-validee{background:#f0f9ff;border-left-color:var(--primary)}
+    .op-table tbody tr.st-validee{background:#fff4ea;border-left-color:#ea580c}
     .op-table tbody tr.st-en_cours{background:#eef2ff;border-left-color:#4338ca}
     .op-table tbody tr.st-imprimee{background:#f0fdf4;border-left-color:var(--green)}
     .op-table tbody tr.st-refusee{background:#fef2f2;border-left-color:var(--danger)}
-    .op-table tbody tr.st-attente_info{background:#fff7ed;border-left-color:#ea580c}
+    .op-table tbody tr.st-attente_info{background:#fefce8;border-left-color:#ca8a04}
     .op-table tbody tr.st-en_attente td,.op-table tbody tr.st-validee td,.op-table tbody tr.st-en_cours td,.op-table tbody tr.st-imprimee td,.op-table tbody tr.st-refusee td,.op-table tbody tr.st-attente_info td{background:transparent}
   }
   .demande-card .dc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
@@ -244,18 +244,20 @@
   .stat-card.ok{background:#f0fdf4;border-color:#86efac}
   .stat-card.ko{background:#fef2f2;border-color:#fca5a5}
   /* Récap opérateur : cases colorées selon leur statut (mêmes teintes que les badges) */
-  .stat-card.rec-validee{background:var(--primary-light);border-color:var(--primary)}
-  .stat-card.rec-validee .stat-num{color:var(--primary-dark)}
-  .stat-card.rec-attente_info{background:#ffedd5;border-color:#f0a868}
-  .stat-card.rec-attente_info .stat-num{color:#c2410c}
+  .stat-card.rec-validee{background:#ffedd5;border-color:#ea580c}
+  .stat-card.rec-validee .stat-num{color:#c2410c}
+  .stat-card.rec-attente_info{background:#fef9c3;border-color:#eab308}
+  .stat-card.rec-attente_info .stat-num{color:#a16207}
   .stat-card.rec-en_cours{background:#e0e7ff;border-color:#a5b4fc}
   .stat-card.rec-en_cours .stat-num{color:#4338ca}
   .stat-card.rec-imprimee{background:var(--green-light);border-color:var(--green)}
   .stat-card.rec-imprimee .stat-num{color:var(--green)}
   .stat-card.rec-archivee{background:var(--bg);border-color:var(--muted)}
   .stat-card.rec-archivee .stat-num{color:var(--muted)}
-  :root[data-theme="dark"] .stat-card.rec-attente_info{background:#33260f;border-color:#7a4a1f}
-  :root[data-theme="dark"] .stat-card.rec-attente_info .stat-num{color:#f0a868}
+  :root[data-theme="dark"] .stat-card.rec-validee{background:#33240f;border-color:#7a4a1f}
+  :root[data-theme="dark"] .stat-card.rec-validee .stat-num{color:#f59e42}
+  :root[data-theme="dark"] .stat-card.rec-attente_info{background:#332d0f;border-color:#7a6a1f}
+  :root[data-theme="dark"] .stat-card.rec-attente_info .stat-num{color:#facc15}
   :root[data-theme="dark"] .stat-card.rec-en_cours{background:#191c33;border-color:#3d4374}
   :root[data-theme="dark"] .stat-card.rec-en_cours .stat-num{color:#a5b4fc}
   .stat-num{font-size:1.5rem;font-weight:800;color:var(--text)}
@@ -379,21 +381,22 @@
   :root[data-theme="dark"] .op-duree{background:var(--surface);color:var(--text)}
   :root[data-theme="dark"] tr:hover td{background:#1c2f39}
   :root[data-theme="dark"] .demande-card.st-en_attente,:root[data-theme="dark"] .op-table tbody tr.st-en_attente td{background:#2a2410}
-  :root[data-theme="dark"] .demande-card.st-validee,:root[data-theme="dark"] .op-table tbody tr.st-validee td{background:#102530}
+  :root[data-theme="dark"] .demande-card.st-validee,:root[data-theme="dark"] .op-table tbody tr.st-validee td{background:#2b1c0f}
   :root[data-theme="dark"] .demande-card.st-en_cours,:root[data-theme="dark"] .op-table tbody tr.st-en_cours td{background:#191c33}
   :root[data-theme="dark"] .demande-card.st-imprimee,:root[data-theme="dark"] .op-table tbody tr.st-imprimee td{background:#0f2a1c}
   :root[data-theme="dark"] .demande-card.st-refusee,:root[data-theme="dark"] .op-table tbody tr.st-refusee td{background:#2b1613}
-  :root[data-theme="dark"] .demande-card.st-attente_info,:root[data-theme="dark"] .op-table tbody tr.st-attente_info td{background:#2b1c0f}
+  :root[data-theme="dark"] .demande-card.st-attente_info,:root[data-theme="dark"] .op-table tbody tr.st-attente_info td{background:#2b2610}
   @media(max-width:640px){
     :root[data-theme="dark"] .op-table tbody tr.st-en_attente{background:#2a2410}
-    :root[data-theme="dark"] .op-table tbody tr.st-validee{background:#102530}
+    :root[data-theme="dark"] .op-table tbody tr.st-validee{background:#2b1c0f}
     :root[data-theme="dark"] .op-table tbody tr.st-en_cours{background:#191c33}
     :root[data-theme="dark"] .op-table tbody tr.st-imprimee{background:#0f2a1c}
     :root[data-theme="dark"] .op-table tbody tr.st-refusee{background:#2b1613}
-    :root[data-theme="dark"] .op-table tbody tr.st-attente_info{background:#2b1c0f}
+    :root[data-theme="dark"] .op-table tbody tr.st-attente_info{background:#2b2610}
   }
   :root[data-theme="dark"] .badge.en_cours{background:#23264a;color:#a5b4fc}
-  :root[data-theme="dark"] .badge.attente_info{background:#33240f;color:#f0a15b}
+  :root[data-theme="dark"] .badge.validee{background:#3a2a12;color:#f59e42}
+  :root[data-theme="dark"] .badge.attente_info{background:#332d0f;color:#facc15}
   :root[data-theme="dark"] .param-tag.bro{background:#33280f;color:#e0a64a}
   :root[data-theme="dark"] .stat-card.ok{background:#0f2a1c;border-color:#2b6b46}
   :root[data-theme="dark"] .stat-card.ko{background:#2b1613;border-color:#7a3b36}
@@ -596,7 +599,7 @@
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.4.0</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.4.1</div>
 
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
