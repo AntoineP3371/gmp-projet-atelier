@@ -599,7 +599,7 @@
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.4.1</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.5.0</div>
 
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
@@ -2535,6 +2535,9 @@ window.addEventListener('pageshow', function(e){
   buildMachines();
   buildStudentLists(); buildSuiviLists();
   subscribeRealtime();
+  // Accès direct à l'espace opérateur via QR code (…/fabrication-additive/?vue=operateur) :
+  // ouvre la fenêtre de saisie du code opérateur (l'espace reste protégé par le code).
+  try{ if(new URLSearchParams(location.search).get('vue')==='operateur') askOperateur(); }catch(e){}
 })();
 </script>
 
