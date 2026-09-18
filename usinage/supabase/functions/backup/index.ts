@@ -30,6 +30,8 @@ const TABLES = [
   'bookings', 'booking_pins', 'disabled_slots', 'machines',
   'operateurs', 'etudiants', 'parametres',
   'demandes', 'demande_contacts', 'waitlist', 'carousel_pages',
+  // Appli Commandes standards
+  'commandes', 'com_fournisseurs', 'com_budgets', 'com_gestionnaires',
 ]
 
 Deno.serve(async (req) => {
