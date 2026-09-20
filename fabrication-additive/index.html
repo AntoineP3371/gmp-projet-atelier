@@ -598,16 +598,16 @@
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.4</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.5</div>
 
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
-  <div class="modal">
+  <div class="modal" style="text-align:center">
     <h2 id="codeTitle">Code d'accès</h2>
     <div class="meta" id="codeMeta">Saisissez votre code à 4 chiffres.</div>
     <input type="password" id="codeInput" inputmode="numeric" maxlength="4" placeholder="••••" style="font-size:.9rem" onkeydown="if(event.key==='Enter')confirmCode()">
     <div class="field-err" id="codeErr">Code incorrect</div>
-    <div class="modal-actions">
+    <div class="modal-actions" style="justify-content:center">
       <button class="btn btn-close" onclick="closeOverlay('ovCode')">Annuler</button>
       <button class="btn btn-ok" onclick="confirmCode()">Valider</button>
     </div>
