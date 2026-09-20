@@ -598,7 +598,7 @@
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.0</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.1</div>
 
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
@@ -1538,7 +1538,7 @@ function applyFabAdminUI(){
 function openFabSuper(){ openOverlay('ovSuper'); }
 function askOperateur(){
   const sel=document.getElementById('opNomSelect');
-  sel.innerHTML="<option value=''>— Choisir votre nom —</option>"+operateurs.map(o=>"<option value='"+esc(o.name)+"'>"+esc(o.name)+"</option>").join('');
+  sel.innerHTML="<option value=''>— Choisir un opérateur —</option>"+operateurs.map(o=>"<option value='"+esc(o.name)+"'>"+esc(o.name)+"</option>").join('');
   document.getElementById('opCodeInput').value='';
   document.getElementById('opCodeInput').classList.remove('err');
   document.getElementById('opErr').classList.remove('show');
