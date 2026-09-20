@@ -216,8 +216,9 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
     <button class="nav-btn tint" data-view="gestionnaire" onclick="showView('gestionnaire')">🛒 Espace gestionnaire</button>
     <button class="nav-btn admin" id="btnAdmin" onclick="adminToggle()">⚙️ Admin</button>
   </nav>
+  </div>
 
-  <!-- Bannière admin (même modèle que Réservations machines / Impression 3D) -->
+  <!-- Bannière admin (pleine largeur, sous l'en-tête — même modèle que Réservations machines / Impression 3D) -->
   <div class="admin-banner" id="adminBanner">
     <div class="admin-banner-top">
       <span class="admin-badge">⚙ ADMIN</span>
@@ -230,7 +231,6 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
       <button class="btn-manage super-only" onclick="openGestionnaires()">👥 Gestionnaires</button>
       <button class="btn-manage super-only" onclick="openWipe()">🗑 Vider une table</button>
     </div>
-  </div>
   </div>
 
   <!-- ══════════ NOUVELLE DEMANDE ══════════ -->
@@ -362,7 +362,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
   </div>
 </div></div>
 
-<div class="overlay" id="ovFournisseurs"><div class="modal">
+<div class="overlay" id="ovFournisseurs"><div class="modal" style="max-width:900px">
   <h2>🏢 Fournisseurs</h2>
   <div class="sub">Nom, site web et commentaire modifiables. Liste proposée dans le formulaire de demande.</div>
   <div id="fournList"></div>
@@ -406,7 +406,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
   <div class="actions"><button class="btn" onclick="closeOverlay('ovWipe')">Fermer</button></div>
 </div></div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.1</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.2</div>
 
 <!-- Modales -->
 <div class="overlay" id="ovConfirm"><div class="modal">
