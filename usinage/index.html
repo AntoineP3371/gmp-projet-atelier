@@ -28,13 +28,13 @@
     --radius:10px; --shadow:0 2px 12px rgba(0,40,60,.08);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:24px 16px}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:64px 16px 48px}
   .home-btn{position:fixed;top:12px;left:12px;z-index:60;display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 13px;font-size:.85rem;font-weight:600;color:var(--text);text-decoration:none;box-shadow:var(--shadow);transition:background .15s,border-color .15s}
   .home-btn:hover{background:var(--primary-light);border-color:var(--primary)}
   .logo-bar{display:flex;justify-content:center;align-items:center;padding:44px 0 18px}
   .logo-bar img{max-height:70px;max-width:100%;width:auto;height:auto;object-fit:contain;mix-blend-mode:multiply}
   :root[data-theme="dark"] .logo-bar img{mix-blend-mode:screen;filter:invert(1) hue-rotate(180deg)}
-  header{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:16px}
   .header-qr{margin-left:auto;flex-shrink:0;line-height:0}
   .header-qr img{width:72px;height:72px;display:block}
   @media(max-width:640px){.header-qr img{width:60px;height:60px}}
@@ -422,8 +422,8 @@
   }
   body{
     background:
-      linear-gradient(rgba(16,34,43,.028) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(16,34,43,.028) 1px,transparent 1px),
+      linear-gradient(rgba(0,131,186,.05) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,131,186,.05) 1px,transparent 1px),
       var(--bg);
     background-size:34px 34px, 34px 34px, auto;
     background-attachment:fixed;
@@ -454,8 +454,8 @@
   }
   :root[data-theme="dark"] body{
     background:
-      linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px),
+      linear-gradient(rgba(59,167,208,.06) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(59,167,208,.06) 1px,transparent 1px),
       var(--bg);
     background-size:34px 34px, 34px 34px, auto; background-attachment:fixed;
   }
@@ -575,7 +575,7 @@
   <span class="legend-item"><span class="legend-dot" style="background:#f1f5f9;border-color:#94a3b8"></span>Bloqué</span>
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.2</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.3</div>
 
 <div class="overlay" id="overlay" onclick="closeOnBg(event)">
   <div class="modal" id="modal"></div>

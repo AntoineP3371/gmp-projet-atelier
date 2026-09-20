@@ -39,14 +39,14 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:
   linear-gradient(rgba(14,143,110,.045) 1px,transparent 1px),
   linear-gradient(90deg,rgba(14,143,110,.045) 1px,transparent 1px),
   radial-gradient(1100px 480px at 50% -8%, var(--primary-light) 0%, var(--bg) 60%);
-  background-size:26px 26px,26px 26px,auto;
+  background-size:34px 34px,34px 34px,auto;
   color:var(--text);min-height:100vh;padding:64px 16px 48px;font-size:15px;line-height:1.5}
 a{color:var(--primary-dark)}
 .wrap{max-width:1080px;margin:0 auto}
 h1{font-size:1.5rem;font-weight:800;letter-spacing:-.01em}
 h2{font-size:1.15rem;font-weight:800;margin-bottom:4px}
 h3{font-size:.98rem;font-weight:700}
-.sub{color:var(--muted);font-size:.9rem;margin-bottom:18px}
+.sub{color:var(--muted);font-size:.85rem;margin-bottom:18px}
 .home-btn{position:fixed;top:12px;left:12px;z-index:60;display:inline-flex;align-items:center;gap:6px;
   background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 13px;
   font-size:.85rem;font-weight:600;color:var(--text);text-decoration:none;
@@ -59,14 +59,14 @@ h3{font-size:.98rem;font-weight:700}
 .logo-bar{display:flex;justify-content:center;align-items:center;padding:4px 0 18px}
 .logo-bar img{max-height:70px;max-width:100%;width:auto;height:auto;object-fit:contain;mix-blend-mode:multiply}
 :root[data-theme="dark"] .logo-bar img{mix-blend-mode:screen;filter:invert(1) hue-rotate(180deg)}
-.topbar{display:flex;align-items:center;gap:14px 22px;flex-wrap:wrap;margin-bottom:24px}
+.topbar{display:flex;align-items:center;gap:14px 22px;flex-wrap:wrap;margin-bottom:16px}
 .brand{display:flex;align-items:center;gap:14px;margin:0}
 .brand .dot{flex-shrink:0;line-height:1;color:var(--primary);display:flex;align-items:center}
 .brand .dot svg{width:44px;height:44px;display:block}
 .s-note{color:var(--muted);margin:2px 0 8px;min-height:1em}
 nav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 0 auto}
 @media(max-width:760px){nav{width:100%;margin-left:0}nav .nav-btn{flex:1;justify-content:center}}
-.nav-btn{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:8px 15px;
+.nav-btn{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 15px;
   font-size:.875rem;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;gap:6px;align-items:center;
   transition:background .15s,border-color .15s,transform .1s}
 .nav-btn:hover{background:var(--primary-light);border-color:var(--primary)}
@@ -349,16 +349,14 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
 </div>
 
 <!-- ══════════ FENÊTRES ADMIN (harmonisées : connexion + outils en modales) ══════════ -->
-<div class="overlay" id="ovAdminLogin"><div class="modal" style="max-width:420px">
+<div class="overlay" id="ovAdminLogin"><div class="modal" style="max-width:420px;text-align:center">
   <h2>🔐 Administration</h2>
-  <div class="sub">Mot de passe admin — ou mot de passe <b>super admin</b> (commun aux applis Atelier GMP) pour accéder en plus aux gestionnaires et au vidage des tables.</div>
-  <label class="f" style="max-width:260px">Mot de passe
-    <input id="al-pw" type="password" placeholder="mot de passe" onkeydown="if(event.key==='Enter')adminLogin()">
-  </label>
+  <div class="sub" style="margin:0 0 14px">Mot de passe admin — ou mot de passe <b>super admin</b> (commun aux applis Atelier GMP) pour accéder en plus aux gestionnaires et au vidage des tables.</div>
+  <input id="al-pw" type="password" placeholder="mot de passe" onkeydown="if(event.key==='Enter')adminLogin()" style="width:100%;text-align:left">
   <div class="err" id="al-err"></div>
-  <div class="actions">
+  <div class="actions" style="justify-content:center">
     <button class="btn" onclick="closeOverlay('ovAdminLogin')">Annuler</button>
-    <button class="btn primary" onclick="adminLogin()">Entrer</button>
+    <button class="btn" style="background:var(--admin);color:#fff;border:none" onclick="adminLogin()">Valider</button>
   </div>
 </div></div>
 
@@ -406,7 +404,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
   <div class="actions"><button class="btn" onclick="closeOverlay('ovWipe')">Fermer</button></div>
 </div></div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.2</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.3</div>
 
 <!-- Modales -->
 <div class="overlay" id="ovConfirm"><div class="modal">

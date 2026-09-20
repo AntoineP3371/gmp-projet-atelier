@@ -25,7 +25,10 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',system-ui,sans-serif;background:
+    linear-gradient(rgba(0,131,186,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,131,186,.05) 1px,transparent 1px),
     radial-gradient(1200px 500px at 50% -10%, #e2f4fc 0%, var(--bg) 60%);
+    background-size:34px 34px,34px 34px,auto;
     color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 18px}
   .brand{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:34px;text-align:center}
   .brand img{max-height:76px;width:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,.1))}
@@ -150,8 +153,8 @@
   }
   :root[data-theme="dark"] body{
     background:
-      linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px),
+      linear-gradient(rgba(59,167,208,.06) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(59,167,208,.06) 1px,transparent 1px),
       var(--bg);
     background-size:34px 34px, 34px 34px, auto; background-attachment:fixed;
   }
@@ -268,7 +271,7 @@
   </div>
 
   <footer>Atelier GMP — IUT Bordeaux</footer>
-  <div class="site-version">v4.6.2</div>
+  <div class="site-version">v4.6.3</div>
 
 <div class="pv-overlay" id="pvOverlay"><div class="pv-modal" id="pvModal"></div></div>
 <div class="pv-toast" id="pvToast"></div>
