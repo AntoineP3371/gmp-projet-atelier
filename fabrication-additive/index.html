@@ -457,7 +457,6 @@
       <button class="logout-btn" onclick="logoutFabAdmin()">↩ Déconnecter</button>
     </div>
     <div class="admin-tools">
-      <button class="btn-manage" onclick="openParamWin('ovCodeEnc')">🔑 Code encadrant</button>
       <button class="btn-manage" onclick="openParamWin('ovLimiteDef')">🔢 Limite d'impressions</button>
       <button class="btn-manage" onclick="openParamWin('ovNotifs')">📣 Opérateurs à notifier</button>
       <button class="btn-manage" onclick="openParamWin('ovMachinesAdmin')">🖨️ Machines</button>
@@ -599,7 +598,7 @@
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.5.2</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.0</div>
 
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
@@ -658,17 +657,6 @@
 
 <!-- ============ MODALE : admin ============ -->
 <!-- ============ FENÊTRES ADMIN (réglages dissociés) ============ -->
-<div class="overlay" id="ovCodeEnc">
-  <div class="modal">
-    <h2>🔑 Code encadrant</h2>
-    <div class="meta">Code à 4 chiffres demandé aux encadrants pour valider les demandes.</div>
-    <div class="form-group"><label>Code encadrant (4 chiffres)</label><input type="text" id="pCodeEnc" maxlength="4" inputmode="numeric" onkeydown="if(event.key==='Enter')saveAdmin('ovCodeEnc')"></div>
-    <div class="modal-actions">
-      <button class="btn btn-close" onclick="closeOverlay('ovCodeEnc')">Fermer</button>
-      <button class="btn btn-admin" onclick="saveAdmin('ovCodeEnc')">💾 Enregistrer</button>
-    </div>
-  </div>
-</div>
 
 <div class="overlay" id="ovLimiteDef">
   <div class="modal">
@@ -1525,7 +1513,8 @@ async function validerLancer(){
 // ─────────────────────────────────────────────────────────────────────────
 //  SAISIE DE CODE (générique)
 // ─────────────────────────────────────────────────────────────────────────
-function askEncadrant(){ openCodeModal('encadrant','Espace encadrant','Code PIN commun encadrants (4 chiffres) pour valider les demandes d\'impressions.'); }
+// On choisit d'abord SON nom, puis on saisit SON code personnel (défini à la 1re connexion).
+function askEncadrant(){ chooseEncadrantNom(); }
 // Bouton ⚙ Admin : bascule comme dans l'appli usinage (connecté → déconnexion).
 function askAdmin(){
   if(_fabAdminCode){ logoutFabAdmin(); return; }
@@ -1535,7 +1524,7 @@ function logoutFabAdmin(){
   _fabAdminCode=''; _fabIsSuper=false;
   sessionStorage.removeItem('fabAdminPw'); sessionStorage.removeItem('fabIsSuper');
   // fermeture directe (sans passer par closeOverlay, pour éviter une boucle avec ovSuper)
-  ['ovCodeEnc','ovLimiteDef','ovNotifs','ovMachinesAdmin','ovToutes'].forEach(id=>document.getElementById(id).classList.remove('open'));
+  ['ovLimiteDef','ovNotifs','ovMachinesAdmin','ovToutes'].forEach(id=>document.getElementById(id).classList.remove('open'));
   document.getElementById('ovSuper').classList.remove('open');
   applyFabAdminUI(); showToast('↩ Admin déconnecté');
 }
@@ -1572,7 +1561,7 @@ function openCodeModal(role,title,meta){
   const inp=document.getElementById('codeInput');
   inp.value=''; inp.classList.remove('err');
   if(role==='admin'){ inp.maxLength=20; inp.setAttribute('inputmode','text'); inp.placeholder='mot de passe'; inp.style.letterSpacing='normal'; inp.style.fontSize='.9rem'; inp.style.textAlign='left'; }
-  else { inp.maxLength=4; inp.setAttribute('inputmode','numeric'); inp.placeholder='Code PIN commun encadrants'; inp.style.letterSpacing='normal'; inp.style.fontSize='.9rem'; inp.style.textAlign='left'; }
+  else { inp.maxLength=4; inp.setAttribute('inputmode','numeric'); inp.placeholder='Votre code (4 chiffres)'; inp.style.letterSpacing='normal'; inp.style.fontSize='.9rem'; inp.style.textAlign='left'; }
   document.getElementById('codeErr').classList.remove('show');
   openOverlay('ovCode'); setTimeout(()=>inp.focus(),50);
 }
@@ -1588,9 +1577,17 @@ async function confirmCode(){
     }
     else codeError();
   } else if(currentRole==='encadrant'){
-    let ok=false;
-    try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'encadrant', code:code } }); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
-    if(ok){ _encadrantCode=code; closeOverlay('ovCode'); chooseEncadrantNom(); }
+    const nom=currentEncadrantNom;
+    if(!/^\d{4}$/.test(code)){ codeError(); return; }
+    let ok=false, needsSetup=false, notAuth=false;
+    try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'encadrant', name:nom, code:code } }); ok=!error && !!(data&&data.ok); needsSetup=!error && !!(data&&data.needsSetup); notAuth=!error && !!(data&&data.notAuthorized); }catch(e){ ok=false; }
+    if(notAuth){ closeOverlay('ovCode'); showToast('⛔ Encadrant inconnu — demandez à l’administrateur de vous ajouter à un projet'); return; }
+    if(!ok && needsSetup){
+      // Première connexion : le code saisi devient SON code personnel.
+      if(!confirm("Première connexion pour « "+nom+" ».\n\nLe code « "+code+" » deviendra VOTRE code personnel (demandé à chaque fois).\nConfirmer ?")){ closeOverlay('ovCode'); return; }
+      try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'encadrant', name:nom, code:code, setup:true } }); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
+    }
+    if(ok){ _encadrantCode=code; closeOverlay('ovCode'); showView('encadrant'); loadEncadrant(); }
     else codeError();
   }
 }
@@ -1601,9 +1598,11 @@ function codeError(){ document.getElementById('codeErr').classList.add('show'); 
 // ─────────────────────────────────────────────────────────────────────────
 function chooseEncadrantNom(){
   const sel=document.getElementById('encNomSelect');
-  sel.innerHTML = encadrantsList.map(n=>"<option value='"+esc(n)+"'>"+esc(n)+"</option>").join('') + "<option value='__autre__'>Autre…</option>";
+  // Plus d'option « Autre… » : seul l'admin crée les encadrants (en les ajoutant à un projet).
+  sel.innerHTML = encadrantsList.length
+    ? "<option value=''>— Choisir un encadrant —</option>"+encadrantsList.map(n=>"<option value='"+esc(n)+"'>"+esc(n)+"</option>").join('')
+    : "<option value=''>— Aucun encadrant : voir l'administrateur —</option>";
   const autre=document.getElementById('encNomAutre'); autre.style.display='none'; autre.value='';
-  sel.onchange=()=>{ autre.style.display=sel.value==='__autre__'?'block':'none'; };
   openOverlay('ovEncNom');
 }
 function confirmEncNom(){
@@ -1613,7 +1612,8 @@ function confirmEncNom(){
   currentEncadrantNom=nom;
   document.getElementById('encNomLabel').textContent=nom;
   closeOverlay('ovEncNom');
-  showView('encadrant'); loadEncadrant();
+  // Puis on demande le code PERSONNEL de cet encadrant (défini à la 1re connexion).
+  openCodeModal('encadrant','Espace encadrant — '+nom,'Votre code personnel à 4 chiffres (choisi à votre 1re connexion).');
 }
 function captureEncComments(){
   const map={};
@@ -1797,7 +1797,7 @@ async function confirmRenameProjet(){
   if(!ancien||!nouveau){ showToast('⚠️ Indiquez le nouveau nom'); return; }
   if(ancien===nouveau){ showToast('Nom identique'); return; }
   busy(true,'Renommage…');
-  const res=await sb.functions.invoke('admin-operators',{ body:{ action:'etudiants-rename', encadrantCode:_encadrantCode, from:ancien, to:nouveau } });
+  const res=await sb.functions.invoke('admin-operators',{ body:{ action:'etudiants-rename', encadrantNom:currentEncadrantNom, encadrantCode:_encadrantCode, from:ancien, to:nouveau } });
   busy(false);
   if(res.error || !res.data || !res.data.ok){ showToast('❌ Échec'+((res.data&&res.data.error)?' : '+res.data.error:'')); return; }
   showToast('✅ Projet « '+nouveau+' » mis à jour');
@@ -2365,14 +2365,11 @@ async function setSuiviEmail(id){
 // ─────────────────────────────────────────────────────────────────────────
 // Ouvre une fenêtre de réglage (code encadrant, limite, notifs, machines) avec les valeurs à jour.
 async function openParamWin(ov){
-  let codeEnc='0000';
-  try{ const {data}=await sb.functions.invoke('admin-op',{ body:{ action:'params-list', adminCode:_fabAdminCode } }); if(data&&data.ok&&data.params) codeEnc=data.params.code_encadrant||'0000'; }catch(e){}
-  fillAdminForm(codeEnc);
+  fillAdminForm();
   openOverlay(ov);
 }
 // Remplit le formulaire Paramètres avec les valeurs actuellement chargées.
-function fillAdminForm(codeEnc){
-  document.getElementById('pCodeEnc').value=codeEnc;
+function fillAdminForm(){
   document.getElementById('pLimite').value=limiteDefaut();
   renderNotifOperateurs();
   document.getElementById('machinesEditor').innerHTML='';
@@ -2440,7 +2437,6 @@ async function saveAdmin(ov){
   if(!machines.length){ showToast('⚠️ Ajoutez au moins une machine'); return; }
   const notifNoms=[...document.querySelectorAll('#notifOperateurs .notif-cb:checked')].map(c=>c.value);
   const rows=[
-    {cle:'code_encadrant',        valeur:document.getElementById('pCodeEnc').value.trim()||'0000'},
     {cle:'limite_defaut',         valeur:String(Math.max(1, Math.round(num(document.getElementById('pLimite').value, LIMITE_PAR_DEFAUT))))},
     {cle:'machines',              valeur:JSON.stringify(machines)},
     {cle:'operateurs_impression', valeur:JSON.stringify(notifNoms)}
@@ -2522,7 +2518,7 @@ window.addEventListener('pageshow', function(e){
   currentEncadrantNom=''; currentOperateurNom=''; currentRole=null;
   // ovSuper fermé directement (sans closeOverlay) pour ne pas déconnecter l'admin au retour arrière.
   document.getElementById('ovSuper').classList.remove('open');
-  ['ovCode','ovEncNom','ovOperateur','ovCodeEnc','ovLimiteDef','ovNotifs','ovMachinesAdmin','ovToutes','ovRenameProj','ovLimites','ovStats','ovArchives','ovViewer','ovLancer','ovConfirm'].forEach(closeOverlay);
+  ['ovCode','ovEncNom','ovOperateur','ovLimiteDef','ovNotifs','ovMachinesAdmin','ovToutes','ovRenameProj','ovLimites','ovStats','ovArchives','ovViewer','ovLancer','ovConfirm'].forEach(closeOverlay);
   showView('nouvelle');
 });
 

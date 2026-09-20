@@ -264,10 +264,11 @@
     <span class="admin-bar-label">Administration</span>
     <button class="admin-link" onclick="portalAuth('operateurs')">👥 Administration des opérateurs</button>
     <button class="admin-link" onclick="portalAuth('etudiants')">👨‍🎓 Administration des étudiants-tes et des projets</button>
+    <button class="admin-link" onclick="portalAuth('encadrants')">🧑‍🏫 Administration des encadrants</button>
   </div>
 
   <footer>Atelier GMP — IUT Bordeaux</footer>
-  <div class="site-version">v4.5.2</div>
+  <div class="site-version">v4.6.0</div>
 
 <div class="pv-overlay" id="pvOverlay"><div class="pv-modal" id="pvModal"></div></div>
 <div class="pv-toast" id="pvToast"></div>
@@ -308,10 +309,59 @@ async function pvCheckPw(){
   if(ok){ _pvAdminPw=pw; openManager(_pvPending); }
   else document.getElementById('pvPwErr').classList.add('show');
 }
-function openManager(which){ if(which==='operateurs') openOperateurs(); else openEtudiants(); }
+function openManager(which){ if(which==='operateurs') openOperateurs(); else if(which==='encadrants') openEncadrants(); else openEtudiants(); }
 // Restauration depuis le cache de navigation (retour arrière/avant) : on referme tout
 // et on exige une nouvelle identification plutôt que de laisser un panneau déjà ouvert.
 window.addEventListener('pageshow', function(e){ if(e.persisted){ pvClose(); } });
+
+// ══════════════ ENCADRANTS ══════════════
+// Chaque encadrant a SON code (choisi par lui à sa 1re connexion dans Impression 3D ou Commandes).
+// La liste des noms est déduite des projets/étudiants ; ici on voit qui a défini son code et on peut le réinitialiser.
+let _encList=[];
+async function openEncadrants(){
+  pvOpen("<h2>🧑‍🏫 Administration des encadrants</h2><div class='pv-meta'>Chargement…</div>");
+  const res=await sb.functions.invoke('admin-operators',{ body:{ action:'encadrants-list', adminCode:_pvAdminPw } });
+  if(res.error || !res.data || !res.data.ok){ pvOpen("<h2>🧑‍🏫 Administration des encadrants</h2><div class='pv-meta'>Accès refusé — reconnectez-vous.</div><div class='pv-actions'><button class='pv-btn' onclick='pvClose()'>Fermer</button></div>"); return; }
+  _encList=res.data.encadrants||[];
+  renderEncadrants();
+}
+function renderEncadrants(){
+  const nb=_encList.length, nbDef=_encList.filter(e=>e.hasCode).length;
+  let rows;
+  if(!_encList.length){
+    rows="<div class='pv-meta'>Aucun encadrant pour l'instant. Les noms proviennent des projets (colonnes Encadrant1/2/3) importés dans « Administration des étudiants-tes et des projets ».</div>";
+  } else {
+    rows="<div id='encList'>"+_encList.map(e=>encRow(e)).join('')+"</div>";
+  }
+  pvOpen(
+    "<h2>🧑‍🏫 Administration des encadrants</h2>"+
+    "<div class='pv-meta'>Chaque encadrant définit <b>son propre code</b> à sa première connexion (Impression 3D ou Commandes). "+
+    "Vous ne voyez jamais les codes ; vous pouvez seulement les <b>réinitialiser</b> (l'encadrant en choisira un nouveau). "+
+    nbDef+" / "+nb+" encadrant(s) ont défini leur code.</div>"+
+    "<div class='pv-meta'>➕ <b>Ajouter un encadrant</b> : ajoutez-le à un projet dans « Administration des étudiants-tes et des projets ». Seul un encadrant présent dans un projet peut se connecter et définir un code.</div>"+
+    rows+
+    "<div class='pv-actions'><button class='pv-btn' onclick='pvClose()'>Fermer</button></div>"
+  );
+}
+function encRow(e){
+  const badge = e.hasCode
+    ? "<span style='font-size:.78rem;font-weight:700;color:var(--green);white-space:nowrap'>✔ Code défini</span>"
+    : "<span style='font-size:.78rem;font-weight:700;color:var(--muted);white-space:nowrap'>⏳ Pas encore de code</span>";
+  const btn = e.hasCode
+    ? "<button class='pv-btn' style='padding:5px 10px;font-size:.82rem' onclick=\"resetEncadrant('"+esc(e.nom).replace(/'/g,"\\'")+"')\">↺ Réinitialiser</button>"
+    : "";
+  return "<div class='op-row' style='align-items:center'>"+
+    "<div style='flex:1 1 auto;font-weight:600'>"+esc(e.nom)+"</div>"+
+    "<div style='display:flex;align-items:center;gap:10px'>"+badge+btn+"</div>"+
+  "</div>";
+}
+async function resetEncadrant(nom){
+  if(!confirm("Réinitialiser le code de « "+nom+" » ?\n\nSon code actuel sera effacé : il devra en choisir un nouveau à sa prochaine connexion.")) return;
+  const res=await sb.functions.invoke('admin-operators',{ body:{ action:'encadrants-reset', adminCode:_pvAdminPw, nom:nom } });
+  if(res.error || !res.data || !res.data.ok){ pvToast('❌ Échec de la réinitialisation'); return; }
+  const it=_encList.find(e=>e.nom===nom); if(it){ it.hasCode=false; it.updatedAt=null; }
+  renderEncadrants(); pvToast('↺ Code réinitialisé pour '+nom);
+}
 
 // ══════════════ OPÉRATEURS ══════════════
 async function openOperateurs(){

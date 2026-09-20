@@ -33,9 +33,14 @@ Deno.serve(async (req) => {
     const action = b.action
     const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
-    const encOk = async (code?: string) => {
-      const { data } = await sb.from('parametres').select('valeur').eq('cle', 'code_encadrant').maybeSingle()
-      return ((data?.valeur) || '0000').toString().trim() === (code ?? '').toString().trim()
+    // Vérifie le code PERSONNEL d'un encadrant (table encadrant_codes, haché).
+    const encOk = async (nom?: string, code?: string) => {
+      const n = (nom ?? '').toString().trim()
+      const c = (code ?? '').toString().trim()
+      if (!n || !c) return false
+      const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', n).maybeSingle()
+      const h = (data?.code_hash ?? '').toString().trim()
+      return !!h && h === await sha256hex(c)
     }
     const opOk = async (name?: string, code?: string) => {
       if (!name || !code) return false
@@ -55,8 +60,8 @@ Deno.serve(async (req) => {
 
     // ───────────── création d'une demande (encadrant) ─────────────
     if (action === 'create') {
-      if (!(await encOk(b.encCode))) return json({ ok: false, error: 'auth' }, 401)
       const ctx = b.ctx || {}
+      if (!(await encOk(ctx.encadrant, b.encCode))) return json({ ok: false, error: 'auth' }, 401)
       const groupe = (ctx.groupe ?? '').toString().trim()
       const lines = (Array.isArray(b.lines) ? b.lines : []).filter((l: any) => (l?.intitule ?? '').toString().trim())
       if (!groupe || !lines.length) return json({ ok: false, error: 'bad-input' }, 400)
@@ -128,9 +133,10 @@ gmpbordeaux.fr/gmp-projet-atelier/commandes-standards/`.replace(/'/g, '’')
 
     // ───────────── annulation d'une ligne (encadrant, tant que « demandée ») ─────────────
     if (action === 'cancel') {
-      if (!(await encOk(b.encCode))) return json({ ok: false, error: 'auth' }, 401)
-      const { data: c } = await sb.from('commandes').select('statut, historique').eq('id', b.id).maybeSingle()
+      const { data: c } = await sb.from('commandes').select('statut, historique, encadrant').eq('id', b.id).maybeSingle()
       if (!c) return json({ ok: false, error: 'not-found' }, 404)
+      // Annulation réservée à l'encadrant qui a créé la demande (son code personnel).
+      if (!(await encOk(c.encadrant, b.encCode))) return json({ ok: false, error: 'auth' }, 401)
       if (c.statut !== 'demandee') return json({ ok: false, error: 'too-late' }, 409)
       const now = new Date().toISOString()
       const { error } = await sb.from('commandes')

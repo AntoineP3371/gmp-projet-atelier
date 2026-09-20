@@ -45,14 +45,16 @@ Deno.serve(async (req) => {
     const superExpected = (Deno.env.get('SUPERADMIN_PW_HASH') || '').trim()
     const isAdmin = (!!expected && codeHash === expected) || (!!superExpected && codeHash === superExpected)
 
-    // Renommage de projet : autorisé à l'admin OU à un encadrant (code encadrant valide).
+    // Renommage de projet : autorisé à l'admin OU à un encadrant (son code personnel valide).
     if (action === 'etudiants-rename') {
       let ok = isAdmin
       if (!ok) {
-        const ec = (body.encadrantCode ?? '').toString()
-        if (ec) {
-          const { data } = await sb.from('parametres').select('valeur').eq('cle', 'code_encadrant').maybeSingle()
-          ok = ((data?.valeur) || '0000') === ec
+        const nom = (body.encadrantNom ?? '').toString().trim()
+        const ec = (body.encadrantCode ?? '').toString().trim()
+        if (nom && ec) {
+          const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', nom).maybeSingle()
+          const h = (data?.code_hash ?? '').toString().trim()
+          ok = !!h && h === await sha256hex(ec)
         }
       }
       if (!ok) return json({ ok: false, error: 'unauthorized' }, 401)
@@ -142,6 +144,43 @@ Deno.serve(async (req) => {
 
     if (action === 'etudiants-clear') {
       const del = await sb.from('etudiants').delete().neq('id', 0)
+      if (del.error) throw del.error
+      return json({ ok: true })
+    }
+
+    // ── Encadrants (gestion des codes personnels, portail) ──
+    // La liste des noms est DÉDUITE de la table etudiants (encadrant1/2/3) :
+    // aucune double saisie, elle reste alimentée par l'import Excel des projets.
+    if (action === 'encadrants-list') {
+      const { data: et } = await sb.from('etudiants').select('encadrant1, encadrant2, encadrant3')
+      const noms = new Set<string>()
+      for (const r of (et || []) as any[]) {
+        for (const k of ['encadrant1', 'encadrant2', 'encadrant3']) {
+          const v = (r[k] ?? '').toString().trim()
+          if (v) noms.add(v)
+        }
+      }
+      const { data: codes } = await sb.from('encadrant_codes').select('nom, code_hash, updated_at')
+      const byNom: Record<string, any> = {}
+      for (const c of (codes || []) as any[]) byNom[(c.nom || '').toString()] = c
+      // On inclut aussi d'éventuels encadrants qui ont un code mais ne sont plus dans les projets.
+      for (const nom of Object.keys(byNom)) noms.add(nom)
+      const list = [...noms]
+        .sort((a, b) => a.localeCompare(b, 'fr'))
+        .map((nom) => ({
+          nom,
+          hasCode: !!(byNom[nom] && (byNom[nom].code_hash || '').toString().trim()),
+          updatedAt: byNom[nom]?.updated_at || null,
+        }))
+      return json({ ok: true, encadrants: list })
+    }
+
+    // Réinitialise le code d'un encadrant : la fiche reste, le code est effacé
+    // (l'encadrant en redéfinira un à sa prochaine connexion). L'admin ne voit jamais le code.
+    if (action === 'encadrants-reset') {
+      const nom = (body.nom ?? '').toString().trim()
+      if (!nom) return json({ ok: false, error: 'no-name' }, 400)
+      const del = await sb.from('encadrant_codes').delete().eq('nom', nom)
       if (del.error) throw del.error
       return json({ ok: true })
     }

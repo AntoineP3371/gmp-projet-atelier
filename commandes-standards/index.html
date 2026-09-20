@@ -210,14 +210,14 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
   <section id="view-nouvelle" class="view active">
     <div class="card" id="nouvelleGate">
       <h2>Identifiez-vous</h2>
-      <div class="sub">La création d'une demande est réservée aux encadrants.</div>
+      <div class="sub">La création d'une demande est réservée aux encadrants. À votre première connexion, choisissez votre code personnel à 4 chiffres.</div>
       <div class="grid2">
         <label class="f">Encadrant
           <select id="d-encadrant" onchange="onEncadrantChange()"></select></label>
         <label class="f" id="d-encadrant-autre-wrap" style="display:none">Nom de l'encadrant
           <input id="d-encadrant-autre" placeholder="Nom Prénom"></label>
-        <label class="f">Code PIN encadrant
-          <input id="d-pin" type="password" inputmode="numeric" placeholder="4 chiffres" autocomplete="off"></label>
+        <label class="f">Votre code encadrant
+          <input id="d-pin" type="password" inputmode="numeric" maxlength="4" placeholder="4 chiffres" autocomplete="off"></label>
       </div>
       <button class="btn primary" style="margin-top:12px" onclick="encLogin()">Entrer</button>
       <div class="err" id="d-login-err"></div>
@@ -382,7 +382,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.5.2</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.0</div>
 
 <!-- Modales -->
 <div class="overlay" id="ovConfirm"><div class="modal">
@@ -607,7 +607,10 @@ function buildSelects(){
 }
 function buildEncadrantSelect(){
   const keep=$('#d-encadrant').value;
-  $('#d-encadrant').innerHTML = ENCADRANTS.map(e=>opt(e)).join('') + opt('__autre','Autre…');
+  // Plus d'option « Autre… » : seul l'admin crée les encadrants (en les ajoutant à un projet).
+  $('#d-encadrant').innerHTML = ENCADRANTS.length
+    ? "<option value=''>— Choisir un encadrant —</option>"+ENCADRANTS.map(e=>opt(e)).join('')
+    : "<option value=''>— Aucun encadrant : voir l'administrateur —</option>";
   if(keep && [...$('#d-encadrant').options].some(o=>o.value===keep)) $('#d-encadrant').value=keep;
 }
 async function loadOperateurNames(){
@@ -722,10 +725,17 @@ async function encLogin(){
   if(nom==='__autre') nom=$('#d-encadrant-autre').value.trim();
   const pin=$('#d-pin').value.trim();
   if(!nom){ return fail(err,'Choisissez votre nom.'); }
-  if(!pin){ return fail(err,'Saisissez le code PIN encadrant.'); }
-  let ok=false;
-  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',code:pin}}); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
-  if(!ok){ return fail(err,'Code PIN encadrant incorrect.'); }
+  if(!/^\d{4}$/.test(pin)){ return fail(err,'Le code doit comporter 4 chiffres.'); }
+  let ok=false, needsSetup=false, notAuth=false;
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:pin}}); ok=!error && !!(data&&data.ok); needsSetup=!error && !!(data&&data.needsSetup); notAuth=!error && !!(data&&data.notAuthorized); }catch(e){ ok=false; }
+  if(notAuth){ return fail(err,'Encadrant inconnu. Demandez à l’administrateur de vous ajouter à un projet.'); }
+  if(!ok && needsSetup){
+    // Première connexion pour cet encadrant : le code saisi devient SON code personnel.
+    if(!confirm("Première connexion pour « "+nom+" ».\n\nLe code « "+pin+" » deviendra VOTRE code personnel (demandé à chaque fois).\nConfirmer ?")){ return fail(err,'Connexion annulée.'); }
+    try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:pin,setup:true}}); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
+    if(!ok){ return fail(err,'Impossible de définir le code (déjà défini ? réessayez).'); }
+  }
+  if(!ok){ return fail(err,'Code personnel incorrect.'); }
   _encOk=true; _encNom=nom; _encCode=pin;
   $('#nouvelleGate').style.display='none';
   $('#nouvellePanel').style.display='block';
@@ -948,7 +958,7 @@ function rowSuivi(c){
   </tr>`;
 }
 async function cancelLine(id){
-  const pin=prompt('Code PIN encadrant pour annuler cette ligne :'); if(!pin) return;
+  const pin=prompt('Votre code encadrant (celui qui a créé la demande) pour annuler cette ligne :'); if(!pin) return;
   const res=await op('cancel', { id, encCode:pin.trim() });
   if(!res) return;
   await loadCommandes();

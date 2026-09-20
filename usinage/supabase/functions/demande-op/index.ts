@@ -14,6 +14,10 @@ const cors = {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 }
+async function sha256hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
+  return [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, '0')).join('')
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -28,9 +32,14 @@ Deno.serve(async (req) => {
       const s = (data?.code ?? '').toString().trim()
       return s.length > 0 && s === code.toString().trim()
     }
-    const encOk = async (code?: string) => {
-      const { data } = await sb.from('parametres').select('valeur').eq('cle', 'code_encadrant').maybeSingle()
-      return ((data?.valeur) || '0000').toString().trim() === (code ?? '').toString().trim()
+    // Code PERSONNEL de l'encadrant (table encadrant_codes, haché).
+    const encOk = async (nom?: string, code?: string) => {
+      const n = (nom ?? '').toString().trim()
+      const c = (code ?? '').toString().trim()
+      if (!n || !c) return false
+      const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', n).maybeSingle()
+      const h = (data?.code_hash ?? '').toString().trim()
+      return !!h && h === await sha256hex(c)
     }
 
     if (action === 'create') {
@@ -75,7 +84,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'valider') {
-      if (!(await encOk(b.encadrantCode))) return json({ ok: false, error: 'auth' }, 401)
+      if (!(await encOk(b.encadrantNom, b.encadrantCode))) return json({ ok: false, error: 'auth' }, 401)
       const com = (b.commentaire ?? '').toString()
       const patch = {
         statut: b.ok ? 'validee' : 'refusee',
@@ -93,7 +102,7 @@ Deno.serve(async (req) => {
 
     // Mise à jour du commentaire encadrant SEUL (a posteriori, sans toucher au statut).
     if (action === 'enc-commentaire') {
-      if (!(await encOk(b.encadrantCode))) return json({ ok: false, error: 'auth' }, 401)
+      if (!(await encOk(b.encadrantNom, b.encadrantCode))) return json({ ok: false, error: 'auth' }, 401)
       const com = (b.commentaire ?? '').toString()
       const { error } = await sb.from('demandes')
         .update({
