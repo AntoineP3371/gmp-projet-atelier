@@ -13,8 +13,10 @@
 //   block / unblock / blockHalfDay, params-list / params-save, limits-save
 // Actions SUPER ADMIN (adminCode = mot de passe super admin) :
 //   super-setAdminCode  { newCode }        change le mot de passe admin (empreinte en table parametres)
-//   super-clearBookings { clearBookings, clearBlocks }  vide bookings+booking_pins et/ou disabled_slots
-//   super-clearDemandes {}                 vide la table demandes (impression 3D)
+//   super-clearBookings { scope, today, clearBookings, clearBlocks }
+//        scope ∈ 'all'|'past'|'future'|'today' (par date, 'today'=YYYY-MM-DD du client) ; vide bookings+booking_pins et/ou disabled_slots
+//   super-clearDemandes { scope }          vide la table demandes (impression 3D)
+//        scope ∈ 'all'|'archivees'|'validee'|'en_cours'|'attente_info'|'imprimee'|'en_attente'|'refusee'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const cors = {
@@ -85,16 +87,27 @@ Deno.serve(async (req) => {
       const wantBookings = body.clearBookings !== false   // true par défaut (rétro-compatible)
       const wantBlocks = !!body.clearBlocks
       if (!wantBookings && !wantBlocks) return json({ ok: false, error: 'rien à effacer' }, 400)
+      // Filtre par date : 'past' (< today), 'future' (> today), 'today' (= today), sinon tout.
+      // 'today' est la date du client (YYYY-MM-DD) pour éviter tout décalage de fuseau côté serveur.
+      const scope = (body.scope ?? 'all').toString()
+      const today = (body.today ?? '').toString()
+      const dated = today && (scope === 'past' || scope === 'future' || scope === 'today')
+      const applyScope = (q: any) => {
+        if (!dated) return q.not('machine', 'is', null)
+        if (scope === 'past') return q.lt('date', today)
+        if (scope === 'future') return q.gt('date', today)
+        return q.eq('date', today)
+      }
       let bookings = 0, blocked = 0
       if (wantBookings) {
-        const delB = await sb.from('bookings').delete({ count: 'exact' }).not('machine', 'is', null)
+        const delB = await applyScope(sb.from('bookings').delete({ count: 'exact' }))
         if (delB.error) throw delB.error
-        const delP = await sb.from('booking_pins').delete().not('machine', 'is', null)
+        const delP = await applyScope(sb.from('booking_pins').delete())
         if (delP.error) throw delP.error
         bookings = delB.count || 0
       }
       if (wantBlocks) {
-        const delD = await sb.from('disabled_slots').delete({ count: 'exact' }).not('machine', 'is', null)
+        const delD = await applyScope(sb.from('disabled_slots').delete({ count: 'exact' }))
         if (delD.error) throw delD.error
         blocked = delD.count || 0
       }
@@ -103,7 +116,19 @@ Deno.serve(async (req) => {
 
     if (action === 'super-clearDemandes') {
       if (!isSuper) return json({ ok: false, error: 'unauthorized' }, 401)
-      const del = await sb.from('demandes').delete({ count: 'exact' }).not('id', 'is', null)
+      // scope : 'archivees' (archive=true) ; un statut précis (hors archivées) ; sinon tout.
+      const scope = (body.scope ?? 'all').toString()
+      const STATUTS = ['validee', 'en_cours', 'attente_info', 'imprimee', 'en_attente', 'refusee']
+      let q = sb.from('demandes').delete({ count: 'exact' })
+      if (scope === 'archivees') {
+        q = q.eq('archive', true)
+      } else if (STATUTS.includes(scope)) {
+        // Ce statut, hors demandes archivées (qui ont leur propre bouton) → catégories disjointes.
+        q = q.eq('statut', scope).or('archive.is.null,archive.eq.false')
+      } else {
+        q = q.not('id', 'is', null)   // tout (rétro-compatible)
+      }
+      const del = await q
       if (del.error) throw del.error
       return json({ ok: true, demandes: del.count || 0 })
     }

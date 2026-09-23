@@ -120,9 +120,13 @@ ${liste}${reste > 0 ? `\n(+${reste} autre(s))` : ''}
 
 Traiter la demande :
 gmpbordeaux.fr/gmp-projet-atelier/commandes-standards/`.replace(/'/g, '’')
-        const { data: ops } = await sb.from('operateurs').select('phone, apikey, notif_achats')
+        // Destinataires = opérateurs ayant le rôle « Achat » (table com_gestionnaires) et un WhatsApp.
+        const norm = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
+        const { data: gestRows } = await sb.from('com_gestionnaires').select('nom')
+        const achat = new Set((gestRows || []).map((g: any) => norm(g.nom)))
+        const { data: ops } = await sb.from('operateurs').select('name, phone, apikey')
         for (const o of (ops || []) as any[]) {
-          if (o.notif_achats && o.phone && o.apikey) {
+          if (achat.has(norm(o.name)) && o.phone && o.apikey) {
             const u = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(o.phone)}&text=${encodeURIComponent(msg)}&apikey=${encodeURIComponent(o.apikey)}`
             try { await fetch(u) } catch (_) { /* ignore un envoi raté */ }
           }

@@ -102,6 +102,20 @@
   .badge.op-pill.op{border-color:var(--primary)}
   .badge.op-pill.off{border-color:var(--border)}
   .badge.op-pill:hover{filter:brightness(.96)}
+  /* rôle Achat (gestionnaire des commandes) — couleur ambre distincte */
+  .badge.achat{background:#fef3c7;color:#b45309}
+  :root[data-theme="dark"] .badge.achat{background:#3a2c0f;color:#fbbf24}
+  .badge.achat-pill{cursor:pointer;user-select:none;border:1.5px solid transparent}
+  .badge.achat-pill.on{background:#fef3c7;color:#b45309;border-color:#f59e0b}
+  .badge.achat-pill.off{background:#eef2f5;color:var(--muted);border-color:var(--border)}
+  :root[data-theme="dark"] .badge.achat-pill.on{background:#3a2c0f;color:#fbbf24}
+  :root[data-theme="dark"] .badge.achat-pill.off{background:#22333d}
+  .badge.achat-pill:hover{filter:brightness(.96)}
+  /* boutons d'effacement groupés + compteur */
+  .wipe-grid{gap:8px}
+  .wipe-grid .btn{display:inline-flex;align-items:center;gap:7px}
+  .cnt{font-size:.72rem;font-weight:800;background:rgba(0,0,0,.12);border-radius:20px;padding:1px 8px;min-width:20px;text-align:center}
+  .btn.del .cnt{background:rgba(220,38,38,.16)}
   .roles{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
   .pfilters{display:flex;gap:6px;flex-wrap:wrap}
   .pfilter{background:none;border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center}
@@ -188,8 +202,9 @@
           <button class="pfilter active" data-f="tous" onclick="setPFilter('tous')">Tous</button>
           <button class="pfilter" data-f="enc" onclick="setPFilter('enc')"><span class="badge enc">Encadrant</span></button>
           <button class="pfilter" data-f="op" onclick="setPFilter('op')"><span class="badge op">Opérateur</span></button>
+          <button class="pfilter" data-f="achat" onclick="setPFilter('achat')"><span class="badge achat">Achat</span></button>
         </div>
-        <div class="sub">Une ligne par personne. Un <b>encadrant</b> (issu des projets) a un code par défaut <b>000000</b> qu'il change à sa 1ʳᵉ connexion ; vous pouvez le réinitialiser (retour à 000000). Un <b>opérateur</b> a un code à 6 caractères saisi par l'admin, des machines et un contact WhatsApp. Clique la pastille <span class="badge op">Opérateur</span> d'une ligne pour activer/retirer ce rôle. Une personne peut être les deux.</div>
+        <div class="sub">Une ligne par personne. Un <b>encadrant</b> (issu des projets) a un code par défaut <b>000000</b> qu'il change à sa 1ʳᵉ connexion ; vous pouvez le réinitialiser (retour à 000000). Un <b>opérateur</b> a un code à 6 caractères saisi par l'admin, des machines et un contact WhatsApp. Le rôle <span class="badge achat">Achat</span> désigne un gestionnaire des commandes (encadrant ou opérateur) ; un opérateur « Achat » disposant d'un WhatsApp reçoit les notifications de nouvelles demandes. Clique les pastilles <span class="badge op">Opérateur</span> / <span class="badge achat">Achat</span> d'une ligne pour activer/retirer un rôle. Une personne peut cumuler les rôles.</div>
       </div>
       <div class="tablewrap">
         <table class="people">
@@ -199,8 +214,8 @@
       </div>
       <div class="row" style="margin-top:10px">
         <button class="btn" onclick="addPerson()">+ Ajouter une personne</button>
-        <button class="btn ok" onclick="savePeople()">✔ Enregistrer les opérateurs</button>
-        <span class="muted" style="font-size:.8rem">Le rôle « encadrant » vient des projets (ci-dessous) — cochez « Opérateur » pour donner ce rôle.</span>
+        <button class="btn ok" onclick="savePeople()">✔ Enregistrer</button>
+        <span class="muted" style="font-size:.8rem">Le rôle « encadrant » vient des projets (ci-dessous). Activez la pastille « Opérateur » ou « Achat » pour donner ces rôles, puis Enregistrer.</span>
       </div>
       <div class="info" style="margin-top:12px"><strong>📲 Clé API CallMeBot</strong> — depuis le téléphone de l'opérateur : 1) enregistrer le contact <strong>+34 644 86 70 49</strong> · 2) lui envoyer <code>I allow callmebot to send me messages</code> · 3) copier la clé API renvoyée.</div>
     </div>
@@ -223,7 +238,7 @@
       <div id="maintSection"><div class="muted">Chargement…</div></div>
     </div>
 
-    <div class="site-version">v4.6.6</div>
+    <div class="site-version">v4.6.7</div>
   </div>
 </div>
 
@@ -269,65 +284,81 @@ async function loadAll(){
   const nbPers=new Set([...OPS.map(o=>norm(o.name)),...ENCS.map(e=>norm(e.nom))]).size;
   document.getElementById('cPers').textContent=nbPers;
   document.getElementById('cEtu').textContent=ETU.length;
+  await loadGestData();          // GESTS (rôle Achat) requis pour renderPeople
   renderPeople();
   renderEtud();
-  await loadGestData(); renderMaint();
+  await loadMaintCounts(); renderMaint();
 }
 /* ══ MAINTENANCE (super admin) ══ */
-let GESTS=[], OPS_INFO={};
+let GESTS=[];                                   // noms ayant le rôle Achat (table com_gestionnaires)
+let DEM_COUNTS={}, BK_COUNTS={};                // compteurs par catégorie
+function fmtToday(){ const d=new Date(),p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
 async function loadGestData(){
   try{ const g=await sb.from('com_gestionnaires').select('nom'); GESTS=(g.data||[]).map(x=>x.nom).filter(Boolean); }catch(e){ GESTS=[]; }
-  try{ const o=await sb.from('operateurs_public').select('name, has_whatsapp, notif_achats'); OPS_INFO={}; (o.data||[]).forEach(x=>{OPS_INFO[x.name]={has_whatsapp:!!x.has_whatsapp,notif_achats:!!x.notif_achats};}); }catch(e){ OPS_INFO={}; }
+}
+// Compte (côté lecture publique) chaque catégorie effaçable, pour l'afficher sur les boutons.
+async function loadMaintCounts(){
+  const today=fmtToday();
+  const cnt=async(tbl,build)=>{ try{ const {count}=await build(sb.from(tbl).select('*',{count:'exact',head:true})); return count==null?null:count; }catch(e){ return null; } };
+  const notArch=q=>q.or('archive.is.null,archive.eq.false');
+  const [arch,val,cur,att,imp,past,tod,fut]=await Promise.all([
+    cnt('demandes',q=>q.eq('archive',true)),
+    cnt('demandes',q=>notArch(q.eq('statut','validee'))),
+    cnt('demandes',q=>notArch(q.eq('statut','en_cours'))),
+    cnt('demandes',q=>notArch(q.eq('statut','attente_info'))),
+    cnt('demandes',q=>notArch(q.eq('statut','imprimee'))),
+    cnt('bookings',q=>q.lt('date',today)),
+    cnt('bookings',q=>q.eq('date',today)),
+    cnt('bookings',q=>q.gt('date',today)),
+  ]);
+  DEM_COUNTS={validee:val,en_cours:cur,attente_info:att,imprimee:imp,archivees:arch};
+  BK_COUNTS={past,today:tod,future:fut};
 }
 function renderMaint(){
-  const names=OPS.map(o=>o.name);
-  const gest = names.length ? names.map(n=>{
-    const j=esc(n).replace(/'/g,"\\'"); const info=OPS_INFO[n]||{};
-    const wa=info.has_whatsapp
-      ? "<label style='display:inline-flex;gap:5px;align-items:center;font-size:.82rem'><input type='checkbox' "+(info.notif_achats?'checked':'')+" onchange=\"toggleGestNotif('"+j+"',this.checked)\"> 🔔 WhatsApp</label>"
-      : "<span class='muted' style='font-size:.8rem'>🔕 pas de WhatsApp</span>";
-    return "<div class='row' style='justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0'><label style='display:inline-flex;gap:6px;align-items:center;font-weight:600'><input type='checkbox' "+(GESTS.includes(n)?'checked':'')+" onchange=\"toggleGest('"+j+"',this.checked)\"> "+esc(n)+"</label>"+wa+"</div>";
-  }).join('') : "<div class='muted'>Aucun opérateur.</div>";
+  const demBtn=(scope,icon,label)=>{ const n=DEM_COUNTS[scope]; const jl=label.replace(/'/g,"\\'");
+    return "<button class='btn del' "+(n===0?'disabled':'')+" onclick=\"clearDemScope('"+scope+"','"+jl+"')\">"+icon+" "+label+" <span class='cnt'>"+(n==null?'?':n)+"</span></button>"; };
+  const bkBtn=(scope,icon,label)=>{ const n=BK_COUNTS[scope]; const jl=label.replace(/'/g,"\\'");
+    return "<button class='btn del' "+(n===0?'disabled':'')+" onclick=\"clearBkScope('"+scope+"','"+jl+"')\">"+icon+" "+label+" <span class='cnt'>"+(n==null?'?':n)+"</span></button>"; };
   document.getElementById('maintSection').innerHTML=
-    "<div style='font-weight:700;margin-bottom:4px'>🛒 Gestionnaires des commandes</div>"+
-    "<div class='muted' style='font-size:.83rem;margin-bottom:8px'>Opérateurs autorisés à traiter les commandes (+ notification WhatsApp à chaque nouvelle demande). Si aucun coché, tous les opérateurs sont proposés.</div>"+
-    gest+
+    "<div style='font-weight:700;margin-bottom:4px'>🗑 Effacer des demandes d'impression 3D</div>"+
+    "<div class='warn'>⚠️ Ces actions sont <b>définitives</b> et ne se défont pas. Le nombre indiqué est le total concerné.</div>"+
+    "<div class='row wipe-grid'>"+
+      demBtn('validee','☑️','Validées')+demBtn('en_cours','⏳','En cours')+
+      demBtn('attente_info','❔','En attente d’info')+demBtn('imprimee','✅','Terminées')+
+      demBtn('archivees','🗄️','Archivées')+
+    "</div>"+
     "<hr style='border:none;border-top:1px solid var(--border);margin:18px 0'>"+
-    "<div style='font-weight:700;margin-bottom:4px'>🗑 Effacer des données</div>"+
-    "<div class='warn'>⚠️ Ces actions sont <b>définitives</b> et ne se défont pas.</div>"+
-    "<div class='row'><button class='btn del' onclick='clearDemandes()'>Effacer toutes les demandes d'impression 3D</button></div>"+
-    "<div class='row' style='margin-top:10px'><span class='muted' style='font-size:.82rem'>Réservation machines :</span>"+
-      "<label style='display:inline-flex;gap:5px;align-items:center'><input type='checkbox' id='clrBookings' checked> réservations</label>"+
-      "<label style='display:inline-flex;gap:5px;align-items:center'><input type='checkbox' id='clrBlocks'> créneaux bloqués</label>"+
-      "<button class='btn del' onclick='clearBookings()'>Effacer</button></div>"+
+    "<div style='font-weight:700;margin-bottom:4px'>🗑 Effacer des réservations machines</div>"+
+    "<div class='row wipe-grid'>"+
+      bkBtn('past','⏮️','Passées')+bkBtn('today','📅','Du jour')+bkBtn('future','⏭️','À venir')+
+    "</div>"+
+    "<div class='row' style='margin-top:10px'><button class='btn del' onclick='clearBlocks()'>🚫 Effacer tous les créneaux bloqués</button></div>"+
     "<hr style='border:none;border-top:1px solid var(--border);margin:18px 0'>"+
     "<div style='font-weight:700;margin-bottom:6px'>🗑 Vider une table (Commandes)</div>"+
     "<div id='wipeList' class='muted'>…</div>";
   renderWipe();
 }
-async function toggleGest(nom,on){
-  const r=await sb.functions.invoke('commande-op',{body:{action:'gest-toggle',adminPw:PW,nom,on}});
-  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');}
-  await loadGestData(); renderMaint();
-}
-async function toggleGestNotif(nom,on){
-  const r=await sb.functions.invoke('commande-op',{body:{action:'gest-notif',adminPw:PW,nom,on}});
-  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
-  if(OPS_INFO[nom])OPS_INFO[nom].notif_achats=on; toast('✅ Notification mise à jour');
-}
-async function clearDemandes(){
-  if(!confirm('Effacer TOUTES les demandes d\'impression 3D ?\nCette action est définitive.'))return;
-  const r=await sb.functions.invoke('admin-op',{body:{action:'super-clearDemandes',adminCode:PW}});
+async function clearDemScope(scope,label){
+  const n=DEM_COUNTS[scope]; if(n===0)return;
+  if(!confirm('Effacer les demandes « '+label+' » ('+(n==null?'?':n)+') ?\nCette action est définitive.'))return;
+  const r=await sb.functions.invoke('admin-op',{body:{action:'super-clearDemandes',adminCode:PW,scope}});
   if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
   toast('🗑 '+(r.data.demandes||0)+' demande(s) effacée(s)');
+  await loadMaintCounts(); renderMaint();
 }
-async function clearBookings(){
-  const b=document.getElementById('clrBookings').checked, bl=document.getElementById('clrBlocks').checked;
-  if(!b&&!bl){toast('⚠️ Cochez au moins une option');return;}
-  if(!confirm('Effacer les données sélectionnées (Réservation machines) ?\nCette action est définitive.'))return;
-  const r=await sb.functions.invoke('admin-op',{body:{action:'super-clearBookings',adminCode:PW,clearBookings:b,clearBlocks:bl}});
+async function clearBkScope(scope,label){
+  const n=BK_COUNTS[scope]; if(n===0)return;
+  if(!confirm('Effacer les réservations « '+label+' » ('+(n==null?'?':n)+') ?\nCette action est définitive.'))return;
+  const r=await sb.functions.invoke('admin-op',{body:{action:'super-clearBookings',adminCode:PW,scope,today:fmtToday(),clearBookings:true,clearBlocks:false}});
   if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
-  toast('🗑 '+(r.data.bookings||0)+' réservation(s), '+(r.data.blocked||0)+' créneau(x) effacé(s)');
+  toast('🗑 '+(r.data.bookings||0)+' réservation(s) effacée(s)');
+  await loadMaintCounts(); renderMaint();
+}
+async function clearBlocks(){
+  if(!confirm('Effacer TOUS les créneaux bloqués (réservation machines) ?\nCette action est définitive.'))return;
+  const r=await sb.functions.invoke('admin-op',{body:{action:'super-clearBookings',adminCode:PW,clearBookings:false,clearBlocks:true}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
+  toast('🗑 '+(r.data.blocked||0)+' créneau(x) bloqué(s) effacé(s)');
 }
 const WIPE_TABLES=[{t:'commandes',label:'Demandes / lignes de commande'},{t:'com_fournisseurs',label:'Fournisseurs'},{t:'com_budgets',label:'Budgets par parcours'},{t:'com_gestionnaires',label:'Gestionnaires'}];
 async function renderWipe(){
@@ -359,11 +390,14 @@ function renderPeople(){
   const map=new Map();
   OPS.forEach(o=>{ const k=norm(o.name); const e=map.get(k)||{}; e.op=o; map.set(k,e); });
   ENCS.forEach(en=>{ const k=norm(en.nom); const e=map.get(k)||{}; e.enc=en; map.set(k,e); });
+  // Rôle Achat : appartenance à com_gestionnaires, comparée sans accents/casse.
+  const achatSet=new Set(GESTS.map(n=>norm(n)));
   // Nom affiché : celui de l'opérateur s'il existe (préservé à l'enregistrement), sinon celui du projet.
-  let rows=[...map.values()].map(e=>{ e.display=e.op?e.op.name:(e.enc?e.enc.nom:''); return e; })
+  let rows=[...map.values()].map(e=>{ e.display=e.op?e.op.name:(e.enc?e.enc.nom:''); e.achat=achatSet.has(norm(e.display)); return e; })
     .sort((a,b)=>(a.display||'').localeCompare(b.display||'','fr'));
   if(_pfilter==='enc') rows=rows.filter(r=>r.enc);
   else if(_pfilter==='op') rows=rows.filter(r=>r.op);
+  else if(_pfilter==='achat') rows=rows.filter(r=>r.achat);
   document.getElementById('peopleBody').innerHTML=rows.map(p=>personRow(p)).join('')||"<tr><td colspan='6' class='muted' style='text-align:center;padding:16px'>Aucune personne dans ce filtre.</td></tr>";
 }
 function personRow(p,isNew){
@@ -377,8 +411,10 @@ function personRow(p,isNew){
   const nameCell=lockName
     ? "<div class='pname'>"+esc(name)+"</div>"
     : "<div class='pname'><input class='p-name' value=\""+esc(name)+"\" placeholder=\"Nom Prénom\"></div>";
+  const isAchat=!!p.achat;
   const encBadge=isEnc?"<span class='badge enc'>Encadrant</span>":"";
   const opPill="<span class='badge op-pill "+(isOp?'op':'off')+"' onclick='togglePersonOp(this)' title='Cliquer pour activer / retirer le rôle opérateur'>Opérateur</span>";
+  const achatPill="<span class='badge achat-pill "+(isAchat?'on':'off')+"' onclick='togglePersonAchat(this)' title='Cliquer pour activer / retirer le rôle Achat (gestionnaire des commandes)'>Achat</span>";
   const encStatus=isEnc
     ? (enc.hasCode
         ? "<div class='enc-status ok'>✔ Code défini <button class='btn sm' onclick=\"resetEnc('"+esc(enc.nom).replace(/'/g,"\\'")+"')\">↺ Réinitialiser</button></div>"
@@ -386,7 +422,7 @@ function personRow(p,isNew){
     : "";
   return "<tr data-name=\""+esc(name)+"\">"+
     "<td>"+nameCell+"</td>"+
-    "<td><div class='roles'>"+encBadge+opPill+"</div></td>"+
+    "<td><div class='roles'>"+encBadge+opPill+achatPill+"</div></td>"+
     "<td><input class='code-in p-code' value=\""+esc(op?op.code||'':'')+"\" maxlength='6' placeholder='6 car.'"+(isOp?'':' disabled')+">"+encStatus+"</td>"+
     "<td><div class='mach'><label><input type='checkbox' class='p-mo'"+(moC?' checked':'')+(isOp?'':' disabled')+"> 🛠️ Machines-outils</label>"+
       "<label><input type='checkbox' class='p-i3d'"+(i3dC?' checked':'')+(isOp?'':' disabled')+"> 🖨️ Impression 3D</label></div></td>"+
@@ -401,6 +437,10 @@ function togglePersonOp(pill){
   pill.classList.toggle('op',on); pill.classList.toggle('off',!on);
   tr.querySelectorAll('.p-code,.p-mo,.p-i3d,.p-phone,.p-key').forEach(el=>el.disabled=!on);
   tr.querySelectorAll('.wa .btn').forEach(b=>b.disabled=!on);
+}
+function togglePersonAchat(pill){
+  const on=!pill.classList.contains('on');
+  pill.classList.toggle('on',on); pill.classList.toggle('off',!on);
 }
 function addPerson(){
   const tr=document.createElement('tr');
@@ -421,10 +461,11 @@ async function testWa(btn){
   try{await fetch("https://api.callmebot.com/whatsapp.php?phone="+encodeURIComponent(phone)+"&text="+encodeURIComponent(msg)+"&apikey="+encodeURIComponent(key),{mode:'no-cors'});toast('✅ Test envoyé à '+phone);}catch(e){toast("❌ Erreur d'envoi");}
 }
 async function savePeople(){
-  const arr=[];
+  const arr=[], achatNow=[];
   document.querySelectorAll('#peopleBody tr').forEach(tr=>{
-    const pill=tr.querySelector('.op-pill'); if(!pill||!pill.classList.contains('op')) return;
     const name=(tr.querySelector('.p-name')?tr.querySelector('.p-name').value:tr.dataset.name||'').trim();
+    const ap=tr.querySelector('.achat-pill'); if(name && ap && ap.classList.contains('on')) achatNow.push(name);
+    const pill=tr.querySelector('.op-pill'); if(!pill||!pill.classList.contains('op')) return;
     if(!name) return;
     arr.push({name,
       phone:(tr.querySelector('.p-phone').value||'').trim(),
@@ -436,7 +477,14 @@ async function savePeople(){
   toast('💾 Enregistrement…');
   const r=await sb.functions.invoke('admin-operators',{body:{action:'save',adminCode:PW,operators:arr}});
   if(r.error||!r.data||!r.data.ok){toast('❌ Échec'+((r.data&&r.data.error)?' : '+r.data.error:''));return;}
-  toast('✅ Opérateurs enregistrés');
+  // Rôle Achat (com_gestionnaires) : appliquer les ajouts/retraits par rapport à l'état chargé.
+  const after=new Set(achatNow.map(n=>norm(n)));
+  const toAdd=achatNow.filter(n=>![...GESTS].some(g=>norm(g)===norm(n)));
+  const toRemove=GESTS.filter(g=>!after.has(norm(g)));
+  let gestErr=false;
+  for(const nom of toAdd){ const g=await sb.functions.invoke('commande-op',{body:{action:'gest-toggle',adminPw:PW,nom,on:true}}); if(g.error||!g.data||!g.data.ok)gestErr=true; }
+  for(const nom of toRemove){ const g=await sb.functions.invoke('commande-op',{body:{action:'gest-toggle',adminPw:PW,nom,on:false}}); if(g.error||!g.data||!g.data.ok)gestErr=true; }
+  toast(gestErr?'⚠️ Enregistré (rôle Achat partiellement à jour)':'✅ Enregistré');
   await loadAll();
 }
 async function resetEnc(nom){
