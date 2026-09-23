@@ -119,7 +119,10 @@ Deno.serve(async (req) => {
     }
 
     // ── Étudiants (portail) ──
+    // Import PAR ANNÉE : ne remplace que les lignes de l'année choisie (les autres années
+    // sont préservées). Sans année fournie → remplacement total (rétro-compatible).
     if (action === 'etudiants-import') {
+      const annee = (body.annee ?? '').toString().trim()
       const rows = ((body.etudiants || []) as any[])
         // Projet facultatif : beaucoup d'étudiants ont des encadrants sans projet nommé (Intitulé vide).
         .filter((e) => e && (e.nom ?? '').toString().trim() && (e.prenom ?? '').toString().trim())
@@ -130,22 +133,34 @@ Deno.serve(async (req) => {
           encadrant1: (e.encadrant1 ?? '').toString().trim(),
           encadrant2: (e.encadrant2 ?? '').toString().trim(),
           encadrant3: (e.encadrant3 ?? '').toString().trim(),
+          annee: annee || null,
         }))
       const backup = (await sb.from('etudiants').select('*')).data || []
-      const del = await sb.from('etudiants').delete().neq('id', 0)
+      const keep = (r: any) => annee ? (r.annee === annee) : true   // lignes que l'import va remplacer
+      const del = annee
+        ? await sb.from('etudiants').delete().eq('annee', annee)
+        : await sb.from('etudiants').delete().neq('id', 0)
       if (del.error) throw del.error
       if (rows.length) {
         const ins = await sb.from('etudiants').insert(rows)
         if (ins.error) {
-          if (backup.length) await sb.from('etudiants').insert((backup as any[]).map(({ id, ...r }) => r))
+          // Restauration : ne réinsère que le sous-ensemble supprimé (sans l'id).
+          const restore = (backup as any[]).filter(keep).map(({ id, ...r }) => r)
+          if (restore.length) await sb.from('etudiants').insert(restore)
           throw ins.error
         }
       }
       return json({ ok: true })
     }
 
+    // Vide la liste : une année précise, les lignes sans année ('__none__'), ou tout.
     if (action === 'etudiants-clear') {
-      const del = await sb.from('etudiants').delete().neq('id', 0)
+      const annee = (body.annee ?? '').toString().trim()
+      const del = annee === '__none__'
+        ? await sb.from('etudiants').delete().is('annee', null)
+        : (annee
+            ? await sb.from('etudiants').delete().eq('annee', annee)
+            : await sb.from('etudiants').delete().neq('id', 0))
       if (del.error) throw del.error
       return json({ ok: true })
     }
