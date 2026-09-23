@@ -574,7 +574,7 @@
   <span class="legend-item"><span class="legend-dot" style="background:#f1f5f9;border-color:#94a3b8"></span>Bloqué</span>
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.8</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.9</div>
 
 <div class="overlay" id="overlay" onclick="closeOnBg(event)">
   <div class="modal" id="modal"></div>
@@ -1951,25 +1951,12 @@ function book(machine,date,slot){
       "<button class='btn btn-ok' onclick='submitBook(\""+jsesc(machine)+"\",\""+date+"\",\""+slot+"\")'>✔ Confirmer</button>"+
     "</div>"
   );
-  prefillLastBooking();
 }
 
-// Mémorisation locale de la dernière saisie (hors code PIN, personnel)
-function saveLastBooking(p){
-  try{ localStorage.setItem('lastBooking', JSON.stringify({nom:p.nom||'',prenom:p.prenom||'',operateur:p.operateur||'',projet:p.projet||''})); }catch(e){}
-}
-function prefillLastBooking(){
-  var last; try{ last=JSON.parse(localStorage.getItem('lastBooking')||'null'); }catch(e){ last=null; }
-  if(!last) return;
-  var n=document.getElementById('fnom'); if(n&&last.nom) n.value=last.nom;
-  var pr=document.getElementById('fprenom'); if(pr&&last.prenom) pr.value=last.prenom;
-  var pj=document.getElementById('fprojet'); if(pj&&last.projet) pj.value=last.projet;
-  var sel=document.getElementById('foperateur');
-  if(sel&&last.operateur){
-    if(operateurs.includes(last.operateur)){ sel.value=last.operateur; }
-    else { sel.value='__new__'; var c=document.getElementById('foperateur-custom'); if(c){ c.classList.add('show'); c.value=last.operateur; } }
-  }
-}
+// Aucune mémorisation de la saisie : les champs de demande de réservation
+// repartent vides à chaque ouverture. On efface aussi toute mémoire éventuelle
+// enregistrée par une version précédente.
+try{ localStorage.removeItem('lastBooking'); }catch(e){}
 
 function onBookingProjetInput(val){
   var dl=document.getElementById('dl-noms');
@@ -2031,7 +2018,7 @@ async function submitBook(machine,date,slot){
     else { showToast("❌ Erreur : "+(err||'réservation')); }
     return;
   }
-  bookings[key]=Object.assign({machine:machine,date:date,slot:slot}, payload); saveLastBooking(payload);
+  bookings[key]=Object.assign({machine:machine,date:date,slot:slot}, payload);
   addHistoryEntry("Nouvelle réservation", machine+' | '+date+' | '+slot+' — '+payload.nom+' '+payload.prenom+(payload.projet?' ('+payload.projet+')':''), _before.b, _before.d);
   closeModal(); render(); showToast("✅ Réservation confirmée");
 }

@@ -123,34 +123,84 @@ Deno.serve(async (req) => {
     // sont préservées). Sans année fournie → remplacement total (rétro-compatible).
     if (action === 'etudiants-import') {
       const annee = (body.annee ?? '').toString().trim()
-      const rows = ((body.etudiants || []) as any[])
-        // Projet facultatif : beaucoup d'étudiants ont des encadrants sans projet nommé (Intitulé vide).
-        .filter((e) => e && (e.nom ?? '').toString().trim() && (e.prenom ?? '').toString().trim())
-        .map((e) => ({
-          nom: e.nom.toString().trim(), prenom: e.prenom.toString().trim(), projet: e.projet.toString().trim(),
+      const norm = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
+      const idOf = (r: any) => norm(r.nom) + '|' + norm(r.prenom)
+      // Lignes du fichier, dédoublonnées par étudiant (nom+prénom) : la DERNIÈRE occurrence gagne.
+      const seen = new Map<string, any>()
+      for (const e of (body.etudiants || []) as any[]) {
+        if (!e || !(e.nom ?? '').toString().trim() || !(e.prenom ?? '').toString().trim()) continue
+        const row = {
+          nom: e.nom.toString().trim(), prenom: e.prenom.toString().trim(), projet: (e.projet ?? '').toString().trim(),
           formation: (e.formation ?? '').toString().trim(),
           parcours: (e.parcours ?? '').toString().trim(),
           encadrant1: (e.encadrant1 ?? '').toString().trim(),
           encadrant2: (e.encadrant2 ?? '').toString().trim(),
           encadrant3: (e.encadrant3 ?? '').toString().trim(),
           annee: annee || null,
-        }))
+        }
+        seen.set(idOf(row), row)   // remplace toute occurrence précédente du même étudiant
+      }
+      const rows = [...seen.values()]
+      const idset = new Set([...seen.keys()])
       const backup = (await sb.from('etudiants').select('*')).data || []
-      const keep = (r: any) => annee ? (r.annee === annee) : true   // lignes que l'import va remplacer
-      const del = annee
-        ? await sb.from('etudiants').delete().eq('annee', annee)
-        : await sb.from('etudiants').delete().neq('id', 0)
-      if (del.error) throw del.error
+      // NOUVELLE année (aucune ligne existante avec cette valeur) → on AJOUTE seulement, rien n'est
+      // remplacé ni supprimé (même si des étudiants du même nom existent sur d'autres années).
+      const yearIsNew = !!annee && !(backup as any[]).some((r) => r.annee === annee)
+      // Lignes que l'import supprime : pour une année EXISTANTE, toute cette année + les fiches SANS
+      // année du même étudiant (anti-doublon) ; sans année fournie → tout ; nouvelle année → rien.
+      const removed = (r: any) => {
+        if (!annee) return true
+        if (yearIsNew) return false
+        return r.annee === annee || (r.annee == null && idset.has(idOf(r)))
+      }
+      if (annee && !yearIsNew) {
+        const d1 = await sb.from('etudiants').delete().eq('annee', annee)
+        if (d1.error) throw d1.error
+        const strayIds = (backup as any[]).filter((r) => r.annee == null && idset.has(idOf(r))).map((r) => r.id).filter((x) => x != null)
+        if (strayIds.length) { const d2 = await sb.from('etudiants').delete().in('id', strayIds); if (d2.error) throw d2.error }
+      } else if (!annee) {
+        const d0 = await sb.from('etudiants').delete().neq('id', 0)
+        if (d0.error) throw d0.error
+      }
+      // nouvelle année : aucun effacement, on passe directement à l'insertion.
       if (rows.length) {
         const ins = await sb.from('etudiants').insert(rows)
         if (ins.error) {
           // Restauration : ne réinsère que le sous-ensemble supprimé (sans l'id).
-          const restore = (backup as any[]).filter(keep).map(({ id, ...r }) => r)
+          const restore = (backup as any[]).filter(removed).map(({ id, ...r }) => r)
           if (restore.length) await sb.from('etudiants').insert(restore)
           throw ins.error
         }
       }
-      return json({ ok: true })
+      return json({ ok: true, count: rows.length })
+    }
+
+    // Enregistrement de l'ÉDITION du tableau : remplace toute la table par la liste fournie
+    // (les lignes retirées côté client disparaissent, les modifications sont appliquées).
+    if (action === 'etudiants-save') {
+      const rows = ((body.etudiants || []) as any[])
+        .filter((e) => e && (e.nom ?? '').toString().trim() && (e.prenom ?? '').toString().trim())
+        .map((e) => ({
+          nom: e.nom.toString().trim(), prenom: e.prenom.toString().trim(),
+          projet: (e.projet ?? '').toString().trim(),
+          formation: (e.formation ?? '').toString().trim(),
+          parcours: (e.parcours ?? '').toString().trim(),
+          encadrant1: (e.encadrant1 ?? '').toString().trim(),
+          encadrant2: (e.encadrant2 ?? '').toString().trim(),
+          encadrant3: (e.encadrant3 ?? '').toString().trim(),
+          annee: (e.annee ?? '').toString().trim() || null,
+        }))
+      const backup = (await sb.from('etudiants').select('*')).data || []
+      const del = await sb.from('etudiants').delete().neq('id', 0)
+      if (del.error) throw del.error
+      if (rows.length) {
+        const ins = await sb.from('etudiants').insert(rows)
+        if (ins.error) {
+          if (backup.length) await sb.from('etudiants').insert((backup as any[]).map(({ id, ...r }) => r))
+          throw ins.error
+        }
+      }
+      return json({ ok: true, count: rows.length })
     }
 
     // Vide la liste : une année précise, les lignes sans année ('__none__'), ou tout.

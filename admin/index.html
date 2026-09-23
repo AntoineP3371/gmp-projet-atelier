@@ -139,7 +139,17 @@
   .pv-table th{background:#eef6fb;text-align:left;padding:6px 8px;color:var(--muted);position:sticky;top:0}
   :root[data-theme="dark"] .pv-table th{background:#0f2530}
   .pv-table td{padding:5px 8px;border-bottom:1px solid var(--border)}
-  .pv-tablewrap{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:10px}
+  .pv-tablewrap{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:10px}
+  /* tableau étudiants éditable */
+  .etu-edit th,.etu-edit td{white-space:nowrap}
+  .etu-edit .ecell{width:100%;min-width:80px;font-size:.8rem;padding:3px 5px;box-sizing:border-box;border:1px solid transparent;background:transparent;border-radius:5px;font-family:inherit}
+  .etu-edit td .ecell:hover{border-color:var(--border)}
+  .etu-edit td .ecell:focus{border-color:var(--admin);background:var(--surface);outline:none}
+  .etu-edit .filtrow th{padding:3px 4px;position:sticky;top:30px;background:#eef6fb;z-index:1}
+  :root[data-theme="dark"] .etu-edit .filtrow th{background:#0f2530}
+  .etu-edit .filtrow .colf{width:100%;min-width:70px;font-size:.74rem;padding:2px 5px;box-sizing:border-box;font-weight:400}
+  .etu-edit .selcol{width:30px;text-align:center;padding-left:6px;padding-right:6px}
+  .etu-edit .selcol input{width:15px;height:15px;accent-color:var(--admin)}
   .drop{border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;color:var(--muted);background:#fafcfe;margin:8px 0}
   :root[data-theme="dark"] .drop{background:#0f2530}
   .drop:hover,.drop.drag{border-color:var(--admin);background:var(--admin-light);color:var(--admin-dark)}
@@ -238,7 +248,7 @@
       <div id="maintSection"><div class="muted">Chargement…</div></div>
     </div>
 
-    <div class="site-version">v4.6.8</div>
+    <div class="site-version">v4.6.9</div>
   </div>
 </div>
 
@@ -259,7 +269,12 @@ let PW='', ROLE='', OPS=[], ENCS=[], ETU=[], ETU_EXTRA=[];
 // Années universitaires proposées à l'import (valeur stockée / libellé affiché). La plus récente en tête.
 const ANNEES=[{v:'2026-2027',label:'2026/2027'},{v:'2025-2026',label:'2025/2026'}];
 function anneeLabel(v){ const a=ANNEES.find(x=>x.v===v); return a?a.label:(v||'—'); }
-let _efilter='';   // filtre d'affichage des étudiants par année ('' = toutes, '__none__' = non précisée)
+// Années disponibles = années standard + toute année déjà présente dans les données (récentes d'abord).
+function allYears(){
+  const seen=new Map(); ANNEES.forEach(a=>seen.set(a.v,a.label));
+  (ETU||[]).forEach(e=>{ if(e.annee && !seen.has(e.annee)) seen.set(e.annee,e.annee); });
+  return [...seen.entries()].map(([v,label])=>({v,label})).sort((a,b)=>String(b.v).localeCompare(String(a.v)));
+}
 
 async function doLogin(){
   const pw=document.getElementById('gatePw').value.trim();
@@ -500,54 +515,108 @@ async function resetEnc(nom){
 
 /* ══ ÉTUDIANTS / PROJETS ══ */
 let _etudPending=null;
+// Colonnes du tableau éditable étudiants/projets.
+const ECOLS=[
+  {k:'nom',label:'Nom'},{k:'prenom',label:'Prénom'},{k:'projet',label:'Projet'},
+  {k:'annee',label:'Année',type:'annee'},{k:'formation',label:'Formation'},{k:'parcours',label:'Parcours'},
+  {k:'encadrant1',label:'Enc. 1'},{k:'encadrant2',label:'Enc. 2'},{k:'encadrant3',label:'Enc. 3'}
+];
+function etudRowHtml(e){
+  e=e||{};
+  const cell=(k)=>{
+    if(k==='annee'){
+      return "<td><select class='ecell' data-k='annee'><option value=''>—</option>"+
+        allYears().map(a=>"<option value='"+esc(a.v)+"'"+(e.annee===a.v?' selected':'')+">"+esc(a.label)+"</option>").join('')+"</select></td>";
+    }
+    return "<td><input class='ecell' data-k='"+k+"' value=\""+esc(e[k]||'')+"\"></td>";
+  };
+  return "<tr>"+
+    "<td class='selcol'><input type='checkbox' class='esel'></td>"+
+    ECOLS.map(c=>cell(c.k)).join('')+
+    "<td><button class='rowx' title='Supprimer la ligne' onclick=\"this.closest('tr').remove()\">✕</button></td>"+
+  "</tr>";
+}
 function renderEtud(){
-  // Filtre par année ('' = toutes ; '__none__' = lignes sans année).
-  const view = _efilter==='' ? ETU : ETU.filter(e=> _efilter==='__none__' ? !e.annee : e.annee===_efilter);
-  const projets=[...new Set(view.map(e=>e.projet).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  // Chips de filtre : Toutes + chaque année standard présente + « non précisée » s'il y en a.
-  const hasNone = ETU.some(e=>!e.annee);
-  const chip=(f,label,n)=>"<button class='pfilter"+(_efilter===f?' active':'')+"' onclick=\"setEFilter('"+f+"')\">"+label+" <span class='cnt' style='background:rgba(0,0,0,.10)'>"+n+"</span></button>";
-  let chips="<div class='pfilters' style='margin-bottom:8px'>"+chip('','Toutes',ETU.length);
-  ANNEES.forEach(a=>{ const n=ETU.filter(e=>e.annee===a.v).length; if(n||_efilter===a.v) chips+=chip(a.v,a.label,n); });
-  if(hasNone) chips+=chip('__none__','Année non précisée',ETU.filter(e=>!e.annee).length);
-  chips+="</div>";
-  let list;
-  if(!ETU.length){ list="<div class='muted' style='margin-bottom:8px'>Aucun étudiant importé.</div>"; }
-  else{
-    list=chips+"<div class='muted' style='margin-bottom:6px'>"+view.length+" étudiant(s) — "+projets.length+" projet(s)"+(_efilter?" · "+ (_efilter==='__none__'?'année non précisée':anneeLabel(_efilter)) :"")+"</div>"+
-      "<div class='pv-tablewrap'><table class='pv-table'><thead><tr><th>Nom</th><th>Prénom</th><th>Projet</th><th>Année</th><th>Formation</th><th>Parcours</th><th>Enc. 1</th><th>Enc. 2</th><th>Enc. 3</th></tr></thead><tbody>"+
-      (view.length?view.map(e=>"<tr><td>"+esc(e.nom)+"</td><td>"+esc(e.prenom)+"</td><td>"+esc(e.projet)+"</td><td>"+(e.annee?"<span class='badge achat'>"+esc(anneeLabel(e.annee))+"</span>":"<span class='muted'>—</span>")+"</td><td>"+esc(e.formation||'')+"</td><td>"+esc(e.parcours||'')+"</td><td>"+esc(e.encadrant1||'')+"</td><td>"+esc(e.encadrant2||'')+"</td><td>"+esc(e.encadrant3||'')+"</td></tr>").join('')
-        :"<tr><td colspan='9' class='muted' style='text-align:center;padding:12px'>Aucun étudiant pour ce filtre.</td></tr>")+
-      "</tbody></table></div>";
-  }
-  const rename=projets.length?
-    "<div style='font-weight:700;font-size:.85rem;margin:10px 0 4px'>✏️ Renommer un projet</div>"+
-    "<div class='row'><select id='rpAncien' style='flex:1;min-width:150px'>"+projets.map(p=>"<option value=\""+esc(p)+"\">"+esc(p)+"</option>").join('')+"</select><span>→</span>"+
+  const nproj=[...new Set(ETU.map(e=>e.projet).filter(Boolean))].length;
+  const head1="<tr><th class='selcol'><input type='checkbox' id='etuAll' onclick='toggleAllEtud(this.checked)' title='Tout (dé)sélectionner'></th>"+
+    ECOLS.map(c=>"<th>"+c.label+"</th>").join('')+"<th></th></tr>";
+  const head2="<tr class='filtrow'><th class='selcol'></th>"+
+    ECOLS.map(c=>"<th><input class='colf' data-k='"+c.k+"' oninput='applyColFilters()' placeholder='filtrer…'></th>").join('')+"<th></th></tr>";
+  const body=ETU.length?ETU.map(e=>etudRowHtml(e)).join('')
+    :"<tr class='etu-empty'><td colspan='"+(ECOLS.length+2)+"' class='muted' style='text-align:center;padding:12px'>Aucun étudiant. Importez un fichier ou ajoutez une ligne.</td></tr>";
+  const rename=nproj?
+    "<div style='font-weight:700;font-size:.85rem;margin:14px 0 4px'>✏️ Renommer un projet partout</div>"+
+    "<div class='row'><select id='rpAncien' style='flex:1;min-width:150px'>"+[...new Set(ETU.map(e=>e.projet).filter(Boolean))].sort((a,b)=>a.localeCompare(b)).map(p=>"<option value=\""+esc(p)+"\">"+esc(p)+"</option>").join('')+"</select><span>→</span>"+
     "<input id='rpNouveau' style='flex:1;min-width:150px' placeholder='Nouveau nom'><button class='btn ok' onclick='renameProjet()'>Renommer</button></div>"+
-    "<div class='muted' style='font-size:.8rem;margin-top:4px'>Met à jour la liste étudiants ET toutes les demandes d'impression du projet.</div>":"";
+    "<div class='muted' style='font-size:.8rem;margin-top:4px'>Renomme le projet dans la liste ET dans toutes les demandes d'impression liées (à préférer à l'édition directe de la cellule si le projet a déjà des demandes).</div>":"";
   document.getElementById('etudSection').innerHTML=
-    list+
-    (ETU.length?"<div class='row' style='margin:6px 0'><button class='btn sm' onclick='downloadEtud()'>⬇ Télécharger (xlsx)</button></div>":"")+
+    "<div class='muted' style='margin-bottom:6px'>"+ETU.length+" étudiant(s) — "+nproj+" projet(s). Éditez les cellules, cochez pour supprimer, puis <b>Enregistrer les modifications</b>.</div>"+
+    "<div class='row' style='margin-bottom:8px'>"+
+      "<button class='btn sm' onclick='addEtudRow()'>+ Ajouter une ligne</button>"+
+      "<button class='btn sm del' onclick='delSelectedEtud()'>🗑 Supprimer la sélection</button>"+
+      "<button class='btn ok' onclick='saveEtudEdits()'>✔ Enregistrer les modifications</button>"+
+      "<button class='btn sm' onclick='downloadEtud()'>⬇ Télécharger (xlsx)</button>"+
+    "</div>"+
+    "<div class='pv-tablewrap'><table class='pv-table etu-edit'><thead>"+head1+head2+"</thead><tbody id='etuBody'>"+body+"</tbody></table></div>"+
     rename+
-    "<div style='font-weight:700;font-size:.85rem;margin:12px 0 4px'>Importer une liste (.xlsx)</div>"+
+    "<div style='font-weight:700;font-size:.85rem;margin:14px 0 4px'>Importer une liste (.xlsx)</div>"+
     "<div class='muted' style='font-size:.8rem'>Glissez le fichier « Gestion étudiants » : les feuilles <b>BUT 2</b> et <b>BUT 3</b> sont lues automatiquement (Nom, Prénom, Parcours, Intitulé = projet, colonnes Encadrant ; Feuille1 ignorée). <b>L'année est demandée juste avant de confirmer</b> ; l'import ne remplace que les projets de cette année-là (l'autre année est conservée).</div>"+
     "<div class='drop' id='etudDrop' onclick=\"document.getElementById('etudFile').click()\">📂 Cliquez ou glissez un fichier .xlsx ici</div>"+
     "<input type='file' id='etudFile' accept='.xlsx,.xls' style='display:none' onchange='parseEtud(this.files[0])'>"+
     "<div class='row'><button class='btn sm' onclick='templateEtud()'>⬇ Modèle</button>"+
-      (ETU.length?"<button class='btn sm del' onclick='clearEtud()'>🗑 "+(_efilter&&_efilter!=='__none__'?"Vider "+anneeLabel(_efilter):(_efilter==='__none__'?"Vider (année non précisée)":"Vider toute la liste"))+"</button>":"")+"</div>";
+      (ETU.length?"<button class='btn sm del' onclick='clearEtud()'>🗑 Vider toute la liste</button>":"")+"</div>";
   const dz=document.getElementById('etudDrop');
   ['dragover','dragenter'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
   ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag');}));
   dz.addEventListener('drop',e=>{if(e.dataTransfer.files[0])parseEtud(e.dataTransfer.files[0]);});
 }
+// Filtre par colonne : masque les lignes qui ne contiennent pas TOUS les filtres saisis.
+function applyColFilters(){
+  const filters=[...document.querySelectorAll('#etudSection .colf')].map(f=>({k:f.dataset.k,v:(f.value||'').trim().toLowerCase()})).filter(f=>f.v);
+  document.querySelectorAll('#etuBody tr').forEach(tr=>{
+    if(tr.classList.contains('etu-empty')) return;
+    let show=true;
+    for(const f of filters){
+      const el=tr.querySelector('.ecell[data-k="'+f.k+'"]'); let val=el?(el.value||''):'';
+      if(f.k==='annee' && el){ val=el.value?anneeLabel(el.value):''; }
+      if(!String(val).toLowerCase().includes(f.v)){ show=false; break; }
+    }
+    tr.style.display=show?'':'none';
+  });
+}
+function toggleAllEtud(ch){ document.querySelectorAll('#etuBody tr').forEach(tr=>{ if(tr.style.display==='none')return; const c=tr.querySelector('.esel'); if(c)c.checked=ch; }); }
+function addEtudRow(){
+  const tb=document.getElementById('etuBody'); const empty=tb.querySelector('.etu-empty'); if(empty) empty.remove();
+  const tmp=document.createElement('tbody'); tmp.innerHTML=etudRowHtml({}); const tr=tmp.firstElementChild;
+  tb.insertBefore(tr,tb.firstChild); const i=tr.querySelector('.ecell'); if(i)i.focus();
+}
+function delSelectedEtud(){
+  const sel=[...document.querySelectorAll('#etuBody tr')].filter(tr=>{ const c=tr.querySelector('.esel'); return c&&c.checked; });
+  if(!sel.length){ toast('⚠️ Aucune ligne sélectionnée'); return; }
+  if(!confirm('Retirer '+sel.length+' ligne(s) de la liste ?\nEffectif après « Enregistrer les modifications ».'))return;
+  sel.forEach(tr=>tr.remove()); const ea=document.getElementById('etuAll'); if(ea)ea.checked=false;
+}
+async function saveEtudEdits(){
+  const rows=[]; let skipped=0;
+  document.querySelectorAll('#etuBody tr').forEach(tr=>{
+    if(tr.classList.contains('etu-empty'))return;
+    const g=k=>{ const el=tr.querySelector('.ecell[data-k="'+k+'"]'); return el?(el.value||'').trim():''; };
+    const nom=g('nom'), prenom=g('prenom');
+    if(!nom||!prenom){ if(nom||prenom||g('projet')) skipped++; return; }
+    rows.push({nom,prenom,projet:g('projet'),annee:g('annee'),formation:g('formation'),parcours:g('parcours'),encadrant1:g('encadrant1'),encadrant2:g('encadrant2'),encadrant3:g('encadrant3')});
+  });
+  if(skipped && !confirm(skipped+' ligne(s) sans Nom ou Prénom seront ignorées. Continuer ?'))return;
+  toast('💾 Enregistrement…');
+  const r=await sb.functions.invoke('admin-operators',{body:{action:'etudiants-save',adminCode:PW,etudiants:rows}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec'+((r.data&&r.data.error)?' : '+r.data.error:''));return;}
+  toast('✅ '+(r.data.count!=null?r.data.count:rows.length)+' ligne(s) enregistrée(s)'); await loadAll();
+}
 function downloadEtud(){
-  // Exporte ce qui est affiché (selon le filtre d'année).
-  const view = _efilter==='' ? ETU : ETU.filter(e=> _efilter==='__none__' ? !e.annee : e.annee===_efilter);
   const rows=[["Nom","Prenom","Projet","Annee","Formation","Parcours","Encadrant1","Encadrant2","Encadrant3"]];
-  view.forEach(e=>rows.push([e.nom||'',e.prenom||'',e.projet||'',anneeLabel(e.annee)||'',e.formation||'',e.parcours||'',e.encadrant1||'',e.encadrant2||'',e.encadrant3||'']));
+  ETU.forEach(e=>rows.push([e.nom||'',e.prenom||'',e.projet||'',anneeLabel(e.annee)||'',e.formation||'',e.parcours||'',e.encadrant1||'',e.encadrant2||'',e.encadrant3||'']));
   const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet(rows);
   ws['!cols']=[{wch:18},{wch:18},{wch:25},{wch:11},{wch:12},{wch:12},{wch:20},{wch:20},{wch:20}];
-  XLSX.utils.book_append_sheet(wb,ws,"Etudiants");XLSX.writeFile(wb,"liste_etudiants"+(_efilter&&_efilter!=='__none__'?"_"+_efilter:"")+".xlsx");
+  XLSX.utils.book_append_sheet(wb,ws,"Etudiants");XLSX.writeFile(wb,"liste_etudiants.xlsx");
 }
 function templateEtud(){
   const wb=XLSX.utils.book_new();
@@ -610,42 +679,43 @@ function parseEtud(file){
   };
   reader.readAsArrayBuffer(file);
 }
-function setEFilter(f){ _efilter=f; renderEtud(); }
+function onImpAnneeChange(){
+  const sel=document.getElementById('impAnnee'), ni=document.getElementById('impAnneeNew');
+  if(!sel||!ni)return; const on=sel.value==='__new__'; ni.style.display=on?'':'none'; if(on) ni.focus();
+}
 function previewEtud(){
   const d=_etudPending;
-  // Année proposée par défaut = filtre courant si c'est une année, sinon la plus récente.
-  const defA=(_efilter && _efilter!=='__none__') ? _efilter : ANNEES[0].v;
-  const opts=ANNEES.map(a=>"<option value='"+a.v+"'"+(a.v===defA?' selected':'')+">"+a.label+"</option>").join('');
+  // Année proposée par défaut = la plus récente.
+  const defA=ANNEES[0].v;
+  const opts=allYears().map(a=>"<option value='"+esc(a.v)+"'"+(a.v===defA?' selected':'')+">"+esc(a.label)+"</option>").join('')
+    +"<option value='__new__'>➕ Nouvelle année…</option>";
   ovOpen(
     "<h2>🎓 Aperçu de l'import</h2><div class='muted' style='margin:4px 0 8px'>"+d.length+" étudiant(s) détecté(s)</div>"+
     "<div class='row' style='margin:0 0 10px;align-items:center'><label style='font-weight:700'>Année universitaire concernée :</label>"+
-      "<select id='impAnnee' style='min-width:150px'>"+opts+"</select></div>"+
+      "<select id='impAnnee' style='min-width:150px' onchange='onImpAnneeChange()'>"+opts+"</select>"+
+      "<input id='impAnneeNew' style='display:none;min-width:130px' placeholder='ex. 2027-2028'></div>"+
     "<div class='pv-tablewrap'><table class='pv-table'><thead><tr><th>Nom</th><th>Prénom</th><th>Projet</th><th>Formation</th><th>Parcours</th><th>Enc.1</th><th>Enc.2</th><th>Enc.3</th></tr></thead><tbody>"+
     d.slice(0,80).map(e=>"<tr><td>"+esc(e.nom)+"</td><td>"+esc(e.prenom)+"</td><td>"+esc(e.projet)+"</td><td>"+esc(e.formation)+"</td><td>"+esc(e.parcours||'')+"</td><td>"+esc(e.enc1)+"</td><td>"+esc(e.enc2)+"</td><td>"+esc(e.enc3)+"</td></tr>").join('')+
     (d.length>80?"<tr><td colspan='8' style='text-align:center' class='muted'>…et "+(d.length-80)+" autres</td></tr>":"")+
-    "</tbody></table></div><div class='warn'>⚠️ L'import <b>remplace uniquement les projets de l'année choisie</b>. Les autres années sont conservées.</div>"+
+    "</tbody></table></div><div class='warn'>⚠️ <b>Année existante</b> : l'import la remplace entièrement (les étudiants de cette année absents du fichier sont retirés) ; un étudiant réimporté écrase sa fiche (aucun doublon). <b>Nouvelle année</b> : les étudiants sont simplement <b>ajoutés</b>, rien n'est remplacé. Les autres années sont toujours conservées.</div>"+
     "<div class='actions'><button class='btn' onclick='ovClose()'>Annuler</button><button class='btn ok' onclick='confirmEtud()'>✔ Confirmer l'import</button></div>"
   );
 }
 async function confirmEtud(){
-  const annee=(document.getElementById('impAnnee')||{}).value||'';
-  if(!annee){toast('⚠️ Choisissez une année');return;}
+  let annee=(document.getElementById('impAnnee')||{}).value||'';
+  if(annee==='__new__'){ annee=((document.getElementById('impAnneeNew')||{}).value||'').trim().replace(/\s+/g,'').replace(/\//g,'-'); }
+  if(!annee){toast('⚠️ Choisissez ou saisissez une année');return;}
   toast('💾 Import en cours…');
   const rows=_etudPending.map(e=>({nom:e.nom,prenom:e.prenom,projet:e.projet,formation:e.formation||'',parcours:e.parcours||'',encadrant1:e.enc1||'',encadrant2:e.enc2||'',encadrant3:e.enc3||''}));
   const r=await sb.functions.invoke('admin-operators',{body:{action:'etudiants-import',adminCode:PW,annee,etudiants:rows}});
   if(r.error||!r.data||!r.data.ok){toast('❌ Import échoué'+((r.data&&r.data.error)?' : '+r.data.error:''));return;}
-  _efilter=annee; ovClose(); toast('✅ '+rows.length+' étudiant(s) importé(s) — '+anneeLabel(annee)); await loadAll();
+  ovClose(); toast('✅ '+rows.length+' étudiant(s) importé(s) — '+anneeLabel(annee)); await loadAll();
 }
 async function clearEtud(){
-  const annee = _efilter==='__none__' ? '__none__' : (_efilter || '');
-  const quoi = annee==='__none__' ? "les étudiants sans année précisée"
-             : (annee ? "les étudiants de "+anneeLabel(annee) : "TOUTE la liste des étudiants (toutes années)");
-  if(!confirm('Supprimer '+quoi+' ?\nCette action est définitive.'))return;
-  const body={action:'etudiants-clear',adminCode:PW};
-  if(annee) body.annee=annee;   // '' → tout (comme avant)
-  const r=await sb.functions.invoke('admin-operators',{body});
+  if(!confirm('Supprimer TOUTE la liste des étudiants (toutes années) ?\nCette action est définitive.'))return;
+  const r=await sb.functions.invoke('admin-operators',{body:{action:'etudiants-clear',adminCode:PW}});
   if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
-  toast('🗑 Supprimé'); await loadAll();
+  toast('🗑 Liste supprimée'); await loadAll();
 }
 
 /* ══ MOTS DE PASSE (super + admin) ══ */
