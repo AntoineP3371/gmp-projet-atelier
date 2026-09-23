@@ -50,7 +50,8 @@ Deno.serve(async (req) => {
     }
     const adminInfo = async (pw?: string) => {
       const h = await sha256hex((pw ?? '').toString())
-      const superExpected = (Deno.env.get('SUPERADMIN_PW_HASH') || '').trim()
+      const { data: spw } = await sb.from('parametres').select('valeur').eq('cle', 'superadmin_pw_hash').maybeSingle()
+      const superExpected = ((spw?.valeur) || Deno.env.get('SUPERADMIN_PW_HASH') || '').trim()
       const isSuper = !!superExpected && h === superExpected
       const { data: apw } = await sb.from('parametres').select('valeur').eq('cle', 'admin_pw_hash').maybeSingle()
       const expected = ((apw?.valeur) || Deno.env.get('ADMIN_PW_HASH') || '').trim()

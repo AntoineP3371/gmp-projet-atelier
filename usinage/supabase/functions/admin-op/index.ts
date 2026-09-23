@@ -42,8 +42,10 @@ Deno.serve(async (req) => {
     // Empreinte du mot de passe fourni.
     const codeHash = await sha256hex((adminCode ?? '').toString())
 
-    // Super admin : empreinte dans la variable d'env SUPERADMIN_PW_HASH uniquement.
-    const superExpected = (Deno.env.get('SUPERADMIN_PW_HASH') || '').trim()
+    // Super admin : empreinte dans parametres ('superadmin_pw_hash', modifiable par le super),
+    // sinon variable d'env SUPERADMIN_PW_HASH (valeur d'origine, secours).
+    const { data: spw } = await sb.from('parametres').select('valeur').eq('cle', 'superadmin_pw_hash').maybeSingle()
+    const superExpected = ((spw?.valeur) || Deno.env.get('SUPERADMIN_PW_HASH') || '').trim()
     const isSuper = !!superExpected && codeHash === superExpected
 
     // Admin : empreinte dans parametres ('admin_pw_hash'), sinon variable d'env ADMIN_PW_HASH.
@@ -63,6 +65,16 @@ Deno.serve(async (req) => {
       const newCode = (body.newCode ?? '').toString()
       if (newCode.length < 4) return json({ ok: false, error: 'trop court (4 caractères minimum)' }, 400)
       const { error } = await sb.from('parametres').upsert([{ cle: 'admin_pw_hash', valeur: await sha256hex(newCode) }])
+      if (error) throw error
+      return json({ ok: true })
+    }
+
+    // Le super admin change SON PROPRE mot de passe (empreinte en table parametres).
+    if (action === 'super-setSuperCode') {
+      if (!isSuper) return json({ ok: false, error: 'unauthorized' }, 401)
+      const newCode = (body.newCode ?? '').toString()
+      if (newCode.length < 4) return json({ ok: false, error: 'trop court (4 caractères minimum)' }, 400)
+      const { error } = await sb.from('parametres').upsert([{ cle: 'superadmin_pw_hash', valeur: await sha256hex(newCode) }])
       if (error) throw error
       return json({ ok: true })
     }
@@ -190,7 +202,7 @@ Deno.serve(async (req) => {
       const { data, error } = await sb.from('parametres').select('cle, valeur')
       if (error) throw error
       const map: Record<string, string> = {}
-      for (const p of (data || []) as any[]) { if (p.cle !== 'admin_pw_hash') map[p.cle] = p.valeur }
+      for (const p of (data || []) as any[]) { if (p.cle !== 'admin_pw_hash' && p.cle !== 'superadmin_pw_hash') map[p.cle] = p.valeur }
       return json({ ok: true, params: map })
     }
 

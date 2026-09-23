@@ -228,8 +228,6 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
     <div class="admin-tools">
       <button class="btn-manage" onclick="openFournisseurs()">🏢 Fournisseurs</button>
       <button class="btn-manage" onclick="openBudgets()">💶 Budgets par parcours</button>
-      <button class="btn-manage super-only" onclick="openGestionnaires()">👥 Gestionnaires</button>
-      <button class="btn-manage super-only" onclick="openWipe()">🗑 Vider une table</button>
     </div>
   </div>
 
@@ -237,14 +235,14 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
   <section id="view-nouvelle" class="view active">
     <div class="card" id="nouvelleGate">
       <h2>Identifiez-vous</h2>
-      <div class="sub">La création d'une demande est réservée aux encadrants. À votre première connexion, choisissez votre code personnel à 4 chiffres.</div>
+      <div class="sub">La création d'une demande est réservée aux encadrants. À votre 1ʳᵉ connexion, vous définirez votre code personnel à 6 caractères.</div>
       <div class="grid2">
         <label class="f">Encadrant
           <select id="d-encadrant" onchange="onEncadrantChange()"></select></label>
         <label class="f" id="d-encadrant-autre-wrap" style="display:none">Nom de l'encadrant
           <input id="d-encadrant-autre" placeholder="Nom Prénom"></label>
         <label class="f">Votre code encadrant
-          <input id="d-pin" type="password" inputmode="numeric" maxlength="4" placeholder="4 chiffres" autocomplete="off"></label>
+          <input id="d-pin" type="password" maxlength="6" placeholder="6 caractères" autocomplete="off" onkeydown="if(event.key==='Enter')encLogin()"></label>
       </div>
       <button class="btn primary" style="margin-top:12px" onclick="encLogin()">Entrer</button>
       <div class="err" id="d-login-err"></div>
@@ -313,7 +311,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
       <div class="sub">Réservé au magasinier / responsable achats.</div>
       <div class="grid2">
         <label class="f">Votre nom<select id="g-nom"></select></label>
-        <label class="f">Code opérateur<input id="g-code" type="password" inputmode="numeric" placeholder="4 chiffres"></label>
+        <label class="f">Code opérateur<input id="g-code" type="password" maxlength="6" placeholder="6 caractères"></label>
       </div>
       <button class="btn primary" style="margin-top:12px" onclick="gestLogin()">Entrer</button>
       <div class="err" id="g-err"></div>
@@ -385,26 +383,9 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
   <div class="actions"><button class="btn" onclick="closeOverlay('ovBudgets')">Fermer</button></div>
 </div></div>
 
-<div class="overlay" id="ovGestionnaires"><div class="modal">
-  <h2>👥 Gestionnaires <span class="mini">— super admin</span></h2>
-  <div class="sub">Cochez, parmi les opérateurs de l'atelier, ceux qui peuvent gérer les commandes. Ils sont les seuls proposés à l'entrée de l'« Espace gestionnaire » (ils s'y connectent avec leur code opérateur habituel). Si aucun n'est coché, tous les opérateurs sont proposés.<br><b>🔔 WhatsApp</b> : l'opérateur reçoit un message à chaque nouvelle demande d'achat (nécessite un numéro WhatsApp renseigné côté « opérateurs » du portail).</div>
-  <div id="gestionnairesList"></div>
-  <div class="actions"><button class="btn" onclick="closeOverlay('ovGestionnaires')">Fermer</button></div>
-</div></div>
+<!-- (Gestionnaires + Vidage retirés : centralisés dans « Administration globale → Maintenance » du portail) -->
 
-<div class="overlay" id="ovWipe"><div class="modal">
-  <h2>🗑 Vider une table <span class="mini">— super admin</span></h2>
-  <div class="pv-warn" style="background:var(--danger-light);border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:12px 14px;font-size:.86rem;margin-bottom:14px">
-    ⚠️ Le vidage d'une table est <b>définitif</b> et ne touche que ce module « Commandes d'éléments standards ».
-    Les tables des applis Usinage / Impression 3D ne sont pas concernées. Après un vidage de
-    <code>com_fournisseurs</code>, relancer <code>schema.sql</code> pour recharger la liste par défaut.
-  </div>
-  <div id="superTables"></div>
-  <button class="btn danger" style="margin-top:14px" onclick="wipeAllTables()">Tout vider (les 4 tables)…</button>
-  <div class="actions"><button class="btn" onclick="closeOverlay('ovWipe')">Fermer</button></div>
-</div></div>
-
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.5</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.6</div>
 
 <!-- Modales -->
 <div class="overlay" id="ovConfirm"><div class="modal">
@@ -743,18 +724,23 @@ async function encLogin(){
   if(nom==='__autre') nom=$('#d-encadrant-autre').value.trim();
   const pin=$('#d-pin').value.trim();
   if(!nom){ return fail(err,'Choisissez votre nom.'); }
-  if(!/^\d{4}$/.test(pin)){ return fail(err,'Le code doit comporter 4 chiffres.'); }
-  let ok=false, needsSetup=false, notAuth=false;
-  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:pin}}); ok=!error && !!(data&&data.ok); needsSetup=!error && !!(data&&data.needsSetup); notAuth=!error && !!(data&&data.notAuthorized); }catch(e){ ok=false; }
+  if(pin.length!==6){ return fail(err,'Le code doit comporter 6 caractères.'); }
+  let ecode=pin;
+  let ok=false, mustChange=false, notAuth=false;
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:pin}}); ok=!error && !!(data&&data.ok); mustChange=!error && !!(data&&data.mustChange); notAuth=!error && !!(data&&data.notAuthorized); }catch(e){ ok=false; }
   if(notAuth){ return fail(err,'Encadrant inconnu. Demandez à l’administrateur de vous ajouter à un projet.'); }
-  if(!ok && needsSetup){
-    // Première connexion pour cet encadrant : le code saisi devient SON code personnel.
-    if(!confirm("Première connexion pour « "+nom+" ».\n\nLe code « "+pin+" » deviendra VOTRE code personnel (demandé à chaque fois).\nConfirmer ?")){ return fail(err,'Connexion annulée.'); }
-    try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:pin,setup:true}}); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
+  if(!ok && mustChange){
+    // Connexion avec le code par défaut 000000 → choisir SON code (6 chiffres, différent de 000000).
+    var nc=prompt("Choisissez votre code personnel (6 caractères) :");
+    if(nc===null){ return fail(err,'Connexion annulée.'); }
+    nc=nc.trim();
+    if(nc.length!==6 || nc==='000000'){ return fail(err,'Code invalide : 6 caractères.'); }
+    try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:nc,setup:true}}); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
     if(!ok){ return fail(err,'Impossible de définir le code (déjà défini ? réessayez).'); }
+    ecode=nc;
   }
   if(!ok){ return fail(err,'Code personnel incorrect.'); }
-  _encOk=true; _encNom=nom; _encCode=pin;
+  _encOk=true; _encNom=nom; _encCode=ecode;
   $('#nouvelleGate').style.display='none';
   $('#nouvellePanel').style.display='block';
   const mine = projetsForEncadrant(nom);
@@ -1180,11 +1166,10 @@ async function adminLogin(){
   _adminOk=true; _adminRole=role; _adminPw=code; $('#al-pw').value='';
   closeOverlay('ovAdminLogin'); applyAdminUI();
   renderFournList(); renderBudgetList();
-  if(role==='super'){ renderGestionnairesList(); renderSuperTables(); }
 }
 function adminLogout(){
   _adminOk=false; _adminRole=''; _adminPw='';
-  ['ovFournisseurs','ovBudgets','ovGestionnaires','ovWipe','ovAdminLogin'].forEach(closeOverlay);
+  ['ovFournisseurs','ovBudgets','ovAdminLogin'].forEach(closeOverlay);
   applyAdminUI(); toast('↩ Admin déconnecté');
 }
 // Affiche/masque la bannière + les outils réservés au super admin.
@@ -1193,7 +1178,7 @@ function applyAdminUI(){
   $('#adminBanner').classList.toggle('visible', _adminOk);
   $('#btnAdmin').classList.toggle('active', _adminOk);
   $('#adminRoleTag').textContent = !_adminOk ? '' : (isSuper
-    ? '🛡️ Super admin — accès complet (gestionnaires, vidage des tables)'
+    ? '🛡️ Super admin'
     : '⚙️ Mode administrateur actif');
   document.querySelectorAll('.super-only').forEach(el=>el.style.display = (_adminOk && isSuper) ? '' : 'none');
 }
@@ -1297,7 +1282,7 @@ async function wipeAllTables(){
 /* ---------- realtime ---------- */
 sb.channel('commandes-rt')
   .on('postgres_changes',{event:'*',schema:'public',table:'commandes'},()=>{ loadCommandes(); })
-  .on('postgres_changes',{event:'*',schema:'public',table:'com_gestionnaires'},()=>{ loadGestionnaires().then(()=>{ if(_adminOk && _adminRole==='super') renderGestionnairesList(); }); })
+  .on('postgres_changes',{event:'*',schema:'public',table:'com_gestionnaires'},()=>{ loadGestionnaires(); })
   .subscribe();
 
 $('#ovConfirmOk'); // reserved

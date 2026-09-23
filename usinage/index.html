@@ -533,7 +533,6 @@
     <button class="btn-manage" onclick="openIcalExport()">📅 iCal</button>
     <button class="btn-manage" onclick="showStats()">📊 Statistiques</button>
     <button class="btn-manage" onclick="openMachineStatusManager()">🔧 État machines</button>
-    <button class="btn-manage" id="superAdminBtn" style="display:none;background:#b91c1c" onclick="openSuperAdmin()">🛡 Super admin</button>
   </div>
 </div>
 
@@ -575,7 +574,7 @@
   <span class="legend-item"><span class="legend-dot" style="background:#f1f5f9;border-color:#94a3b8"></span>Bloqué</span>
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.5</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.6</div>
 
 <div class="overlay" id="overlay" onclick="closeOnBg(event)">
   <div class="modal" id="modal"></div>
@@ -1278,7 +1277,6 @@ function applyAdminUI(){
   document.getElementById("grid").classList.toggle("is-admin",isAdmin);
   document.getElementById("exportBtn").style.display = isAdmin ? "" : "none";
   document.getElementById("printBtn").style.display = isAdmin ? "" : "none";
-  document.getElementById("superAdminBtn").style.display = (isAdmin && isSuper) ? "" : "none";
   updateUndoRedoUI();
 }
 
@@ -1713,8 +1711,8 @@ function opRowHtml(i, name, phone, apikey, code){
     "</div>"+
     "<div style='display:flex;gap:8px;align-items:center'>"+
       "<label style='font-size:.8rem;color:var(--muted);white-space:nowrap'>Code validation :</label>"+
-      "<input type='password' class='opcode' id='opcode-"+i+"' value='"+esc(code||'')+"' maxlength='4' pattern='[0-9]{4}' placeholder='4 chiffres' style='width:90px;border:1.5px solid "+(code?'var(--border)':'var(--danger)')+";border-radius:6px;padding:5px 9px;font-size:.85rem;color:var(--text);background:#fff;outline:none;font-family:monospace;letter-spacing:3px'>"+
-      "<span style='font-size:.78rem;color:"+(code?'var(--muted)':'var(--danger)')+"'>"+(code?'Code secret à 4 chiffres pour valider les réservations':'⚠️ Sans code, cet opérateur ne peut pas valider de réservation')+"</span>"+
+      "<input type='password' class='opcode' id='opcode-"+i+"' value='"+esc(code||'')+"' maxlength='6' placeholder='6 caractères' style='width:110px;border:1.5px solid "+(code?'var(--border)':'var(--danger)')+";border-radius:6px;padding:5px 9px;font-size:.85rem;color:var(--text);background:#fff;outline:none;font-family:monospace;letter-spacing:2px'>"+
+      "<span style='font-size:.78rem;color:"+(code?'var(--muted)':'var(--danger)')+"'>"+(code?'Code secret à 6 caractères pour valider les réservations':'⚠️ Sans code, cet opérateur ne peut pas valider de réservation')+"</span>"+
     "</div>"+
   "</div>";
 }
@@ -1944,7 +1942,7 @@ function book(machine,date,slot){
       "<div style='font-size:.82rem;color:var(--muted);text-align:center;margin-bottom:8px'>Montrez l'écran à l'opérateur — il saisit son code pour valider</div>"+
       "<div class='form-group'>"+
         "<label>Code PIN de validation de l'opérateur <span class='req'>*</span></label>"+
-        "<input type='password' id='fopcode' placeholder='Code individuel opérateur' maxlength='4' pattern='[0-9]{4}' autocomplete='off'>"+
+        "<input type='password' id='fopcode' placeholder='Code individuel opérateur' maxlength='6' autocomplete='off'>"+
         "<span class='field-err' id='eopcode'>Code opérateur incorrect.</span>"+
       "</div>"+
     "</div>"+
@@ -2088,7 +2086,7 @@ function openEditBookingModal(key){
       "<div style='font-size:.82rem;color:var(--muted);text-align:center;margin-bottom:8px'>Montrez l'écran à l'opérateur — il saisit son code pour valider</div>"+
       "<div class='form-group'>"+
         "<label>Code PIN de validation de l'opérateur <span class='req'>*</span></label>"+
-        "<input type='password' id='edit-opcode' placeholder='Code individuel opérateur' maxlength='4' pattern='[0-9]{4}' autocomplete='off'>"+
+        "<input type='password' id='edit-opcode' placeholder='Code individuel opérateur' maxlength='6' autocomplete='off'>"+
         "<span class='field-err' id='edit-opcode-err'>Code opérateur incorrect.</span>"+
       "</div>"+
     "</div>"+
@@ -2199,7 +2197,7 @@ function promptPinMove(srcKey,destKey){
       "<div style='font-size:.82rem;color:var(--muted);text-align:center;margin-bottom:8px'>Montrez l'écran à l'opérateur — il saisit son code pour valider</div>"+
       "<div class='form-group'>"+
         "<label>Code PIN de validation de l'opérateur <span class='req'>*</span></label>"+
-        "<input type='password' id='moveOpcode' placeholder='Code individuel opérateur' maxlength='4' pattern='[0-9]{4}' autocomplete='off'>"+
+        "<input type='password' id='moveOpcode' placeholder='Code individuel opérateur' maxlength='6' autocomplete='off'>"+
         "<span class='field-err' id='moveOpcodeErr'>Code opérateur incorrect.</span>"+
       "</div>"+
     "</div>"+

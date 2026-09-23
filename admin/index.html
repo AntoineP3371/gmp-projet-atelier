@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>(function(){try{var t=localStorage.getItem('theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Administration — Atelier GMP</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../atelier-favicon.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#f3f9fc; --surface:#fff; --border:#d6e6ef;
+    --primary:#0083ba; --primary-light:#e2f4fc; --primary-dark:#00688f;
+    --text:#13303d; --muted:#5b7686;
+    --admin:#7c3aed; --admin-light:#f1ecfe; --admin-dark:#5b21b6;
+    --com:#0e8f6e; --green:#16a34a;
+    --danger:#ef4444; --danger-light:#fee2e2;
+    --radius:14px; --shadow:0 6px 26px rgba(0,40,60,.12);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1a21; --surface:#16262f; --border:#294551;
+    --primary:#3ba7d0; --primary-light:#12313f; --primary-dark:#8fd2ea;
+    --text:#e6eef2; --muted:#93aab7;
+    --admin:#a791f0; --admin-light:#241d3a; --admin-dark:#cbbaf8;
+    --com:#3aa88a; --green:#4fb166;
+    --danger:#e4675e; --danger-light:#331715;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:
+    linear-gradient(rgba(0,131,186,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,131,186,.05) 1px,transparent 1px),
+    var(--bg);
+    background-size:34px 34px,34px 34px,auto;
+    color:var(--text);min-height:100vh;padding:64px 16px 48px;font-size:15px;line-height:1.5}
+  :root[data-theme="dark"] body{background:
+    linear-gradient(rgba(59,167,208,.06) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(59,167,208,.06) 1px,transparent 1px),
+    var(--bg);background-size:34px 34px,34px 34px,auto}
+  a{color:var(--primary-dark)}
+  .home-btn{position:fixed;top:12px;left:12px;z-index:60;display:inline-flex;align-items:center;gap:6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 13px;
+    font-size:.85rem;font-weight:600;color:var(--text);text-decoration:none;box-shadow:var(--shadow)}
+  .home-btn:hover{border-color:var(--primary);background:var(--primary-light)}
+  .theme-toggle{position:fixed;top:12px;right:12px;z-index:70;width:38px;height:38px;border-radius:9px;
+    border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:1.05rem;cursor:pointer;
+    box-shadow:var(--shadow);display:inline-flex;align-items:center;justify-content:center}
+  .theme-toggle:hover{border-color:var(--primary)}
+  .wrap{max-width:1180px;margin:0 auto}
+  .logo-bar{display:flex;justify-content:center;align-items:center;padding:4px 0 18px}
+  .logo-bar img{max-height:70px;width:auto;object-fit:contain;mix-blend-mode:multiply}
+  :root[data-theme="dark"] .logo-bar img{mix-blend-mode:screen;filter:invert(1) hue-rotate(180deg)}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+  header .icon svg{width:44px;height:44px;color:var(--admin);display:block}
+  header h1{font-size:1.5rem;font-weight:800;letter-spacing:-.01em}
+  header p{font-size:.85rem;color:var(--muted)}
+  h2{font-size:1.15rem;font-weight:800}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px;margin-bottom:20px}
+  .sec-head{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+  .sec-head .sub{font-size:.83rem;color:var(--muted);flex:1 1 100%}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit}
+  .btn:hover{background:var(--primary-light)}
+  .btn.ok{background:var(--admin);color:#fff;border:none}
+  .btn.ok:hover{background:var(--admin-dark)}
+  .btn.del{background:var(--danger-light);color:var(--danger);border:1px solid #fca5a5}
+  .btn.del:hover{background:var(--danger);color:#fff}
+  .btn.sm{padding:5px 10px;font-size:.8rem}
+  input,select{font-family:inherit;font-size:.9rem;color:var(--text);background:var(--surface);border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;outline:none}
+  input:focus,select:focus{border-color:var(--admin)}
+  /* ── gate ── */
+  #gate{max-width:400px;margin:6vh auto 0;text-align:center}
+  #gate .card{padding:26px 24px}
+  #gate input{width:100%;text-align:left;margin-top:4px}
+  .gate-err{color:var(--danger);font-size:.85rem;margin-top:8px;display:none}
+  .gate-err.show{display:block}
+  /* ── Onglets ── */
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid var(--border);margin-bottom:18px}
+  .tab{background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;padding:11px 18px;font-size:.92rem;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;border-radius:9px 9px 0 0;display:inline-flex;align-items:center;gap:7px}
+  .tab:hover{color:var(--text);background:var(--admin-light)}
+  .tab.active{color:var(--admin);border-bottom-color:var(--admin)}
+  .tab-count{font-size:.72rem;font-weight:700;background:var(--admin-light);color:var(--admin-dark);border-radius:20px;padding:1px 8px}
+  .tab.active .tab-count{background:var(--admin);color:#fff}
+  .tabpanel{display:none}
+  .tabpanel.active{display:block}
+  /* ── table personnes ── */
+  .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+  table.people{width:100%;border-collapse:collapse;font-size:.85rem;min-width:820px}
+  table.people th{background:#eef6fb;color:var(--muted);text-align:left;padding:8px 10px;position:sticky;top:0;font-weight:700}
+  :root[data-theme="dark"] table.people th{background:#0f2530}
+  table.people td{padding:8px 10px;border-top:1px solid var(--border);vertical-align:top}
+  table.people tr:hover td{background:rgba(0,131,186,.03)}
+  .pname{font-weight:600;min-width:150px}
+  .pname input{width:100%;font-weight:600}
+  .badge{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;display:inline-block;margin:1px 2px 1px 0}
+  .badge.enc{background:var(--admin-light);color:var(--admin-dark)}
+  .badge.op{background:var(--primary-light);color:var(--primary-dark)}
+  .badge.off{background:#eef2f5;color:var(--muted)}
+  :root[data-theme="dark"] .badge.off{background:#22333d}
+  .badge.op-pill{cursor:pointer;user-select:none;border:1.5px solid transparent}
+  .badge.op-pill.op{border-color:var(--primary)}
+  .badge.op-pill.off{border-color:var(--border)}
+  .badge.op-pill:hover{filter:brightness(.96)}
+  .roles{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+  .pfilters{display:flex;gap:6px;flex-wrap:wrap}
+  .pfilter{background:none;border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.8rem;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center}
+  .pfilter .badge{margin:0}
+  .pfilter:hover{border-color:var(--admin)}
+  .pfilter.active{border-color:var(--admin);background:var(--admin-light)}
+  .code-in{width:78px;font-family:monospace;letter-spacing:2px;text-align:center}
+  .mach{display:flex;flex-direction:column;gap:3px;font-size:.8rem;white-space:nowrap}
+  .mach label{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+  .mach input{width:15px;height:15px;padding:0;accent-color:var(--primary)}
+  .wa{display:flex;flex-direction:column;gap:4px;min-width:170px}
+  .wa input{width:100%}
+  .enc-status{font-size:.76rem;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:6px;margin-top:4px}
+  .enc-status.ok{color:var(--green)} .enc-status.no{color:var(--muted)}
+  .op-toggle{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:600;cursor:pointer}
+  .op-toggle input{width:16px;height:16px;accent-color:var(--primary)}
+  .rowx{width:28px;height:28px;border-radius:6px;border:none;background:var(--danger-light);color:var(--danger);cursor:pointer;font-weight:700}
+  .rowx:hover{background:var(--danger);color:#fff}
+  .muted{color:var(--muted)} .dim td{opacity:.55}
+  .pv-table{width:100%;border-collapse:collapse;font-size:.82rem}
+  .pv-table th{background:#eef6fb;text-align:left;padding:6px 8px;color:var(--muted);position:sticky;top:0}
+  :root[data-theme="dark"] .pv-table th{background:#0f2530}
+  .pv-table td{padding:5px 8px;border-bottom:1px solid var(--border)}
+  .pv-tablewrap{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:10px}
+  .drop{border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;color:var(--muted);background:#fafcfe;margin:8px 0}
+  :root[data-theme="dark"] .drop{background:#0f2530}
+  .drop:hover,.drop.drag{border-color:var(--admin);background:var(--admin-light);color:var(--admin-dark)}
+  .warn{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:9px 12px;font-size:.8rem;margin:10px 0}
+  .info{background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:12px 14px;margin:10px 0;font-size:.82rem;color:#166534;line-height:1.6}
+  :root[data-theme="dark"] .info{background:#12301f;border-color:#1f5133;color:#7fe0a6}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:11px 20px;border-radius:8px;font-size:.88rem;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1}
+  /* overlay (import preview) */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:200;align-items:center;justify-content:center;padding:16px}
+  .overlay.open{display:flex}
+  .modal{background:var(--surface);border-radius:14px;padding:24px;width:100%;max-width:720px;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+  .hidden{display:none!important}
+  .site-version{margin:18px 0 0;font-size:.7rem;color:var(--muted);opacity:.55;text-align:center}
+</style>
+</head>
+<body>
+<a class="home-btn" href="../" title="Retour au portail Atelier GMP">🏠 Accueil</a>
+<button class="theme-toggle" onclick="toggleTheme()" title="Thème clair / sombre">🌙</button>
+
+<div class="wrap">
+  <div class="logo-bar"><img src="../BM_GMP_HD_1000.png" alt="GMP — IUT de Bordeaux" onerror="this.style.display='none'"></div>
+  <header>
+    <div class="icon"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="20" r="9"/><path d="M14 50c0-10 8-16 18-16s18 6 18 16"/><circle cx="50" cy="16" r="6"/></svg></div>
+    <div>
+      <h1>Administration globale</h1>
+      <p>Personnes (encadrants &amp; opérateurs), étudiants &amp; projets, mot de passe admin</p>
+    </div>
+  </header>
+
+  <!-- ══ GATE ══ -->
+  <div id="gate">
+    <div class="card">
+      <h2>🔐 Administration</h2>
+      <p class="muted" style="font-size:.85rem;margin:6px 0 10px">Réservé au super administrateur</p>
+      <input type="password" id="gatePw" placeholder="mot de passe" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="gate-err" id="gateErr">Mot de passe incorrect.</div>
+      <div class="actions" style="justify-content:center;margin-top:14px">
+        <button class="btn ok" onclick="doLogin()">Entrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ DASHBOARD ══ -->
+  <div id="dash" class="hidden">
+    <div class="tabs">
+      <button class="tab active" data-tab="personnes" onclick="showTab('personnes')">👥 Personnes <span class="tab-count" id="cPers"></span></button>
+      <button class="tab" data-tab="etudiants" onclick="showTab('etudiants')">🎓 Étudiants &amp; projets <span class="tab-count" id="cEtu"></span></button>
+      <button class="tab" data-tab="motdepasse" onclick="showTab('motdepasse')">🔑 Mots de passe</button>
+      <button class="tab" data-tab="maint" onclick="showTab('maint')">🛡 Maintenance</button>
+    </div>
+
+    <!-- Personnes -->
+    <div class="card tabpanel active" id="tab-personnes">
+      <div class="sec-head">
+        <h2>👥 Personnes</h2>
+        <div class="pfilters">
+          <button class="pfilter active" data-f="tous" onclick="setPFilter('tous')">Tous</button>
+          <button class="pfilter" data-f="enc" onclick="setPFilter('enc')"><span class="badge enc">Encadrant</span></button>
+          <button class="pfilter" data-f="op" onclick="setPFilter('op')"><span class="badge op">Opérateur</span></button>
+        </div>
+        <div class="sub">Une ligne par personne. Un <b>encadrant</b> (issu des projets) a un code par défaut <b>000000</b> qu'il change à sa 1ʳᵉ connexion ; vous pouvez le réinitialiser (retour à 000000). Un <b>opérateur</b> a un code à 6 caractères saisi par l'admin, des machines et un contact WhatsApp. Clique la pastille <span class="badge op">Opérateur</span> d'une ligne pour activer/retirer ce rôle. Une personne peut être les deux.</div>
+      </div>
+      <div class="tablewrap">
+        <table class="people">
+          <thead><tr><th>Nom</th><th>Rôles</th><th>Code</th><th>Machines (opérateur)</th><th>WhatsApp (CallMeBot)</th><th></th></tr></thead>
+          <tbody id="peopleBody"></tbody>
+        </table>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" onclick="addPerson()">+ Ajouter une personne</button>
+        <button class="btn ok" onclick="savePeople()">✔ Enregistrer les opérateurs</button>
+        <span class="muted" style="font-size:.8rem">Le rôle « encadrant » vient des projets (ci-dessous) — cochez « Opérateur » pour donner ce rôle.</span>
+      </div>
+      <div class="info" style="margin-top:12px"><strong>📲 Clé API CallMeBot</strong> — depuis le téléphone de l'opérateur : 1) enregistrer le contact <strong>+34 644 86 70 49</strong> · 2) lui envoyer <code>I allow callmebot to send me messages</code> · 3) copier la clé API renvoyée.</div>
+    </div>
+
+    <!-- Étudiants / Projets -->
+    <div class="card tabpanel" id="tab-etudiants">
+      <div class="sec-head"><h2>🎓 Étudiants &amp; projets</h2><div class="sub">Liste commune à toutes les applis. La liste des encadrants en découle (colonnes Encadrant1/2/3).</div></div>
+      <div id="etudSection"><div class="muted">Chargement…</div></div>
+    </div>
+
+    <!-- Mot de passe admin -->
+    <div class="card tabpanel" id="tab-motdepasse">
+      <div class="sec-head"><h2>🔑 Mots de passe</h2><div class="sub">Votre mot de passe super admin (cette page) et le mot de passe administrateur (espaces admin des applis).</div></div>
+      <div id="pwSection"></div>
+    </div>
+
+    <!-- Maintenance (super admin) -->
+    <div class="card tabpanel" id="tab-maint">
+      <div class="sec-head"><h2>🛡 Maintenance</h2><div class="sub">Actions sensibles, réservées au super admin (gestionnaires, effacements). À manier avec précaution.</div></div>
+      <div id="maintSection"><div class="muted">Chargement…</div></div>
+    </div>
+
+    <div class="site-version">v4.6.6</div>
+  </div>
+</div>
+
+<div class="overlay" id="ov"><div class="modal" id="ovBody"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://ggmlfbxppgeivfvlxxrj.supabase.co';
+const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnbWxmYnhwcGdlaXZmdmx4eHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNDY5NTIsImV4cCI6MjA5NzkyMjk1Mn0.HvPE2ewB8gFgVzj-xAb1YBxFfn8hTEwOwQLDfF1vgT0';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
+function esc(s){return(s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),3000);}
+function toggleTheme(){const r=document.documentElement;const n=r.getAttribute('data-theme')==='dark'?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('theme',n);}catch(e){}}
+function ovOpen(h){document.getElementById('ovBody').innerHTML=h;document.getElementById('ov').classList.add('open');}
+function ovClose(){document.getElementById('ov').classList.remove('open');}
+
+let PW='', ROLE='', OPS=[], ENCS=[], ETU=[], ETU_EXTRA=[];
+
+async function doLogin(){
+  const pw=document.getElementById('gatePw').value.trim();
+  if(!pw){document.getElementById('gateErr').classList.add('show');return;}
+  let ok=false;
+  try{const r=await sb.functions.invoke('admin-op',{body:{action:'login',adminCode:pw}});ok=!r.error&&!!(r.data&&r.data.ok);if(ok)ROLE=r.data.role||'admin';}catch(e){ok=false;}
+  if(!ok){document.getElementById('gateErr').textContent='Mot de passe incorrect.';document.getElementById('gateErr').classList.add('show');return;}
+  if(ROLE!=='super'){document.getElementById('gateErr').textContent='Accès réservé au super administrateur.';document.getElementById('gateErr').classList.add('show');return;}
+  PW=pw;
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('dash').classList.remove('hidden');
+  loadAll();
+  renderPw();
+}
+window.addEventListener('pageshow',e=>{if(e.persisted){location.reload();}});
+
+async function loadAll(){
+  const [opR,encR,etuR]=await Promise.all([
+    sb.functions.invoke('admin-operators',{body:{action:'list',adminCode:PW}}),
+    sb.functions.invoke('admin-operators',{body:{action:'encadrants-list',adminCode:PW}}),
+    sb.from('etudiants').select('*').order('projet').order('nom')
+  ]);
+  OPS=(opR.data&&opR.data.operators)||[];
+  ENCS=(encR.data&&encR.data.encadrants)||[];
+  ETU=(!etuR.error&&etuR.data)||[];
+  const nbPers=new Set([...OPS.map(o=>norm(o.name)),...ENCS.map(e=>norm(e.nom))]).size;
+  document.getElementById('cPers').textContent=nbPers;
+  document.getElementById('cEtu').textContent=ETU.length;
+  renderPeople();
+  renderEtud();
+  await loadGestData(); renderMaint();
+}
+/* ══ MAINTENANCE (super admin) ══ */
+let GESTS=[], OPS_INFO={};
+async function loadGestData(){
+  try{ const g=await sb.from('com_gestionnaires').select('nom'); GESTS=(g.data||[]).map(x=>x.nom).filter(Boolean); }catch(e){ GESTS=[]; }
+  try{ const o=await sb.from('operateurs_public').select('name, has_whatsapp, notif_achats'); OPS_INFO={}; (o.data||[]).forEach(x=>{OPS_INFO[x.name]={has_whatsapp:!!x.has_whatsapp,notif_achats:!!x.notif_achats};}); }catch(e){ OPS_INFO={}; }
+}
+function renderMaint(){
+  const names=OPS.map(o=>o.name);
+  const gest = names.length ? names.map(n=>{
+    const j=esc(n).replace(/'/g,"\\'"); const info=OPS_INFO[n]||{};
+    const wa=info.has_whatsapp
+      ? "<label style='display:inline-flex;gap:5px;align-items:center;font-size:.82rem'><input type='checkbox' "+(info.notif_achats?'checked':'')+" onchange=\"toggleGestNotif('"+j+"',this.checked)\"> 🔔 WhatsApp</label>"
+      : "<span class='muted' style='font-size:.8rem'>🔕 pas de WhatsApp</span>";
+    return "<div class='row' style='justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0'><label style='display:inline-flex;gap:6px;align-items:center;font-weight:600'><input type='checkbox' "+(GESTS.includes(n)?'checked':'')+" onchange=\"toggleGest('"+j+"',this.checked)\"> "+esc(n)+"</label>"+wa+"</div>";
+  }).join('') : "<div class='muted'>Aucun opérateur.</div>";
+  document.getElementById('maintSection').innerHTML=
+    "<div style='font-weight:700;margin-bottom:4px'>🛒 Gestionnaires des commandes</div>"+
+    "<div class='muted' style='font-size:.83rem;margin-bottom:8px'>Opérateurs autorisés à traiter les commandes (+ notification WhatsApp à chaque nouvelle demande). Si aucun coché, tous les opérateurs sont proposés.</div>"+
+    gest+
+    "<hr style='border:none;border-top:1px solid var(--border);margin:18px 0'>"+
+    "<div style='font-weight:700;margin-bottom:4px'>🗑 Effacer des données</div>"+
+    "<div class='warn'>⚠️ Ces actions sont <b>définitives</b> et ne se défont pas.</div>"+
+    "<div class='row'><button class='btn del' onclick='clearDemandes()'>Effacer toutes les demandes d'impression 3D</button></div>"+
+    "<div class='row' style='margin-top:10px'><span class='muted' style='font-size:.82rem'>Réservation machines :</span>"+
+      "<label style='display:inline-flex;gap:5px;align-items:center'><input type='checkbox' id='clrBookings' checked> réservations</label>"+
+      "<label style='display:inline-flex;gap:5px;align-items:center'><input type='checkbox' id='clrBlocks'> créneaux bloqués</label>"+
+      "<button class='btn del' onclick='clearBookings()'>Effacer</button></div>"+
+    "<hr style='border:none;border-top:1px solid var(--border);margin:18px 0'>"+
+    "<div style='font-weight:700;margin-bottom:6px'>🗑 Vider une table (Commandes)</div>"+
+    "<div id='wipeList' class='muted'>…</div>";
+  renderWipe();
+}
+async function toggleGest(nom,on){
+  const r=await sb.functions.invoke('commande-op',{body:{action:'gest-toggle',adminPw:PW,nom,on}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');}
+  await loadGestData(); renderMaint();
+}
+async function toggleGestNotif(nom,on){
+  const r=await sb.functions.invoke('commande-op',{body:{action:'gest-notif',adminPw:PW,nom,on}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
+  if(OPS_INFO[nom])OPS_INFO[nom].notif_achats=on; toast('✅ Notification mise à jour');
+}
+async function clearDemandes(){
+  if(!confirm('Effacer TOUTES les demandes d\'impression 3D ?\nCette action est définitive.'))return;
+  const r=await sb.functions.invoke('admin-op',{body:{action:'super-clearDemandes',adminCode:PW}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
+  toast('🗑 '+(r.data.demandes||0)+' demande(s) effacée(s)');
+}
+async function clearBookings(){
+  const b=document.getElementById('clrBookings').checked, bl=document.getElementById('clrBlocks').checked;
+  if(!b&&!bl){toast('⚠️ Cochez au moins une option');return;}
+  if(!confirm('Effacer les données sélectionnées (Réservation machines) ?\nCette action est définitive.'))return;
+  const r=await sb.functions.invoke('admin-op',{body:{action:'super-clearBookings',adminCode:PW,clearBookings:b,clearBlocks:bl}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
+  toast('🗑 '+(r.data.bookings||0)+' réservation(s), '+(r.data.blocked||0)+' créneau(x) effacé(s)');
+}
+const WIPE_TABLES=[{t:'commandes',label:'Demandes / lignes de commande'},{t:'com_fournisseurs',label:'Fournisseurs'},{t:'com_budgets',label:'Budgets par parcours'},{t:'com_gestionnaires',label:'Gestionnaires'}];
+async function renderWipe(){
+  const rows=await Promise.all(WIPE_TABLES.map(async d=>{
+    let n='?'; try{ const {count}=await sb.from(d.t).select('*',{count:'exact',head:true}); n=(count!=null)?count:'?'; }catch(e){ n='—'; }
+    const jl=esc(d.label).replace(/'/g,"\\'");
+    return "<div class='row' style='justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0'><span>"+esc(d.label)+" <span class='muted' style='font-size:.8rem'>("+d.t+") — "+n+" ligne(s)</span></span><button class='btn sm del' onclick=\"wipeTable('"+d.t+"','"+jl+"')\">Vider</button></div>";
+  }));
+  const el=document.getElementById('wipeList'); if(el) el.innerHTML=rows.join('');
+}
+async function wipeTable(t,label){
+  if(prompt('Taper VIDER pour supprimer TOUT le contenu de « '+label+' » ('+t+') :')!=='VIDER')return;
+  const r=await sb.functions.invoke('commande-op',{body:{action:'wipe',adminPw:PW,table:t}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
+  toast('🗑 Table « '+label+' » vidée'); renderWipe();
+}
+function showTab(n){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===n));
+  document.querySelectorAll('.tabpanel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+n));
+}
+
+/* ══ PERSONNES (unifié) ══ */
+// Normalise un nom pour la comparaison : sans accents, sans casse, sans espaces superflus.
+function norm(s){return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ');}
+let _pfilter='tous';
+function setPFilter(f){ _pfilter=f; document.querySelectorAll('.pfilter').forEach(b=>b.classList.toggle('active',b.dataset.f===f)); renderPeople(); }
+function renderPeople(){
+  // Fusion opérateurs + encadrants par nom NORMALISÉ (accents/casse ignorés) → une ligne par personne.
+  const map=new Map();
+  OPS.forEach(o=>{ const k=norm(o.name); const e=map.get(k)||{}; e.op=o; map.set(k,e); });
+  ENCS.forEach(en=>{ const k=norm(en.nom); const e=map.get(k)||{}; e.enc=en; map.set(k,e); });
+  // Nom affiché : celui de l'opérateur s'il existe (préservé à l'enregistrement), sinon celui du projet.
+  let rows=[...map.values()].map(e=>{ e.display=e.op?e.op.name:(e.enc?e.enc.nom:''); return e; })
+    .sort((a,b)=>(a.display||'').localeCompare(b.display||'','fr'));
+  if(_pfilter==='enc') rows=rows.filter(r=>r.enc);
+  else if(_pfilter==='op') rows=rows.filter(r=>r.op);
+  document.getElementById('peopleBody').innerHTML=rows.map(p=>personRow(p)).join('')||"<tr><td colspan='6' class='muted' style='text-align:center;padding:16px'>Aucune personne dans ce filtre.</td></tr>";
+}
+function personRow(p,isNew){
+  p=p||{};
+  const op=p.op, enc=p.enc, isOp=!!op, isEnc=!!enc;
+  const name=p.display||(op?op.name:(enc?enc.nom:''));
+  const moC=op?((op.machines_outils===undefined||op.machines_outils===null)?true:!!op.machines_outils):true;
+  const i3dC=op?((op.impression_3d===undefined||op.impression_3d===null)?true:!!op.impression_3d):true;
+  // Nom verrouillé pour un encadrant « pur » (issu des projets, non opérateur) ; éditable sinon.
+  const lockName=isEnc && !isOp && !isNew;
+  const nameCell=lockName
+    ? "<div class='pname'>"+esc(name)+"</div>"
+    : "<div class='pname'><input class='p-name' value=\""+esc(name)+"\" placeholder=\"Nom Prénom\"></div>";
+  const encBadge=isEnc?"<span class='badge enc'>Encadrant</span>":"";
+  const opPill="<span class='badge op-pill "+(isOp?'op':'off')+"' onclick='togglePersonOp(this)' title='Cliquer pour activer / retirer le rôle opérateur'>Opérateur</span>";
+  const encStatus=isEnc
+    ? (enc.hasCode
+        ? "<div class='enc-status ok'>✔ Code défini <button class='btn sm' onclick=\"resetEnc('"+esc(enc.nom).replace(/'/g,"\\'")+"')\">↺ Réinitialiser</button></div>"
+        : "<div class='enc-status no'>🔓 Code par défaut (000000)</div>")
+    : "";
+  return "<tr data-name=\""+esc(name)+"\">"+
+    "<td>"+nameCell+"</td>"+
+    "<td><div class='roles'>"+encBadge+opPill+"</div></td>"+
+    "<td><input class='code-in p-code' value=\""+esc(op?op.code||'':'')+"\" maxlength='6' placeholder='6 car.'"+(isOp?'':' disabled')+">"+encStatus+"</td>"+
+    "<td><div class='mach'><label><input type='checkbox' class='p-mo'"+(moC?' checked':'')+(isOp?'':' disabled')+"> 🛠️ Machines-outils</label>"+
+      "<label><input type='checkbox' class='p-i3d'"+(i3dC?' checked':'')+(isOp?'':' disabled')+"> 🖨️ Impression 3D</label></div></td>"+
+    "<td><div class='wa'><input class='p-phone' value=\""+esc(op?op.phone||'':'')+"\" placeholder='📱 +336…'"+(isOp?'':' disabled')+">"+
+      "<div class='row' style='gap:6px'><input class='p-key' value=\""+esc(op?op.apikey||'':'')+"\" placeholder='Clé API' style='flex:1'"+(isOp?'':' disabled')+"><button class='btn sm' onclick='testWa(this)'"+(isOp?'':' disabled')+">▶</button></div></div></td>"+
+    "<td>"+(isEnc?"":"<button class='rowx' title='Retirer cette ligne' onclick=\"this.closest('tr').remove()\">✕</button>")+"</td>"+
+  "</tr>";
+}
+function togglePersonOp(pill){
+  const tr=pill.closest('tr');
+  const on=!pill.classList.contains('op');
+  pill.classList.toggle('op',on); pill.classList.toggle('off',!on);
+  tr.querySelectorAll('.p-code,.p-mo,.p-i3d,.p-phone,.p-key').forEach(el=>el.disabled=!on);
+  tr.querySelectorAll('.wa .btn').forEach(b=>b.disabled=!on);
+}
+function addPerson(){
+  const tr=document.createElement('tr');
+  tr.innerHTML=personRow({},true).replace(/^<tr[^>]*>/,'').replace(/<\/tr>$/,'');
+  // nouvelle personne = opérateur activé par défaut
+  document.getElementById('peopleBody').appendChild(tr);
+  const pill=tr.querySelector('.op-pill'); if(pill && !pill.classList.contains('op')) togglePersonOp(pill);
+  const inp=tr.querySelector('.p-name'); if(inp) inp.focus();
+}
+async function testWa(btn){
+  const tr=btn.closest('tr');
+  const phone=(tr.querySelector('.p-phone').value||'').trim();
+  const key=(tr.querySelector('.p-key').value||'').trim();
+  const name=(tr.querySelector('.p-name')?tr.querySelector('.p-name').value:tr.dataset.name)||"l'opérateur";
+  if(!phone||!key){toast('⚠️ Numéro et clé API requis');return;}
+  toast('📤 Envoi du test…');
+  const msg="✅ Test OK — notifications WhatsApp configurées pour "+name+".";
+  try{await fetch("https://api.callmebot.com/whatsapp.php?phone="+encodeURIComponent(phone)+"&text="+encodeURIComponent(msg)+"&apikey="+encodeURIComponent(key),{mode:'no-cors'});toast('✅ Test envoyé à '+phone);}catch(e){toast("❌ Erreur d'envoi");}
+}
+async function savePeople(){
+  const arr=[];
+  document.querySelectorAll('#peopleBody tr').forEach(tr=>{
+    const pill=tr.querySelector('.op-pill'); if(!pill||!pill.classList.contains('op')) return;
+    const name=(tr.querySelector('.p-name')?tr.querySelector('.p-name').value:tr.dataset.name||'').trim();
+    if(!name) return;
+    arr.push({name,
+      phone:(tr.querySelector('.p-phone').value||'').trim(),
+      apikey:(tr.querySelector('.p-key').value||'').trim(),
+      code:(tr.querySelector('.p-code').value||'').trim(),
+      machines_outils:tr.querySelector('.p-mo').checked,
+      impression_3d:tr.querySelector('.p-i3d').checked});
+  });
+  toast('💾 Enregistrement…');
+  const r=await sb.functions.invoke('admin-operators',{body:{action:'save',adminCode:PW,operators:arr}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec'+((r.data&&r.data.error)?' : '+r.data.error:''));return;}
+  toast('✅ Opérateurs enregistrés');
+  await loadAll();
+}
+async function resetEnc(nom){
+  if(!confirm("Réinitialiser le code de « "+nom+" » ?\n\nSon code sera effacé : il devra en choisir un nouveau à sa prochaine connexion."))return;
+  const r=await sb.functions.invoke('admin-operators',{body:{action:'encadrants-reset',adminCode:PW,nom}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
+  toast('↺ Code réinitialisé pour '+nom); await loadAll();
+}
+
+/* ══ ÉTUDIANTS / PROJETS ══ */
+let _etudPending=null;
+function renderEtud(){
+  const projets=[...new Set(ETU.map(e=>e.projet).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  let list;
+  if(!ETU.length){ list="<div class='muted' style='margin-bottom:8px'>Aucun étudiant importé.</div>"; }
+  else{
+    list="<div class='muted' style='margin-bottom:6px'>"+ETU.length+" étudiant(s) — "+projets.length+" projet(s)</div>"+
+      "<div class='pv-tablewrap'><table class='pv-table'><thead><tr><th>Nom</th><th>Prénom</th><th>Projet</th><th>Formation</th><th>Parcours</th><th>Enc. 1</th><th>Enc. 2</th><th>Enc. 3</th></tr></thead><tbody>"+
+      ETU.map(e=>"<tr><td>"+esc(e.nom)+"</td><td>"+esc(e.prenom)+"</td><td>"+esc(e.projet)+"</td><td>"+esc(e.formation||'')+"</td><td>"+esc(e.parcours||'')+"</td><td>"+esc(e.encadrant1||'')+"</td><td>"+esc(e.encadrant2||'')+"</td><td>"+esc(e.encadrant3||'')+"</td></tr>").join('')+
+      "</tbody></table></div>";
+  }
+  const rename=projets.length?
+    "<div style='font-weight:700;font-size:.85rem;margin:10px 0 4px'>✏️ Renommer un projet</div>"+
+    "<div class='row'><select id='rpAncien' style='flex:1;min-width:150px'>"+projets.map(p=>"<option value=\""+esc(p)+"\">"+esc(p)+"</option>").join('')+"</select><span>→</span>"+
+    "<input id='rpNouveau' style='flex:1;min-width:150px' placeholder='Nouveau nom'><button class='btn ok' onclick='renameProjet()'>Renommer</button></div>"+
+    "<div class='muted' style='font-size:.8rem;margin-top:4px'>Met à jour la liste étudiants ET toutes les demandes d'impression du projet.</div>":"";
+  document.getElementById('etudSection').innerHTML=
+    list+
+    (ETU.length?"<div class='row' style='margin:6px 0'><button class='btn sm' onclick='downloadEtud()'>⬇ Télécharger (xlsx)</button></div>":"")+
+    rename+
+    "<div style='font-weight:700;font-size:.85rem;margin:12px 0 4px'>Importer une liste (.xlsx)</div>"+
+    "<div class='muted' style='font-size:.8rem'>Glissez directement le fichier « Gestion étudiants » : les feuilles <b>BUT 2</b> et <b>BUT 3</b> sont lues automatiquement (Nom, Prénom, Parcours, Intitulé = projet, colonnes Encadrant). Feuille1 ignorée.</div>"+
+    "<div class='drop' id='etudDrop' onclick=\"document.getElementById('etudFile').click()\">📂 Cliquez ou glissez un fichier .xlsx ici</div>"+
+    "<input type='file' id='etudFile' accept='.xlsx,.xls' style='display:none' onchange='parseEtud(this.files[0])'>"+
+    "<div class='row'><button class='btn sm' onclick='templateEtud()'>⬇ Modèle</button>"+(ETU.length?"<button class='btn sm del' onclick='clearEtud()'>🗑 Vider la liste</button>":"")+"</div>";
+  const dz=document.getElementById('etudDrop');
+  ['dragover','dragenter'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag');}));
+  dz.addEventListener('drop',e=>{if(e.dataTransfer.files[0])parseEtud(e.dataTransfer.files[0]);});
+}
+function downloadEtud(){
+  const rows=[["Nom","Prenom","Projet","Formation","Parcours","Encadrant1","Encadrant2","Encadrant3"]];
+  ETU.forEach(e=>rows.push([e.nom||'',e.prenom||'',e.projet||'',e.formation||'',e.parcours||'',e.encadrant1||'',e.encadrant2||'',e.encadrant3||'']));
+  const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:18},{wch:18},{wch:25},{wch:12},{wch:12},{wch:20},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws,"Etudiants");XLSX.writeFile(wb,"liste_etudiants.xlsx");
+}
+function templateEtud(){
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([["Nom","Prenom","Projet","Formation","Parcours","Encadrant1","Encadrant2","Encadrant3"],["MARTIN","Alice","Projet A","2A","II","Dubois Jean","Leroi Marie",""],["DUPONT","Bob","Projet A","2I","IEC","Dubois Jean","",""]]);
+  ws['!cols']=[{wch:18},{wch:18},{wch:25},{wch:12},{wch:12},{wch:20},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws,"Etudiants");XLSX.writeFile(wb,"modele_etudiants.xlsx");
+}
+async function renameProjet(){
+  const ancien=document.getElementById('rpAncien').value, nouveau=document.getElementById('rpNouveau').value.trim();
+  if(!ancien||!nouveau){toast('⚠️ Choisissez un projet et un nouveau nom');return;}
+  if(ancien===nouveau){toast('Nom identique');return;}
+  if(!confirm('Renommer « '+ancien+' » en « '+nouveau+' » ?\nMet à jour la liste étudiants et toutes les demandes.'))return;
+  toast('✏️ Renommage…');
+  const r=await sb.functions.invoke('admin-operators',{body:{action:'etudiants-rename',adminCode:PW,from:ancien,to:nouveau}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec'+((r.data&&r.data.error)?' : '+r.data.error:''));return;}
+  toast('✅ Projet renommé'); await loadAll();
+}
+// Normalise un en-tête : minuscules, sans accents, sans espaces autour.
+function normH(s){return String(s==null?'':s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function cell(row,i){ return (i>=0 && row[i]!=null) ? String(row[i]).trim() : ''; }
+function parseEtud(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    let wb;
+    try{ wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'}); }catch(err){ toast('❌ Fichier illisible'); return; }
+    const parsed=[];
+    wb.SheetNames.forEach(sheetName=>{
+      if(normH(sheetName)==='feuille1') return; // feuille d'aide → ignorée
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});
+      if(!rows.length) return;
+      // En-tête = 1re ligne (parmi les 12 premières) contenant une cellule « Nom ».
+      let hIdx=-1;
+      for(let i=0;i<Math.min(rows.length,12);i++){ if((rows[i]||[]).some(c=>normH(c)==='nom')){ hIdx=i; break; } }
+      if(hIdx<0) return; // pas une feuille d'étudiants
+      const H=(rows[hIdx]||[]).map(normH);
+      const above=(hIdx>0?(rows[hIdx-1]||[]):[]).map(normH);
+      const find=(...keys)=>{ for(let i=0;i<H.length;i++){ for(const k of keys){ if(H[i]===k || H[i].indexOf(k)===0) return i; } } return -1; };
+      const iN=find('nom'), iP=find('prenom'), iPar=find('parcours'), iF=find('formation'), iPr=find('projet','intitul');
+      // Colonnes encadrants : libellés « Encadrant N » (en-tête OU ligne au-dessus), max 3.
+      const encCols=[];
+      const maxlen=Math.max(H.length,above.length);
+      for(let i=0;i<maxlen;i++){ if((H[i]||'').indexOf('encadrant')===0 || (above[i]||'').indexOf('encadrant')===0) encCols.push(i); }
+      const enc3=encCols.slice(0,3);
+      if(iN<0) return;
+      for(let r=hIdx+1;r<rows.length;r++){
+        const row=rows[r]||[];
+        const nom=cell(row,iN), prenom=cell(row,iP);
+        if(!nom || !prenom) continue;
+        const parcours=cell(row,iPar), initApp=cell(row,iF), projet=cell(row,iPr);
+        const formation=[String(sheetName).trim(),parcours,initApp].filter(Boolean).join(' ');
+        parsed.push({nom,prenom,projet,formation,parcours,
+          enc1:cell(row,enc3[0]!=null?enc3[0]:-1),
+          enc2:cell(row,enc3[1]!=null?enc3[1]:-1),
+          enc3:cell(row,enc3[2]!=null?enc3[2]:-1)});
+      }
+    });
+    if(!parsed.length){toast('❌ Aucun étudiant trouvé (feuilles attendues : BUT 2 / BUT 3, en-tête avec « Nom »).');return;}
+    _etudPending=parsed; previewEtud();
+  };
+  reader.readAsArrayBuffer(file);
+}
+function previewEtud(){
+  const d=_etudPending;
+  ovOpen(
+    "<h2>🎓 Aperçu de l'import</h2><div class='muted' style='margin:4px 0 8px'>"+d.length+" étudiant(s) détecté(s)</div>"+
+    "<div class='pv-tablewrap'><table class='pv-table'><thead><tr><th>Nom</th><th>Prénom</th><th>Projet</th><th>Formation</th><th>Parcours</th><th>Enc.1</th><th>Enc.2</th><th>Enc.3</th></tr></thead><tbody>"+
+    d.slice(0,80).map(e=>"<tr><td>"+esc(e.nom)+"</td><td>"+esc(e.prenom)+"</td><td>"+esc(e.projet)+"</td><td>"+esc(e.formation)+"</td><td>"+esc(e.parcours||'')+"</td><td>"+esc(e.enc1)+"</td><td>"+esc(e.enc2)+"</td><td>"+esc(e.enc3)+"</td></tr>").join('')+
+    (d.length>80?"<tr><td colspan='8' style='text-align:center' class='muted'>…et "+(d.length-80)+" autres</td></tr>":"")+
+    "</tbody></table></div><div class='warn'>⚠️ L'import remplacera la liste existante.</div>"+
+    "<div class='actions'><button class='btn' onclick='ovClose()'>Annuler</button><button class='btn ok' onclick='confirmEtud()'>✔ Confirmer l'import</button></div>"
+  );
+}
+async function confirmEtud(){
+  toast('💾 Import en cours…');
+  const rows=_etudPending.map(e=>({nom:e.nom,prenom:e.prenom,projet:e.projet,formation:e.formation||'',parcours:e.parcours||'',encadrant1:e.enc1||'',encadrant2:e.enc2||'',encadrant3:e.enc3||''}));
+  const r=await sb.functions.invoke('admin-operators',{body:{action:'etudiants-import',adminCode:PW,etudiants:rows}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Import échoué'+((r.data&&r.data.error)?' : '+r.data.error:''));return;}
+  ovClose(); toast('✅ '+rows.length+' étudiant(s) importé(s)'); await loadAll();
+}
+async function clearEtud(){
+  if(!confirm('Supprimer toute la liste des étudiants ?'))return;
+  const r=await sb.functions.invoke('admin-operators',{body:{action:'etudiants-clear',adminCode:PW}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
+  toast('🗑 Liste supprimée'); await loadAll();
+}
+
+/* ══ MOTS DE PASSE (super + admin) ══ */
+function renderPw(){
+  document.getElementById('pwSection').innerHTML=
+    "<div style='font-weight:700;margin-bottom:4px'>🛡️ Mon mot de passe (super admin)</div>"+
+    "<div class='muted' style='font-size:.83rem;margin-bottom:8px'>Votre code de connexion à cette page d'administration globale.</div>"+
+    "<div class='row'><input type='password' id='sp1' placeholder='Nouveau (super)' style='min-width:190px' onkeydown=\"if(event.key==='Enter')changeSuperPw()\">"+
+    "<input type='password' id='sp2' placeholder='Confirmer' style='min-width:150px' onkeydown=\"if(event.key==='Enter')changeSuperPw()\">"+
+    "<button class='btn ok' onclick='changeSuperPw()'>Changer</button></div>"+
+    "<div class='gate-err' id='spErr' style='margin-top:8px'>Mots de passe différents (ou moins de 4 caractères).</div>"+
+    "<hr style='border:none;border-top:1px solid var(--border);margin:18px 0'>"+
+    "<div style='font-weight:700;margin-bottom:4px'>⚙️ Mot de passe administrateur</div>"+
+    "<div class='muted' style='font-size:.83rem;margin-bottom:8px'>Le code des espaces admin des applis (Réservation, Impression 3D, Commandes).</div>"+
+    "<div class='row'><input type='password' id='ap1' placeholder='Nouveau (admin)' style='min-width:190px' onkeydown=\"if(event.key==='Enter')changeAdminPw()\">"+
+    "<input type='password' id='ap2' placeholder='Confirmer' style='min-width:150px' onkeydown=\"if(event.key==='Enter')changeAdminPw()\">"+
+    "<button class='btn ok' onclick='changeAdminPw()'>Changer</button></div>"+
+    "<div class='gate-err' id='apErr' style='margin-top:8px'>Mots de passe différents (ou moins de 4 caractères).</div>";
+}
+async function changeSuperPw(){
+  const p1=document.getElementById('sp1').value, p2=document.getElementById('sp2').value, err=document.getElementById('spErr');
+  if(p1.length<4||p1!==p2){err.classList.add('show');return;}
+  err.classList.remove('show');
+  const r=await sb.functions.invoke('admin-op',{body:{action:'super-setSuperCode',adminCode:PW,newCode:p1}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
+  PW=p1; // le nouveau code super devient celui de la session
+  toast('✅ Votre mot de passe super admin est changé'); document.getElementById('sp1').value='';document.getElementById('sp2').value='';
+}
+async function changeAdminPw(){
+  const p1=document.getElementById('ap1').value, p2=document.getElementById('ap2').value, err=document.getElementById('apErr');
+  if(p1.length<4||p1!==p2){err.classList.add('show');return;}
+  err.classList.remove('show');
+  const r=await sb.functions.invoke('admin-op',{body:{action:'super-setAdminCode',adminCode:PW,newCode:p1}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
+  toast('✅ Mot de passe administrateur changé'); document.getElementById('ap1').value='';document.getElementById('ap2').value='';
+}
+setTimeout(()=>{const i=document.getElementById('gatePw');if(i)i.focus();},60);
+</script>
+</body>
+</html>

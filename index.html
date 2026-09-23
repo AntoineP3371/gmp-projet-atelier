@@ -265,13 +265,11 @@
 
   <div class="admin-bar">
     <span class="admin-bar-label">Administration</span>
-    <button class="admin-link" onclick="portalAuth('operateurs')">👥 Administration des opérateurs</button>
-    <button class="admin-link" onclick="portalAuth('etudiants')">👨‍🎓 Administration des étudiants-tes et des projets</button>
-    <button class="admin-link" onclick="portalAuth('encadrants')">🧑‍🏫 Administration des encadrants</button>
+    <a class="admin-link" href="admin/" style="text-decoration:none">🔧 Administration globale</a>
   </div>
 
   <footer>Atelier GMP — IUT Bordeaux</footer>
-  <div class="site-version">v4.6.5</div>
+  <div class="site-version">v4.6.6</div>
 
 <div class="pv-overlay" id="pvOverlay"><div class="pv-modal" id="pvModal"></div></div>
 <div class="pv-toast" id="pvToast"></div>
@@ -294,6 +292,7 @@ function pvClose(){ document.getElementById('pvOverlay').classList.remove('open'
 // il faut se réidentifier à chaque arrivée sur ces écrans, y compris via le bouton précédent du navigateur.
 let _pvPending=null;
 let _pvAdminPw='';   // mot de passe admin (mémorisé le temps de la session) pour les appels aux fonctions serveur
+let _pvRole='';      // 'super' | 'admin' — rôle obtenu à la connexion
 function portalAuth(which){
   _pvPending=which;
   pvOpen(
@@ -308,11 +307,16 @@ function portalAuth(which){
 async function pvCheckPw(){
   const pw=document.getElementById('pvPw').value;
   let ok=false;
-  try{ const res=await sb.functions.invoke('admin-op',{ body:{ action:'login', adminCode:pw } }); ok=!res.error && !!(res.data&&res.data.ok); }catch(e){ ok=false; }
+  try{ const res=await sb.functions.invoke('admin-op',{ body:{ action:'login', adminCode:pw } }); ok=!res.error && !!(res.data&&res.data.ok); if(ok) _pvRole=(res.data.role||'admin'); }catch(e){ ok=false; }
   if(ok){ _pvAdminPw=pw; openManager(_pvPending); }
   else document.getElementById('pvPwErr').classList.add('show');
 }
-function openManager(which){ if(which==='operateurs') openOperateurs(); else if(which==='encadrants') openEncadrants(); else openEtudiants(); }
+function openManager(which){
+  if(which==='operateurs') openOperateurs();
+  else if(which==='encadrants') openEncadrants();
+  else if(which==='motdepasse') openAdminPw();
+  else openEtudiants();
+}
 // Restauration depuis le cache de navigation (retour arrière/avant) : on referme tout
 // et on exige une nouvelle identification plutôt que de laisser un panneau déjà ouvert.
 window.addEventListener('pageshow', function(e){ if(e.persisted){ pvClose(); } });
@@ -364,6 +368,37 @@ async function resetEncadrant(nom){
   if(res.error || !res.data || !res.data.ok){ pvToast('❌ Échec de la réinitialisation'); return; }
   const it=_encList.find(e=>e.nom===nom); if(it){ it.hasCode=false; it.updatedAt=null; }
   renderEncadrants(); pvToast('↺ Code réinitialisé pour '+nom);
+}
+
+// ══════════════ MOT DE PASSE ADMIN ══════════════
+// Change le mot de passe administrateur (empreinte stockée en base). Réservé au super admin.
+function openAdminPw(){
+  if(_pvRole!=='super'){
+    pvOpen(
+      "<h2>🔑 Mot de passe admin</h2>"+
+      "<div class='pv-meta'>La modification du mot de passe administrateur est réservée au <b>super administrateur</b>. Reconnectez-vous avec le mot de passe super admin (commun aux applis Atelier GMP).</div>"+
+      "<div class='pv-actions'><button class='pv-btn' onclick='pvClose()'>Fermer</button></div>"
+    );
+    return;
+  }
+  pvOpen(
+    "<h2>🔑 Mot de passe admin</h2>"+
+    "<div class='pv-meta'>Définir un nouveau mot de passe administrateur (4 caractères minimum). Il s'applique à toutes les applis Atelier GMP.</div>"+
+    "<input type='password' class='pv-input' id='pvNewPw' placeholder='Nouveau mot de passe' onkeydown=\"if(event.key==='Enter')changePortalAdminPw()\">"+
+    "<input type='password' class='pv-input' id='pvNewPw2' placeholder='Confirmer' style='margin-top:8px' onkeydown=\"if(event.key==='Enter')changePortalAdminPw()\">"+
+    "<div class='pv-err' id='pvNewPwErr'>Les mots de passe ne correspondent pas (ou trop courts).</div>"+
+    "<div class='pv-actions'><button class='pv-btn' onclick='pvClose()'>Annuler</button><button class='pv-btn ok' onclick='changePortalAdminPw()'>Changer</button></div>"
+  );
+  setTimeout(()=>{ const i=document.getElementById('pvNewPw'); if(i)i.focus(); },50);
+}
+async function changePortalAdminPw(){
+  const p1=document.getElementById('pvNewPw').value, p2=document.getElementById('pvNewPw2').value;
+  const err=document.getElementById('pvNewPwErr');
+  if(p1.length<4 || p1!==p2){ err.classList.add('show'); return; }
+  err.classList.remove('show');
+  const res=await sb.functions.invoke('admin-op',{ body:{ action:'super-setAdminCode', adminCode:_pvAdminPw, newCode:p1 } });
+  if(res.error || !res.data || !res.data.ok){ pvToast('❌ Échec — réservé au super admin'); return; }
+  pvToast('✅ Mot de passe admin changé'); pvClose();
 }
 
 // ══════════════ OPÉRATEURS ══════════════

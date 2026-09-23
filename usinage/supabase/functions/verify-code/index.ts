@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
     if (kind === 'encadrant') {
       const nom = (name ?? '').toString().trim()
       if (!nom) return json({ ok: false, error: 'no-name' }, 400)
+      const DEFAULT = '000000' // code par défaut (6 chiffres) tant que l'encadrant n'a pas défini le sien
       const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', nom).maybeSingle()
       const storedHash = (data?.code_hash ?? '').toString().trim()
 
@@ -57,18 +58,23 @@ Deno.serve(async (req) => {
         if (!connu) return json({ ok: false, notAuthorized: true })
       }
 
-      // Définition du code (1re connexion) : autorisée seulement s'il n'existe pas encore.
+      // Définition d'un nouveau code (1re connexion, ou après réinitialisation par l'admin).
+      // Autorisée seulement si aucun code perso n'existe ; le nouveau code doit faire 6 chiffres
+      // et être différent du code par défaut.
       if (setup) {
-        if (storedHash) return json({ ok: false, already: true })      // déjà défini → passer par l'admin
-        if (!/^\d{4}$/.test(codeStr)) return json({ ok: false, error: 'bad-code' }, 400)
+        if (storedHash) return json({ ok: false, already: true })      // déjà défini → l'admin réinitialise
+        if (codeStr.length !== 6 || codeStr === DEFAULT) return json({ ok: false, error: 'bad-code' }, 400)
         const up = await sb.from('encadrant_codes')
           .upsert([{ nom, code_hash: await sha256hex(codeStr), updated_at: new Date().toISOString() }])
         if (up.error) throw up.error
         return json({ ok: true })
       }
 
-      // Vérification classique.
-      if (!storedHash) return json({ ok: false, needsSetup: true })    // aucun code défini pour ce nom
+      // Vérification. Sans code perso, le code par défaut 000000 est accepté mais impose un changement.
+      if (!storedHash) {
+        if (codeStr === DEFAULT) return json({ ok: false, mustChange: true })
+        return json({ ok: false })
+      }
       return json({ ok: storedHash === (await sha256hex(codeStr)) })
     }
 

@@ -42,7 +42,8 @@ Deno.serve(async (req) => {
     const codeHash = await sha256hex((adminCode ?? '').toString())
     const { data: apw } = await sb.from('parametres').select('valeur').eq('cle', 'admin_pw_hash').maybeSingle()
     const expected = ((apw?.valeur) || Deno.env.get('ADMIN_PW_HASH') || '').trim()
-    const superExpected = (Deno.env.get('SUPERADMIN_PW_HASH') || '').trim()
+    const { data: spw } = await sb.from('parametres').select('valeur').eq('cle', 'superadmin_pw_hash').maybeSingle()
+    const superExpected = ((spw?.valeur) || Deno.env.get('SUPERADMIN_PW_HASH') || '').trim()
     const isAdmin = (!!expected && codeHash === expected) || (!!superExpected && codeHash === superExpected)
 
     // Renommage de projet : autorisé à l'admin OU à un encadrant (son code personnel valide).
@@ -120,7 +121,8 @@ Deno.serve(async (req) => {
     // ── Étudiants (portail) ──
     if (action === 'etudiants-import') {
       const rows = ((body.etudiants || []) as any[])
-        .filter((e) => e && (e.nom ?? '').toString().trim() && (e.prenom ?? '').toString().trim() && (e.projet ?? '').toString().trim())
+        // Projet facultatif : beaucoup d'étudiants ont des encadrants sans projet nommé (Intitulé vide).
+        .filter((e) => e && (e.nom ?? '').toString().trim() && (e.prenom ?? '').toString().trim())
         .map((e) => ({
           nom: e.nom.toString().trim(), prenom: e.prenom.toString().trim(), projet: e.projet.toString().trim(),
           formation: (e.formation ?? '').toString().trim(),
