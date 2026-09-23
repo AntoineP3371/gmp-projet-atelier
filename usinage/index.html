@@ -574,7 +574,7 @@
   <span class="legend-item"><span class="legend-dot" style="background:#f1f5f9;border-color:#94a3b8"></span>Bloqué</span>
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.9</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.7.0</div>
 
 <div class="overlay" id="overlay" onclick="closeOnBg(event)">
   <div class="modal" id="modal"></div>
@@ -639,6 +639,18 @@ function getAdminPw(){ return sessionStorage.getItem('adminPw')||''; }
 async function verifyOperateurCode(name, code){
   if(!name || !code) return false;
   try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'operateur', name:name, code:code } }); return !error && !!(data && data.ok); }catch(e){ return false; }
+}
+// 1re connexion opérateur : le code par défaut 000000 impose de choisir SON code (≥4 caractères).
+// Renvoie le nouveau code défini, ou null si annulé/échec.
+async function operateurPremiereConnexion(name){
+  if(!name) return null;
+  var nc=prompt("Première connexion pour « "+name+" ».\nChoisissez VOTRE code personnel (au moins 4 caractères, différent de 000000) :");
+  if(nc===null) return null;
+  nc=nc.trim();
+  if(nc.length<4 || nc==='000000'){ showToast('⚠️ Code invalide : au moins 4 caractères, différent de 000000'); return null; }
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'operateur', name:name, code:nc, setup:true } });
+    if(!error && data && data.ok) return nc; }catch(e){}
+  showToast('❌ Impossible de définir le code (déjà défini ? réessayez)'); return null;
 }
 const DEFAULT_COLORS = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899","#14b8a6","#f97316"];
 
@@ -1942,7 +1954,7 @@ function book(machine,date,slot){
       "<div style='font-size:.82rem;color:var(--muted);text-align:center;margin-bottom:8px'>Montrez l'écran à l'opérateur — il saisit son code pour valider</div>"+
       "<div class='form-group'>"+
         "<label>Code PIN de validation de l'opérateur <span class='req'>*</span></label>"+
-        "<input type='password' id='fopcode' placeholder='Code individuel opérateur' maxlength='6' autocomplete='off'>"+
+        "<input type='password' id='fopcode' placeholder='Code individuel opérateur' maxlength='20' autocomplete='off'>"+
         "<span class='field-err' id='eopcode'>Code opérateur incorrect.</span>"+
       "</div>"+
     "</div>"+
@@ -2013,6 +2025,7 @@ async function submitBook(machine,date,slot){
   var res=await sb.functions.invoke('booking-op',{ body:Object.assign({ action:'create', machine:machine, date:date, slot:slot, opName:opVal, opCode:enteredCode, pin:pinVal }, payload) });
   if(res.error || !res.data || !res.data.ok){
     var err=res.data&&res.data.error;
+    if(err==='setcode'){ var nc=await operateurPremiereConnexion(opVal); if(nc){ if(opcodeEl)opcodeEl.value=nc; return submitBook(machine,date,slot); } return; }
     if(err==='badcode'){ if(opcodeErrEl){ opcodeErrEl.textContent="Code opérateur incorrect."; opcodeErrEl.classList.add("show"); } if(opcodeEl){ opcodeEl.classList.add("err"); opcodeEl.focus(); } }
     else if(err==='occupied'){ showToast("❌ Ce créneau vient d'être pris."); }
     else { showToast("❌ Erreur : "+(err||'réservation')); }
@@ -2073,7 +2086,7 @@ function openEditBookingModal(key){
       "<div style='font-size:.82rem;color:var(--muted);text-align:center;margin-bottom:8px'>Montrez l'écran à l'opérateur — il saisit son code pour valider</div>"+
       "<div class='form-group'>"+
         "<label>Code PIN de validation de l'opérateur <span class='req'>*</span></label>"+
-        "<input type='password' id='edit-opcode' placeholder='Code individuel opérateur' maxlength='6' autocomplete='off'>"+
+        "<input type='password' id='edit-opcode' placeholder='Code individuel opérateur' maxlength='20' autocomplete='off'>"+
         "<span class='field-err' id='edit-opcode-err'>Code opérateur incorrect.</span>"+
       "</div>"+
     "</div>"+
@@ -2115,8 +2128,9 @@ async function submitEditBooking(key){
   // Auth : admin (mot de passe) ou utilisateur (pin vérifié à l'ouverture + code opérateur)
   var auth={ opName:opVal, opCode:enteredCode };
   if(isAdmin) auth.adminCode=getAdminPw(); else auth.pin=_currentEditPin;
-  function _editErr(res){
+  async function _editErr(res){
     var err=res&&res.data&&res.data.error;
+    if(err==='setcode'){ var nc=await operateurPremiereConnexion(opVal); if(nc){ if(opcodeEl)opcodeEl.value=nc; showToast('✅ Code défini — cliquez à nouveau pour valider'); } return; }
     if(err==='badcode'){ if(opcodeErrEl){ opcodeErrEl.textContent="Code opérateur incorrect."; opcodeErrEl.classList.add("show"); } if(opcodeEl){ opcodeEl.classList.add("err"); opcodeEl.focus(); } }
     else if(err==='occupied'){ showToast("❌ La case cible est déjà occupée"); }
     else if(err==='auth'){ showToast("❌ Code d'annulation incorrect"); }
@@ -2184,7 +2198,7 @@ function promptPinMove(srcKey,destKey){
       "<div style='font-size:.82rem;color:var(--muted);text-align:center;margin-bottom:8px'>Montrez l'écran à l'opérateur — il saisit son code pour valider</div>"+
       "<div class='form-group'>"+
         "<label>Code PIN de validation de l'opérateur <span class='req'>*</span></label>"+
-        "<input type='password' id='moveOpcode' placeholder='Code individuel opérateur' maxlength='6' autocomplete='off'>"+
+        "<input type='password' id='moveOpcode' placeholder='Code individuel opérateur' maxlength='20' autocomplete='off'>"+
         "<span class='field-err' id='moveOpcodeErr'>Code opérateur incorrect.</span>"+
       "</div>"+
     "</div>"+
@@ -2206,6 +2220,7 @@ async function confirmPinMove(srcKey,destKey,opName){
   var res=await sb.functions.invoke('booking-op',{ body:{ action:'move', from:{machine:sp[0],date:sp[1],slot:sp[2]}, to:{machine:dp[0],date:dp[1],slot:dp[2]}, nom:r.nom,prenom:r.prenom,operateur:r.operateur,projet:r.projet,encadrant1:r.encadrant1||'',encadrant2:r.encadrant2||'',encadrant3:r.encadrant3||'', pin:entered, opName:opName, opCode:enteredCode } });
   if(res.error || !res.data || !res.data.ok){
     var err=res.data&&res.data.error;
+    if(err==='setcode'){ var nc=await operateurPremiereConnexion(opName); if(nc){ if(opcodeEl)opcodeEl.value=nc; showToast('✅ Code défini — cliquez à nouveau pour déplacer'); } return; }
     if(err==='auth'){ document.getElementById('movePinErr').style.display='block'; document.getElementById('movePin').classList.add('err'); }
     else if(err==='badcode'){ if(opcodeErrEl){ opcodeErrEl.textContent="Code opérateur incorrect."; opcodeErrEl.classList.add('show'); } if(opcodeEl){ opcodeEl.classList.add('err'); opcodeEl.focus(); } }
     else if(err==='occupied'){ showToast("❌ Case déjà occupée"); }

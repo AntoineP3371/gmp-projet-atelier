@@ -137,9 +137,11 @@ Deno.serve(async (req) => {
     if (action === 'limits-save') {
       let ok = isAdmin
       if (!ok && body.operateur && body.opCode) {
-        const { data } = await sb.from('operateurs').select('code').eq('name', body.operateur).maybeSingle()
-        const s = (data?.code ?? '').toString().trim()
-        ok = s.length > 0 && s === (body.opCode ?? '').toString().trim()
+        // Code personnel unique (encadrant_codes, haché, clé = nom normalisé).
+        const key = String(body.operateur ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
+        const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', key).maybeSingle()
+        const h = (data?.code_hash ?? '').toString().trim()
+        ok = !!h && h === await sha256hex((body.opCode ?? '').toString().trim())
       }
       if (!ok) return json({ ok: false, error: 'unauthorized' }, 401)
       const { error } = await sb.from('parametres').upsert([{ cle: 'limites_projets', valeur: (body.valeur ?? '').toString() }])

@@ -214,11 +214,11 @@
           <button class="pfilter" data-f="op" onclick="setPFilter('op')"><span class="badge op">Opérateur</span></button>
           <button class="pfilter" data-f="achat" onclick="setPFilter('achat')"><span class="badge achat">Achat</span></button>
         </div>
-        <div class="sub">Une ligne par personne. Un <b>encadrant</b> (issu des projets) a un code par défaut <b>000000</b> qu'il change à sa 1ʳᵉ connexion ; vous pouvez le réinitialiser (retour à 000000). Un <b>opérateur</b> a un code à 6 caractères saisi par l'admin, des machines et un contact WhatsApp. Le rôle <span class="badge achat">Achat</span> désigne un gestionnaire des commandes (encadrant ou opérateur) ; un opérateur « Achat » disposant d'un WhatsApp reçoit les notifications de nouvelles demandes. Clique les pastilles <span class="badge op">Opérateur</span> / <span class="badge achat">Achat</span> d'une ligne pour activer/retirer un rôle. Une personne peut cumuler les rôles.</div>
+        <div class="sub">Une ligne par personne. Chaque personne a <b>un seul code</b>, partagé entre ses rôles <b>encadrant</b> et <b>opérateur</b> : elle le choisit elle-même à sa 1ʳᵉ connexion (code par défaut <b>000000</b>, au moins 4 caractères libres). L'admin ne saisit pas le code — il peut seulement le <b>réinitialiser</b> (retour à 000000 pour les deux rôles). Les colonnes « Code encadrant » et « Code opérateur » indiquent l'état du code pour chaque rôle. Le rôle <span class="badge achat">Achat</span> désigne un gestionnaire des commandes (encadrant ou opérateur) ; un opérateur « Achat » avec WhatsApp reçoit les notifications. Clique les pastilles <span class="badge op">Opérateur</span> / <span class="badge achat">Achat</span> pour activer/retirer un rôle. Une personne peut cumuler les rôles.</div>
       </div>
       <div class="tablewrap">
         <table class="people">
-          <thead><tr><th>Nom</th><th>Rôles</th><th>Code</th><th>Machines (opérateur)</th><th>WhatsApp (CallMeBot)</th><th></th></tr></thead>
+          <thead><tr><th>Nom</th><th>Rôles</th><th>Code encadrant</th><th>Code opérateur</th><th>Machines (opérateur)</th><th>WhatsApp (CallMeBot)</th><th></th></tr></thead>
           <tbody id="peopleBody"></tbody>
         </table>
       </div>
@@ -248,7 +248,7 @@
       <div id="maintSection"><div class="muted">Chargement…</div></div>
     </div>
 
-    <div class="site-version">v4.6.9</div>
+    <div class="site-version">v4.7.0</div>
   </div>
 </div>
 
@@ -269,6 +269,7 @@ let PW='', ROLE='', OPS=[], ENCS=[], ETU=[], ETU_EXTRA=[];
 // Années universitaires proposées à l'import (valeur stockée / libellé affiché). La plus récente en tête.
 const ANNEES=[{v:'2026-2027',label:'2026/2027'},{v:'2025-2026',label:'2025/2026'}];
 function anneeLabel(v){ const a=ANNEES.find(x=>x.v===v); return a?a.label:(v||'—'); }
+let PCODES=new Set();   // noms normalisés ayant un code personnel défini
 // Années disponibles = années standard + toute année déjà présente dans les données (récentes d'abord).
 function allYears(){
   const seen=new Map(); ANNEES.forEach(a=>seen.set(a.v,a.label));
@@ -292,14 +293,16 @@ async function doLogin(){
 window.addEventListener('pageshow',e=>{if(e.persisted){location.reload();}});
 
 async function loadAll(){
-  const [opR,encR,etuR]=await Promise.all([
+  const [opR,encR,etuR,pcR]=await Promise.all([
     sb.functions.invoke('admin-operators',{body:{action:'list',adminCode:PW}}),
     sb.functions.invoke('admin-operators',{body:{action:'encadrants-list',adminCode:PW}}),
-    sb.from('etudiants').select('*').order('projet').order('nom')
+    sb.from('etudiants').select('*').order('projet').order('nom'),
+    sb.functions.invoke('admin-operators',{body:{action:'person-codes',adminCode:PW}})
   ]);
   OPS=(opR.data&&opR.data.operators)||[];
   ENCS=(encR.data&&encR.data.encadrants)||[];
   ETU=(!etuR.error&&etuR.data)||[];
+  PCODES=new Set(((pcR.data&&pcR.data.keys)||[]).map(k=>norm(k)));
   const nbPers=new Set([...OPS.map(o=>norm(o.name)),...ENCS.map(e=>norm(e.nom))]).size;
   document.getElementById('cPers').textContent=nbPers;
   document.getElementById('cEtu').textContent=ETU.length;
@@ -320,8 +323,9 @@ async function loadMaintCounts(){
   const today=fmtToday();
   const cnt=async(tbl,build)=>{ try{ const {count}=await build(sb.from(tbl).select('*',{count:'exact',head:true})); return count==null?null:count; }catch(e){ return null; } };
   const notArch=q=>q.or('archive.is.null,archive.eq.false');
-  const [arch,val,cur,att,imp,past,tod,fut]=await Promise.all([
+  const [arch,att0,val,cur,att,imp,past,tod,fut]=await Promise.all([
     cnt('demandes',q=>q.eq('archive',true)),
+    cnt('demandes',q=>notArch(q.eq('statut','en_attente'))),
     cnt('demandes',q=>notArch(q.eq('statut','validee'))),
     cnt('demandes',q=>notArch(q.eq('statut','en_cours'))),
     cnt('demandes',q=>notArch(q.eq('statut','attente_info'))),
@@ -330,7 +334,7 @@ async function loadMaintCounts(){
     cnt('bookings',q=>q.eq('date',today)),
     cnt('bookings',q=>q.gt('date',today)),
   ]);
-  DEM_COUNTS={validee:val,en_cours:cur,attente_info:att,imprimee:imp,archivees:arch};
+  DEM_COUNTS={en_attente:att0,validee:val,en_cours:cur,attente_info:att,imprimee:imp,archivees:arch};
   BK_COUNTS={past,today:tod,future:fut};
 }
 function renderMaint(){
@@ -342,6 +346,7 @@ function renderMaint(){
     "<div style='font-weight:700;margin-bottom:4px'>🗑 Effacer des demandes d'impression 3D</div>"+
     "<div class='warn'>⚠️ Ces actions sont <b>définitives</b> et ne se défont pas. Le nombre indiqué est le total concerné.</div>"+
     "<div class='row wipe-grid'>"+
+      demBtn('en_attente','🕓','En attente de validation')+
       demBtn('validee','☑️','Validées')+demBtn('en_cours','⏳','En cours')+
       demBtn('attente_info','❔','En attente d’info')+demBtn('imprimee','✅','Terminées')+
       demBtn('archivees','🗄️','Archivées')+
@@ -409,15 +414,27 @@ function renderPeople(){
   const map=new Map();
   OPS.forEach(o=>{ const k=norm(o.name); const e=map.get(k)||{}; e.op=o; map.set(k,e); });
   ENCS.forEach(en=>{ const k=norm(en.nom); const e=map.get(k)||{}; e.enc=en; map.set(k,e); });
-  // Rôle Achat : appartenance à com_gestionnaires, comparée sans accents/casse.
+  // Rôle Achat : appartenance à com_gestionnaires ; code défini : appartenance à PCODES. Comparés sans accents/casse.
   const achatSet=new Set(GESTS.map(n=>norm(n)));
   // Nom affiché : celui de l'opérateur s'il existe (préservé à l'enregistrement), sinon celui du projet.
-  let rows=[...map.values()].map(e=>{ e.display=e.op?e.op.name:(e.enc?e.enc.nom:''); e.achat=achatSet.has(norm(e.display)); return e; })
+  let rows=[...map.values()].map(e=>{ e.display=e.op?e.op.name:(e.enc?e.enc.nom:''); e.achat=achatSet.has(norm(e.display)); e.hasCode=PCODES.has(norm(e.display)); return e; })
     .sort((a,b)=>(a.display||'').localeCompare(b.display||'','fr'));
   if(_pfilter==='enc') rows=rows.filter(r=>r.enc);
   else if(_pfilter==='op') rows=rows.filter(r=>r.op);
   else if(_pfilter==='achat') rows=rows.filter(r=>r.achat);
-  document.getElementById('peopleBody').innerHTML=rows.map(p=>personRow(p)).join('')||"<tr><td colspan='6' class='muted' style='text-align:center;padding:16px'>Aucune personne dans ce filtre.</td></tr>";
+  document.getElementById('peopleBody').innerHTML=rows.map(p=>personRow(p)).join('')||"<tr><td colspan='7' class='muted' style='text-align:center;padding:16px'>Aucune personne dans ce filtre.</td></tr>";
+}
+// Cellule d'état du code (partagé) ; withReset = afficher le bouton Réinitialiser (une seule fois).
+function codeStatusCell(has,withReset,name){
+  const j=esc(name).replace(/'/g,"\\'");
+  if(!has) return "<div class='enc-status no'>🔓 Code par défaut (000000)</div>";
+  return "<div class='enc-status ok'>✔ Code défini"+(withReset?" <button class='btn sm' onclick=\"resetPerson('"+j+"')\">↺ Réinitialiser</button>":"")+"</div>";
+}
+async function resetPerson(name){
+  if(!confirm("Réinitialiser le code de « "+name+" » ?\n\nSon code repasse à 000000 (pour ses rôles encadrant ET opérateur) ; la personne en choisira un nouveau à sa prochaine connexion."))return;
+  const r=await sb.functions.invoke('admin-operators',{body:{action:'person-reset',adminCode:PW,nom:name}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
+  toast('↺ Code réinitialisé pour '+name); await loadAll();
 }
 function personRow(p,isNew){
   p=p||{};
@@ -434,15 +451,16 @@ function personRow(p,isNew){
   const encBadge=isEnc?"<span class='badge enc'>Encadrant</span>":"";
   const opPill="<span class='badge op-pill "+(isOp?'op':'off')+"' onclick='togglePersonOp(this)' title='Cliquer pour activer / retirer le rôle opérateur'>Opérateur</span>";
   const achatPill="<span class='badge achat-pill "+(isAchat?'on':'off')+"' onclick='togglePersonAchat(this)' title='Cliquer pour activer / retirer le rôle Achat (gestionnaire des commandes)'>Achat</span>";
-  const encStatus=isEnc
-    ? (enc.hasCode
-        ? "<div class='enc-status ok'>✔ Code défini <button class='btn sm' onclick=\"resetEnc('"+esc(enc.nom).replace(/'/g,"\\'")+"')\">↺ Réinitialiser</button></div>"
-        : "<div class='enc-status no'>🔓 Code par défaut (000000)</div>")
-    : "";
+  // Code unique partagé : même statut pour les deux colonnes ; le bouton Réinitialiser
+  // apparaît une seule fois (colonne encadrant si encadrant, sinon colonne opérateur).
+  const hasCode=!!p.hasCode;
+  const encCell=isEnc?codeStatusCell(hasCode,true,name):"<span class='muted'>—</span>";
+  const opCell=isOp?codeStatusCell(hasCode,!isEnc,name):"<span class='muted'>—</span>";
   return "<tr data-name=\""+esc(name)+"\">"+
     "<td>"+nameCell+"</td>"+
     "<td><div class='roles'>"+encBadge+opPill+achatPill+"</div></td>"+
-    "<td><input class='code-in p-code' value=\""+esc(op?op.code||'':'')+"\" maxlength='6' placeholder='6 car.'"+(isOp?'':' disabled')+">"+encStatus+"</td>"+
+    "<td>"+encCell+"</td>"+
+    "<td>"+opCell+"</td>"+
     "<td><div class='mach'><label><input type='checkbox' class='p-mo'"+(moC?' checked':'')+(isOp?'':' disabled')+"> 🛠️ Machines-outils</label>"+
       "<label><input type='checkbox' class='p-i3d'"+(i3dC?' checked':'')+(isOp?'':' disabled')+"> 🖨️ Impression 3D</label></div></td>"+
     "<td><div class='wa'><input class='p-phone' value=\""+esc(op?op.phone||'':'')+"\" placeholder='📱 +336…'"+(isOp?'':' disabled')+">"+
@@ -454,7 +472,7 @@ function togglePersonOp(pill){
   const tr=pill.closest('tr');
   const on=!pill.classList.contains('op');
   pill.classList.toggle('op',on); pill.classList.toggle('off',!on);
-  tr.querySelectorAll('.p-code,.p-mo,.p-i3d,.p-phone,.p-key').forEach(el=>el.disabled=!on);
+  tr.querySelectorAll('.p-mo,.p-i3d,.p-phone,.p-key').forEach(el=>el.disabled=!on);
   tr.querySelectorAll('.wa .btn').forEach(b=>b.disabled=!on);
 }
 function togglePersonAchat(pill){
@@ -489,7 +507,6 @@ async function savePeople(){
     arr.push({name,
       phone:(tr.querySelector('.p-phone').value||'').trim(),
       apikey:(tr.querySelector('.p-key').value||'').trim(),
-      code:(tr.querySelector('.p-code').value||'').trim(),
       machines_outils:tr.querySelector('.p-mo').checked,
       impression_3d:tr.querySelector('.p-i3d').checked});
   });

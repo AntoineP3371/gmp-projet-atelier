@@ -242,7 +242,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
         <label class="f" id="d-encadrant-autre-wrap" style="display:none">Nom de l'encadrant
           <input id="d-encadrant-autre" placeholder="Nom Prénom"></label>
         <label class="f">Votre code encadrant
-          <input id="d-pin" type="password" maxlength="6" placeholder="6 caractères" autocomplete="off" onkeydown="if(event.key==='Enter')encLogin()"></label>
+          <input id="d-pin" type="password" maxlength="20" placeholder="au moins 4 caractères" autocomplete="off" onkeydown="if(event.key==='Enter')encLogin()"></label>
       </div>
       <button class="btn primary" style="margin-top:12px" onclick="encLogin()">Entrer</button>
       <div class="err" id="d-login-err"></div>
@@ -311,7 +311,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
       <div class="sub">Réservé au magasinier / responsable achats.</div>
       <div class="grid2">
         <label class="f">Votre nom<select id="g-nom"></select></label>
-        <label class="f">Code opérateur<input id="g-code" type="password" maxlength="6" placeholder="6 caractères"></label>
+        <label class="f">Code opérateur<input id="g-code" type="password" maxlength="20" placeholder="au moins 4 caractères"></label>
       </div>
       <button class="btn primary" style="margin-top:12px" onclick="gestLogin()">Entrer</button>
       <div class="err" id="g-err"></div>
@@ -385,7 +385,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
 
 <!-- (Gestionnaires + Vidage retirés : centralisés dans « Administration globale → Maintenance » du portail) -->
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.9</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.7.0</div>
 
 <!-- Modales -->
 <div class="overlay" id="ovConfirm"><div class="modal">
@@ -724,17 +724,17 @@ async function encLogin(){
   if(nom==='__autre') nom=$('#d-encadrant-autre').value.trim();
   const pin=$('#d-pin').value.trim();
   if(!nom){ return fail(err,'Choisissez votre nom.'); }
-  if(pin.length!==6){ return fail(err,'Le code doit comporter 6 caractères.'); }
+  if(pin.length<4){ return fail(err,'Le code doit comporter au moins 4 caractères.'); }
   let ecode=pin;
   let ok=false, mustChange=false, notAuth=false;
   try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:pin}}); ok=!error && !!(data&&data.ok); mustChange=!error && !!(data&&data.mustChange); notAuth=!error && !!(data&&data.notAuthorized); }catch(e){ ok=false; }
   if(notAuth){ return fail(err,'Encadrant inconnu. Demandez à l’administrateur de vous ajouter à un projet.'); }
   if(!ok && mustChange){
     // Connexion avec le code par défaut 000000 → choisir SON code (6 chiffres, différent de 000000).
-    var nc=prompt("Choisissez votre code personnel (6 caractères) :");
+    var nc=prompt("Choisissez votre code personnel (au moins 4 caractères) :");
     if(nc===null){ return fail(err,'Connexion annulée.'); }
     nc=nc.trim();
-    if(nc.length!==6 || nc==='000000'){ return fail(err,'Code invalide : 6 caractères.'); }
+    if(nc.length<4 || nc==='000000'){ return fail(err,'Code invalide : au moins 4 caractères.'); }
     try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:nc,setup:true}}); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
     if(!ok){ return fail(err,'Impossible de définir le code (déjà défini ? réessayez).'); }
     ecode=nc;
@@ -973,11 +973,23 @@ async function cancelLine(id){
 async function gestLogin(){
   const err=$('#g-err'); err.classList.remove('show');
   const nom=$('#g-nom').value, code=$('#g-code').value.trim();
+  if(!nom) return fail(err,'Choisissez votre nom.');
   if(!code) return fail(err,'Saisissez votre code.');
-  let ok=false;
-  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'operateur',name:nom,code}}); ok=!error&&!!(data&&data.ok);}catch(e){}
+  let ecode=code, ok=false, mustChange=false, notAuth=false;
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'operateur',name:nom,code}}); ok=!error&&!!(data&&data.ok); mustChange=!error&&!!(data&&data.mustChange); notAuth=!error&&!!(data&&data.notAuthorized);}catch(e){}
+  if(notAuth) return fail(err,'Opérateur inconnu — voir l’administrateur.');
+  if(!ok && mustChange){
+    // 1re connexion (code par défaut 000000) : choisir SON code (≥4 caractères, ≠000000).
+    var nc=prompt("Choisissez votre code personnel (au moins 4 caractères, différent de 000000) :");
+    if(nc===null) return fail(err,'Connexion annulée.');
+    nc=nc.trim();
+    if(nc.length<4 || nc==='000000') return fail(err,'Code invalide : au moins 4 caractères, différent de 000000.');
+    try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'operateur',name:nom,code:nc,setup:true}}); ok=!error&&!!(data&&data.ok);}catch(e){ ok=false; }
+    if(!ok) return fail(err,'Impossible de définir le code (déjà défini ? réessayez).');
+    ecode=nc;
+  }
   if(!ok) return fail(err,'Nom ou code incorrect.');
-  _gestOk=true; _gestNom=nom; _gestCode=code;
+  _gestOk=true; _gestNom=nom; _gestCode=ecode;
   $('#gestGate').style.display='none'; $('#gestPanel').style.display='block';
   renderGest();
 }

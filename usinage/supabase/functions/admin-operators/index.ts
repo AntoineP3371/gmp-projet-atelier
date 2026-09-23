@@ -17,6 +17,8 @@ async function sha256hex(s: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
+// Nom normalisé (clé des codes personnels) : minuscules, sans accents, espaces réduits.
+const norm = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -53,7 +55,7 @@ Deno.serve(async (req) => {
         const nom = (body.encadrantNom ?? '').toString().trim()
         const ec = (body.encadrantCode ?? '').toString().trim()
         if (nom && ec) {
-          const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', nom).maybeSingle()
+          const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', norm(nom)).maybeSingle()
           const h = (data?.code_hash ?? '').toString().trim()
           ok = !!h && h === await sha256hex(ec)
         }
@@ -99,7 +101,9 @@ Deno.serve(async (req) => {
             name: nm,
             phone: (o.phone ?? '').toString().trim(),
             apikey: (o.apikey ?? '').toString().trim(),
-            code: (o.code ?? '').toString().trim(),
+            // Le code opérateur n'est plus saisi par l'admin : c'est un code PERSONNEL unique que la
+            // personne définit à sa 1re connexion (table encadrant_codes). On garde la colonne vide.
+            code: '',
             notif_3d: notifByName[nm] ?? true,
             // Fourni par l'appelant → appliqué ; sinon valeur en base ; sinon true par défaut.
             machines_outils: o.machines_outils !== undefined ? !!o.machines_outils : (moByName[nm] ?? true),
@@ -227,27 +231,42 @@ Deno.serve(async (req) => {
           if (v) noms.add(v)
         }
       }
+      // Codes personnels : clé = nom NORMALISÉ. hasCode se calcule par correspondance normalisée.
       const { data: codes } = await sb.from('encadrant_codes').select('nom, code_hash, updated_at')
-      const byNom: Record<string, any> = {}
-      for (const c of (codes || []) as any[]) byNom[(c.nom || '').toString()] = c
-      // On inclut aussi d'éventuels encadrants qui ont un code mais ne sont plus dans les projets.
-      for (const nom of Object.keys(byNom)) noms.add(nom)
+      const byKey: Record<string, any> = {}
+      for (const c of (codes || []) as any[]) { if ((c.code_hash || '').toString().trim()) byKey[norm(c.nom)] = c }
       const list = [...noms]
         .sort((a, b) => a.localeCompare(b, 'fr'))
         .map((nom) => ({
           nom,
-          hasCode: !!(byNom[nom] && (byNom[nom].code_hash || '').toString().trim()),
-          updatedAt: byNom[nom]?.updated_at || null,
+          hasCode: !!byKey[norm(nom)],
+          updatedAt: byKey[norm(nom)]?.updated_at || null,
         }))
       return json({ ok: true, encadrants: list })
     }
 
-    // Réinitialise le code d'un encadrant : la fiche reste, le code est effacé
-    // (l'encadrant en redéfinira un à sa prochaine connexion). L'admin ne voit jamais le code.
+    // Liste des clés (noms normalisés) ayant un code défini — pour l'affichage du statut par personne.
+    if (action === 'person-codes') {
+      const { data: codes } = await sb.from('encadrant_codes').select('nom, code_hash')
+      const keys = ((codes || []) as any[]).filter((c) => (c.code_hash || '').toString().trim()).map((c) => norm(c.nom))
+      return json({ ok: true, keys })
+    }
+
+    // Réinitialise le code d'une PERSONNE (par nom normalisé) → retour au code par défaut 000000,
+    // pour ses deux rôles à la fois. L'admin ne voit jamais le code.
+    if (action === 'person-reset') {
+      const key = norm(body.nom ?? '')
+      if (!key) return json({ ok: false, error: 'no-name' }, 400)
+      const del = await sb.from('encadrant_codes').delete().eq('nom', key)
+      if (del.error) throw del.error
+      return json({ ok: true })
+    }
+
+    // (compat) Réinitialise le code d'un encadrant par nom (normalisé).
     if (action === 'encadrants-reset') {
       const nom = (body.nom ?? '').toString().trim()
       if (!nom) return json({ ok: false, error: 'no-name' }, 400)
-      const del = await sb.from('encadrant_codes').delete().eq('nom', nom)
+      const del = await sb.from('encadrant_codes').delete().eq('nom', norm(nom))
       if (del.error) throw del.error
       return json({ ok: true })
     }

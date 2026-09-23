@@ -47,11 +47,19 @@ Deno.serve(async (req) => {
       isAdmin = (!!expectedAdmin && codeHash === expectedAdmin) || (!!superExpected && codeHash === superExpected)
     }
 
+    // Code opérateur = code PERSONNEL unique (table encadrant_codes, haché, clé = nom normalisé).
+    // Renvoie { ok, mustSet } : mustSet=true si l'opérateur n'a pas encore défini son code (000000).
+    const norm = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
     const opOk = async (name?: string, code?: string) => {
-      if (!name || !code) return false
-      const { data } = await sb.from('operateurs').select('code').eq('name', name).maybeSingle()
-      const stored = (data?.code ?? '').toString().trim()
-      return stored.length > 0 && stored === code.toString().trim()
+      const key = norm(name); const c = (code ?? '').toString().trim()
+      if (!key || !c) return { ok: false, mustSet: false }
+      // Le nom doit être un opérateur connu (créé par l'admin).
+      const { data: ops } = await sb.from('operateurs').select('name')
+      if (!(ops || []).some((r: any) => norm(r.name) === key)) return { ok: false, mustSet: false }
+      const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', key).maybeSingle()
+      const h = (data?.code_hash ?? '').toString().trim()
+      if (!h) return { ok: false, mustSet: c === '000000' }   // code par défaut → doit en choisir un
+      return { ok: h === (await sha256hex(c)), mustSet: false }
     }
     const pinOk = async (m: string, d: string, s: string, pin?: string) => {
       const { data } = await sb.from('booking_pins').select('pin').match({ machine: m, date: d, slot: s }).maybeSingle()
@@ -110,7 +118,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'create') {
-      if (!(await opOk(b.opName, b.opCode))) return json({ ok: false, error: 'badcode' })
+      const oc = await opOk(b.opName, b.opCode)
+      if (!oc.ok) return json({ ok: false, error: oc.mustSet ? 'setcode' : 'badcode' })
       if (!(await free(b.machine, b.date, b.slot))) return json({ ok: false, error: 'occupied' })
       const ins = await sb.from('bookings').insert({ machine: b.machine, date: b.date, slot: b.slot, ...fields(b) })
       if (ins.error) throw ins.error
@@ -152,7 +161,8 @@ Deno.serve(async (req) => {
     if (action === 'update') { // même créneau
       if (!isAdmin) {
         if (!(await pinOk(b.machine, b.date, b.slot, b.pin))) return json({ ok: false, error: 'auth' })
-        if (!(await opOk(b.opName, b.opCode))) return json({ ok: false, error: 'badcode' })
+        const oc = await opOk(b.opName, b.opCode)
+        if (!oc.ok) return json({ ok: false, error: oc.mustSet ? 'setcode' : 'badcode' })
       }
       const up = await sb.from('bookings').update(fields(b)).match({ machine: b.machine, date: b.date, slot: b.slot })
       if (up.error) throw up.error
@@ -163,7 +173,8 @@ Deno.serve(async (req) => {
       const from = b.from, to = b.to
       if (!isAdmin) {
         if (!(await pinOk(from.machine, from.date, from.slot, b.pin))) return json({ ok: false, error: 'auth' })
-        if (!(await opOk(b.opName, b.opCode))) return json({ ok: false, error: 'badcode' })
+        const oc = await opOk(b.opName, b.opCode)
+        if (!oc.ok) return json({ ok: false, error: oc.mustSet ? 'setcode' : 'badcode' })
       }
       if (!(await free(to.machine, to.date, to.slot))) return json({ ok: false, error: 'occupied' })
       const pr = await sb.from('booking_pins').select('pin').match({ machine: from.machine, date: from.date, slot: from.slot }).maybeSingle()

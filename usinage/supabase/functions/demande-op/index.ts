@@ -26,21 +26,24 @@ Deno.serve(async (req) => {
     const action = b.action
     const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
-    const opOk = async (name?: string, code?: string) => {
-      if (!name || !code) return false
-      const { data } = await sb.from('operateurs').select('code').eq('name', name).maybeSingle()
-      const s = (data?.code ?? '').toString().trim()
-      return s.length > 0 && s === code.toString().trim()
-    }
-    // Code PERSONNEL de l'encadrant (table encadrant_codes, haché).
-    const encOk = async (nom?: string, code?: string) => {
-      const n = (nom ?? '').toString().trim()
-      const c = (code ?? '').toString().trim()
-      if (!n || !c) return false
-      const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', n).maybeSingle()
+    // Code PERSONNEL unique (table encadrant_codes, haché, clé = nom normalisé) — partagé
+    // entre les rôles opérateur et encadrant d'une même personne.
+    const norm = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
+    const codeOk = async (nom?: string, code?: string) => {
+      const key = norm(nom); const c = (code ?? '').toString().trim()
+      if (!key || !c) return false
+      const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', key).maybeSingle()
       const h = (data?.code_hash ?? '').toString().trim()
       return !!h && h === await sha256hex(c)
     }
+    // Rôle opérateur : le nom doit aussi être un opérateur connu (créé par l'admin).
+    const opOk = async (name?: string, code?: string) => {
+      const key = norm(name)
+      const { data: ops } = await sb.from('operateurs').select('name')
+      if (!(ops || []).some((r: any) => norm(r.name) === key)) return false
+      return codeOk(name, code)
+    }
+    const encOk = codeOk
 
     if (action === 'create') {
       const d = b.demande || {}

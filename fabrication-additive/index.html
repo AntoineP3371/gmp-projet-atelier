@@ -597,7 +597,7 @@
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.6.9</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.7.0</div>
 
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
@@ -619,7 +619,7 @@
     <h2>🛠️ Espace opérateur</h2>
     <div class="meta">Sélectionnez votre nom et saisissez votre code individuel opérateur (le même que pour les Réservations des machines-outils).</div>
     <select id="opNomSelect"></select>
-    <input type="password" id="opCodeInput" maxlength="6" placeholder="Code opérateur (6 caractères)" style="font-size:.9rem;margin-top:10px" onkeydown="if(event.key==='Enter')confirmOperateur()">
+    <input type="password" id="opCodeInput" maxlength="20" placeholder="Votre code (au moins 4 caractères)" style="font-size:.9rem;margin-top:10px" onkeydown="if(event.key==='Enter')confirmOperateur()">
     <div class="field-err" id="opErr">Nom ou code incorrect</div>
     <div class="modal-actions">
       <button class="btn btn-close" onclick="closeOverlay('ovOperateur')">Annuler</button>
@@ -644,9 +644,9 @@
 <div class="overlay" id="ovEncNom">
   <div class="modal" style="text-align:center">
     <h2>Espace encadrant</h2>
-    <div class="meta">Choisissez votre nom et saisissez votre code (6 caractères).</div>
+    <div class="meta">Choisissez votre nom et saisissez votre code (au moins 4 caractères ; défaut 000000 à la 1ʳᵉ connexion).</div>
     <select id="encNomSelect" style="width:100%;text-align:left"></select>
-    <input type="password" id="encCodeInput" maxlength="6" placeholder="Votre code (6 caractères)" autocomplete="off" style="width:100%;margin-top:8px;text-align:left" onkeydown="if(event.key==='Enter')confirmEncNom()">
+    <input type="password" id="encCodeInput" maxlength="20" placeholder="Votre code (au moins 4 caractères)" autocomplete="off" style="width:100%;margin-top:8px;text-align:left" onkeydown="if(event.key==='Enter')confirmEncNom()">
     <div class="field-err" id="encErr">Nom ou code incorrect</div>
     <div class="modal-actions" style="justify-content:center">
       <button class="btn btn-close" onclick="closeOverlay('ovEncNom')">Annuler</button>
@@ -1519,12 +1519,23 @@ function askOperateur(){
 async function confirmOperateur(){
   const nom=document.getElementById('opNomSelect').value;
   const code=document.getElementById('opCodeInput').value.trim();
-  let ok=false;
-  if(nom && code){
-    try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'operateur', name:nom, code:code } }); ok=!error && !!(data && data.ok); }catch(e){ ok=false; }
+  const showErr=(m)=>{ const e=document.getElementById('opErr'); if(m)e.textContent=m; e.classList.add('show'); document.getElementById('opCodeInput').classList.add('err'); };
+  if(!nom || !code){ showErr(); return; }
+  let ok=false, mustChange=false, notAuth=false;
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'operateur', name:nom, code:code } }); ok=!error && !!(data&&data.ok); mustChange=!error && !!(data&&data.mustChange); notAuth=!error && !!(data&&data.notAuthorized); }catch(e){ ok=false; }
+  if(notAuth){ showErr('Opérateur inconnu — voir l’administrateur.'); return; }
+  let ecode=code;
+  if(!ok && mustChange){
+    // 1re connexion (code par défaut 000000) : l'opérateur choisit SON code (≥4 caractères, ≠000000).
+    let nc=prompt("Première connexion pour « "+nom+" ».\nChoisissez VOTRE code personnel (au moins 4 caractères, différent de 000000) :");
+    if(nc===null){ return; }
+    nc=nc.trim();
+    if(nc.length<4 || nc==='000000'){ showErr('Code invalide : au moins 4 caractères, différent de 000000.'); return; }
+    try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'operateur', name:nom, code:nc, setup:true } }); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
+    ecode=nc;
   }
-  if(ok){ currentOperateurNom=nom; _operateurCode=code; closeOverlay('ovOperateur'); openOperateur(); }
-  else { document.getElementById('opErr').classList.add('show'); document.getElementById('opCodeInput').classList.add('err'); }
+  if(ok){ currentOperateurNom=nom; _operateurCode=ecode; closeOverlay('ovOperateur'); openOperateur(); }
+  else { showErr('Code incorrect.'); }
 }
 function openCodeModal(role,title,meta){
   currentRole=role;
@@ -1589,16 +1600,16 @@ async function confirmEncNom(){
   const code=document.getElementById('encCodeInput').value.trim();
   const err=document.getElementById('encErr'); const inp=document.getElementById('encCodeInput');
   if(!nom){ err.textContent='Choisissez votre nom.'; err.classList.add('show'); return; }
-  if(code.length!==6){ err.textContent='Le code doit comporter 6 caractères.'; err.classList.add('show'); inp.classList.add('err'); return; }
+  if(code.length<4){ err.textContent='Le code doit comporter au moins 4 caractères.'; err.classList.add('show'); inp.classList.add('err'); return; }
   let ok=false, mustChange=false, notAuth=false;
   try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'encadrant', name:nom, code:code } }); ok=!error && !!(data&&data.ok); mustChange=!error && !!(data&&data.mustChange); notAuth=!error && !!(data&&data.notAuthorized); }catch(e){ ok=false; }
   if(notAuth){ err.textContent='Encadrant inconnu — voir l’administrateur.'; err.classList.add('show'); return; }
   let ecode=code;
   if(!ok && mustChange){
-    let nc=prompt("Première connexion pour « "+nom+" ».\nChoisissez VOTRE code personnel (6 caractères) :");
+    let nc=prompt("Première connexion pour « "+nom+" ».\nChoisissez VOTRE code personnel (au moins 4 caractères) :");
     if(nc===null){ return; }
     nc=nc.trim();
-    if(nc.length!==6 || nc==='000000'){ err.textContent='Code invalide : 6 caractères.'; err.classList.add('show'); return; }
+    if(nc.length<4 || nc==='000000'){ err.textContent='Code invalide : au moins 4 caractères, différent de 000000.'; err.classList.add('show'); return; }
     try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'encadrant', name:nom, code:nc, setup:true } }); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
     ecode=nc;
   }
