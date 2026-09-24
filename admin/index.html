@@ -248,7 +248,7 @@
       <div id="maintSection"><div class="muted">Chargement…</div></div>
     </div>
 
-    <div class="site-version">v4.7.0</div>
+    <div class="site-version">v4.7.1</div>
   </div>
 </div>
 
@@ -522,12 +522,6 @@ async function savePeople(){
   for(const nom of toRemove){ const g=await sb.functions.invoke('commande-op',{body:{action:'gest-toggle',adminPw:PW,nom,on:false}}); if(g.error||!g.data||!g.data.ok)gestErr=true; }
   toast(gestErr?'⚠️ Enregistré (rôle Achat partiellement à jour)':'✅ Enregistré');
   await loadAll();
-}
-async function resetEnc(nom){
-  if(!confirm("Réinitialiser le code de « "+nom+" » ?\n\nSon code sera effacé : il devra en choisir un nouveau à sa prochaine connexion."))return;
-  const r=await sb.functions.invoke('admin-operators',{body:{action:'encadrants-reset',adminCode:PW,nom}});
-  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
-  toast('↺ Code réinitialisé pour '+nom); await loadAll();
 }
 
 /* ══ ÉTUDIANTS / PROJETS ══ */

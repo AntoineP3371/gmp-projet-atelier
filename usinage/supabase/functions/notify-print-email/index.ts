@@ -17,6 +17,11 @@ function json(body: unknown, status = 200) {
 function esc(s: string) {
   return (s ?? '').toString().replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
 }
+async function sha256hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
+  return [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, '0')).join('')
+}
+const norm = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -24,12 +29,16 @@ Deno.serve(async (req) => {
     const b = await req.json()
     const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
-    // Auth opérateur (nom + code vérifiés côté serveur).
+    // Auth opérateur : code PERSONNEL unique (encadrant_codes, haché, clé = nom normalisé) +
+    // le nom doit être un opérateur connu (table operateurs).
     const opOk = async (name?: string, code?: string) => {
-      if (!name || !code) return false
-      const { data } = await sb.from('operateurs').select('code').eq('name', name).maybeSingle()
-      const s = (data?.code ?? '').toString().trim()
-      return s.length > 0 && s === code.toString().trim()
+      const key = norm(name); const c = (code ?? '').toString().trim()
+      if (!key || !c) return false
+      const { data: ops } = await sb.from('operateurs').select('name')
+      if (!(ops || []).some((r: any) => norm(r.name) === key)) return false
+      const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', key).maybeSingle()
+      const h = (data?.code_hash ?? '').toString().trim()
+      return !!h && h === await sha256hex(c)
     }
     if (!(await opOk(b.operateur, b.opCode))) return json({ ok: false, error: 'auth' }, 401)
 

@@ -574,7 +574,7 @@
   <span class="legend-item"><span class="legend-dot" style="background:#f1f5f9;border-color:#94a3b8"></span>Bloqué</span>
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.7.0</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.7.1</div>
 
 <div class="overlay" id="overlay" onclick="closeOnBg(event)">
   <div class="modal" id="modal"></div>
@@ -1710,7 +1710,7 @@ async function testWhatsapp(i){
     showToast("❌ Erreur lors de l'envoi");
   }
 }
-function opRowHtml(i, name, phone, apikey, code){
+function opRowHtml(i, name, phone, apikey){
   return "<div class='op-item' id='oprow-"+i+"' style='flex-direction:column;align-items:stretch;gap:6px'>"+
     "<div style='display:flex;align-items:center;gap:8px'>"+
       "<input type='text' class='opname' id='opname-"+i+"' value='"+esc(name)+"' placeholder=\"Nom de l'opérateur\">"+
@@ -1721,17 +1721,13 @@ function opRowHtml(i, name, phone, apikey, code){
       "<input type='text' class='opapikey' id='opapikey-"+i+"' value='"+esc(apikey)+"' placeholder='Clé API CallMeBot' style='flex:1;border:1.5px solid var(--border);border-radius:6px;padding:5px 9px;font-size:.82rem;color:var(--text);background:#fff;outline:none;font-family:inherit'>"+
       "<button onclick='testWhatsapp("+i+")' title='Envoyer un message test' style='flex-shrink:0;background:#25D366;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap'>▶ Test</button>"+
     "</div>"+
-    "<div style='display:flex;gap:8px;align-items:center'>"+
-      "<label style='font-size:.8rem;color:var(--muted);white-space:nowrap'>Code validation :</label>"+
-      "<input type='password' class='opcode' id='opcode-"+i+"' value='"+esc(code||'')+"' maxlength='6' placeholder='6 caractères' style='width:110px;border:1.5px solid "+(code?'var(--border)':'var(--danger)')+";border-radius:6px;padding:5px 9px;font-size:.85rem;color:var(--text);background:#fff;outline:none;font-family:monospace;letter-spacing:2px'>"+
-      "<span style='font-size:.78rem;color:"+(code?'var(--muted)':'var(--danger)')+"'>"+(code?'Code secret à 6 caractères pour valider les réservations':'⚠️ Sans code, cet opérateur ne peut pas valider de réservation')+"</span>"+
-    "</div>"+
+    "<div style='font-size:.76rem;color:var(--muted)'>🔑 Le code personnel est choisi par l'opérateur à sa 1ʳᵉ connexion (défaut 000000). L'admin ne le saisit pas — voir « Administration globale » pour le réinitialiser.</div>"+
   "</div>";
 }
 async function openOperateurManager(){ openModalName='operateurs';
   var res=await sb.functions.invoke('admin-operators',{ body:{ action:'list', adminCode:getAdminPw() } });
   if(res.error || !res.data || !res.data.ok){ showToast("⛔ Session admin expirée — reconnectez-vous"); return; }
-  var rows=(res.data.operators||[]).map((o,i)=>opRowHtml(i,o.name||'',o.phone||'',o.apikey||'',o.code||'')).join("");
+  var rows=(res.data.operators||[]).map((o,i)=>opRowHtml(i,o.name||'',o.phone||'',o.apikey||'')).join("");
   openModal(
     "<h2>👥 Gérer les opérateurs</h2>"+
     "<div class='meta'>Pour chaque opérateur, vous pouvez renseigner son numéro WhatsApp et sa clé API CallMeBot. Il recevra alors automatiquement une notification WhatsApp <strong>20 minutes avant</strong> chaque créneau qui le concerne.</div>"+
@@ -1749,14 +1745,14 @@ async function openOperateurManager(){ openModalName='operateurs';
     "</div>"
   );
 }
-function addOpRow(){ var list=document.getElementById("oplist"); var i=list.children.length; list.insertAdjacentHTML('beforeend', opRowHtml(i,'','','','')); }
+function addOpRow(){ var list=document.getElementById("oplist"); var i=list.children.length; list.insertAdjacentHTML('beforeend', opRowHtml(i,'','','')); }
 function removeOpRow(i){ var r=document.getElementById("oprow-"+i); if(r) r.remove(); }
 async function saveOperateurs(){
   var ops=[];
   document.querySelectorAll("#oplist .op-item").forEach(function(row){
     var inp=row.querySelector('.opname'); var v=inp?inp.value.trim():''; if(!v) return;
-    var ph=row.querySelector('.opphone'), ak=row.querySelector('.opapikey'), cd=row.querySelector('.opcode');
-    ops.push({ name:v, phone:ph?ph.value.trim():'', apikey:ak?ak.value.trim():'', code:cd?cd.value.trim():'' });
+    var ph=row.querySelector('.opphone'), ak=row.querySelector('.opapikey');
+    ops.push({ name:v, phone:ph?ph.value.trim():'', apikey:ak?ak.value.trim():'' });
   });
   showToast("💾 Enregistrement…");
   var res=await sb.functions.invoke('admin-operators',{ body:{ action:'save', adminCode:getAdminPw(), operators:ops } });
