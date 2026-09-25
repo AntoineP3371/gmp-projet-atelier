@@ -25,6 +25,7 @@ async function sha256hex(s: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
+const norm = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
 
 // Base PocketBase (lecture publique) : projets non archivés et visibles élèves.
 const PB_URL = 'https://api_evalprojet.gmpbordeaux.fr/api/collections/sae_projects/records'
@@ -104,10 +105,17 @@ Deno.serve(async (req) => {
       if (ins.error) throw ins.error
     }
 
+    // Anti-doublon : SAE est prioritaire → on retire les fiches MANUELLES qui correspondent à un
+    // étudiant désormais présent en SAE (même nom+prénom, accents/casse ignorés).
+    const saeIds = new Set(rows.map((r: any) => norm(r.nom) + '|' + norm(r.prenom)))
+    const { data: man } = await sb.from('etudiants').select('id, nom, prenom').eq('source', 'manuel')
+    const dupIds = (man || []).filter((m: any) => saeIds.has(norm(m.nom) + '|' + norm(m.prenom))).map((m: any) => m.id).filter((x: any) => x != null)
+    if (dupIds.length) { const dd = await sb.from('etudiants').delete().in('id', dupIds); if (dd.error) throw dd.error }
+
     // Horodatage de la dernière synchro (pour l'affichage admin).
     await sb.from('parametres').upsert([{ cle: 'sae_sync_at', valeur: new Date().toISOString() }])
 
-    return json({ ok: true, projets: items.length, etudiants: rows.length, at: new Date().toISOString() })
+    return json({ ok: true, projets: items.length, etudiants: rows.length, doublonsManuelsRetires: dupIds.length, at: new Date().toISOString() })
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500)
   }

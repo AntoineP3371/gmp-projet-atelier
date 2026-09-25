@@ -223,6 +223,42 @@ Deno.serve(async (req) => {
       return json({ ok: true })
     }
 
+    // Ajoute des lignes MANUELLES (sans toucher aux lignes 'sae' ni au reste). Un ajout du même
+    // étudiant (nom+prénom) remplace l'éventuelle fiche manuelle existante (dédoublonnage).
+    if (action === 'etudiants-add') {
+      const idOf = (r: any) => norm(r.nom) + '|' + norm(r.prenom)
+      const incoming = ((body.etudiants || []) as any[])
+        .filter((e) => e && (e.nom ?? '').toString().trim() && (e.prenom ?? '').toString().trim())
+        .map((e) => ({
+          nom: e.nom.toString().trim(), prenom: e.prenom.toString().trim(),
+          projet: (e.projet ?? '').toString().trim(),
+          formation: (e.formation ?? '').toString().trim(),
+          parcours: (e.parcours ?? '').toString().trim(),
+          encadrant1: (e.encadrant1 ?? '').toString().trim(),
+          encadrant2: (e.encadrant2 ?? '').toString().trim(),
+          encadrant3: (e.encadrant3 ?? '').toString().trim(),
+          annee: (e.annee ?? '').toString().trim() || null,
+          source: 'manuel',
+        }))
+      if (!incoming.length) return json({ ok: true, count: 0 })
+      const ids = new Set(incoming.map(idOf))
+      const { data: man } = await sb.from('etudiants').select('id, nom, prenom').eq('source', 'manuel')
+      const rm = (man || []).filter((m: any) => ids.has(idOf(m))).map((m: any) => m.id).filter((x: any) => x != null)
+      if (rm.length) { const d = await sb.from('etudiants').delete().in('id', rm); if (d.error) throw d.error }
+      const ins = await sb.from('etudiants').insert(incoming)
+      if (ins.error) throw ins.error
+      return json({ ok: true, count: incoming.length })
+    }
+
+    // Supprime des lignes MANUELLES par id (jamais les lignes synchronisées 'sae').
+    if (action === 'etudiants-del') {
+      const ids = ((body.ids || []) as any[]).filter((x) => x != null)
+      if (!ids.length) return json({ ok: true, count: 0 })
+      const del = await sb.from('etudiants').delete().eq('source', 'manuel').in('id', ids)
+      if (del.error) throw del.error
+      return json({ ok: true })
+    }
+
     // ── Encadrants (gestion des codes personnels, portail) ──
     // La liste des noms est DÉDUITE de la table etudiants (encadrant1/2/3) :
     // aucune double saisie, elle reste alimentée par l'import Excel des projets.

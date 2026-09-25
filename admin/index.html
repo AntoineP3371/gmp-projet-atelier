@@ -251,7 +251,7 @@
       <div id="maintSection"><div class="muted">Chargement…</div></div>
     </div>
 
-    <div class="site-version">v4.8.0</div>
+    <div class="site-version">v4.8.1</div>
   </div>
 </div>
 
@@ -535,58 +535,47 @@ const ECOLS=[
   {k:'annee',label:'Année',type:'annee'},{k:'formation',label:'Formation'},{k:'parcours',label:'Parcours'},
   {k:'encadrant1',label:'Enc. 1'},{k:'encadrant2',label:'Enc. 2'},{k:'encadrant3',label:'Enc. 3'}
 ];
+// Ligne EXISTANTE, en LECTURE SEULE (SAE ou manuelle). Rien n'est éditable ici : la source est
+// Carnet SAE GMP, et rien ne remonte vers SAE. Une ligne manuelle peut seulement être supprimée.
 function etudRowHtml(e){
   e=e||{};
-  // Lignes synchronisées depuis Carnet SAE GMP : lecture seule (non éditables, non supprimables).
-  if(e.source==='sae'){
-    const td=(k)=>"<td data-k='"+k+"'>"+(k==='annee'?(e.annee?esc(anneeLabel(e.annee)):"<span class='muted'>—</span>"):esc(e[k]||''))+"</td>";
-    return "<tr class='sae-row'>"+
-      "<td class='selcol' title='Synchronisé depuis Carnet SAE GMP'>🔗</td>"+
-      ECOLS.map(c=>td(c.k)).join('')+
-      "<td><span class='badge' style='background:#e0e7ff;color:#4338ca'>SAE</span></td>"+
-    "</tr>";
-  }
+  const sae=e.source==='sae';
+  const td=(k)=>"<td data-k='"+k+"'>"+(k==='annee'?(e.annee?esc(anneeLabel(e.annee)):"<span class='muted'>—</span>"):esc(e[k]||''))+"</td>";
+  const tag=sae
+    ? "<span class='badge' style='background:#e0e7ff;color:#4338ca'>🔗 SAE</span>"
+    : "<span class='badge' style='background:#eef2f5;color:var(--muted)'>Manuel</span> <button class='rowx' title='Supprimer cette ligne manuelle' onclick=\"delManualRow('"+e.id+"')\">✕</button>";
+  return "<tr class='"+(sae?'sae-row':'man-row')+"'>"+ECOLS.map(c=>td(c.k)).join('')+"<td class='act'>"+tag+"</td></tr>";
+}
+// Ligne de SAISIE d'un nouvel étudiant manuel (éditable), enregistrée via « Enregistrer les ajouts ».
+function draftRowHtml(){
   const cell=(k)=>{
-    if(k==='annee'){
-      return "<td><select class='ecell' data-k='annee'><option value=''>—</option>"+
-        allYears().map(a=>"<option value='"+esc(a.v)+"'"+(e.annee===a.v?' selected':'')+">"+esc(a.label)+"</option>").join('')+"</select></td>";
-    }
-    return "<td><input class='ecell' data-k='"+k+"' value=\""+esc(e[k]||'')+"\"></td>";
+    if(k==='annee') return "<td><select class='ecell' data-k='annee'><option value=''>—</option>"+
+      allYears().map(a=>"<option value='"+esc(a.v)+"'>"+esc(a.label)+"</option>").join('')+"</select></td>";
+    const lab=(ECOLS.find(c=>c.k===k)||{}).label||'';
+    return "<td><input class='ecell' data-k='"+k+"' placeholder='"+esc(lab)+"'></td>";
   };
-  return "<tr>"+
-    "<td class='selcol'><input type='checkbox' class='esel'></td>"+
-    ECOLS.map(c=>cell(c.k)).join('')+
-    "<td><button class='rowx' title='Supprimer la ligne' onclick=\"this.closest('tr').remove()\">✕</button></td>"+
-  "</tr>";
+  return "<tr class='draft-row'>"+ECOLS.map(c=>cell(c.k)).join('')+"<td class='act'><button class='rowx' title='Retirer' onclick=\"this.closest('tr').remove()\">✕</button></td></tr>";
 }
 function renderEtud(){
-  const nproj=[...new Set(ETU.map(e=>e.projet).filter(Boolean))].length;
-  const head1="<tr><th class='selcol'><input type='checkbox' id='etuAll' onclick='toggleAllEtud(this.checked)' title='Tout (dé)sélectionner'></th>"+
-    ECOLS.map(c=>"<th>"+c.label+"</th>").join('')+"<th></th></tr>";
-  const head2="<tr class='filtrow'><th class='selcol'></th>"+
+  const head1="<tr>"+ECOLS.map(c=>"<th>"+c.label+"</th>").join('')+"<th></th></tr>";
+  const head2="<tr class='filtrow'>"+
     ECOLS.map(c=>"<th><input class='colf' data-k='"+c.k+"' oninput='applyColFilters()' placeholder='filtrer…'></th>").join('')+"<th></th></tr>";
-  const body=ETU.length?ETU.map(e=>etudRowHtml(e)).join('')
-    :"<tr class='etu-empty'><td colspan='"+(ECOLS.length+2)+"' class='muted' style='text-align:center;padding:12px'>Aucun étudiant. Importez un fichier ou ajoutez une ligne.</td></tr>";
-  const rename=nproj?
-    "<div style='font-weight:700;font-size:.85rem;margin:14px 0 4px'>✏️ Renommer un projet partout</div>"+
-    "<div class='row'><select id='rpAncien' style='flex:1;min-width:150px'>"+[...new Set(ETU.map(e=>e.projet).filter(Boolean))].sort((a,b)=>a.localeCompare(b)).map(p=>"<option value=\""+esc(p)+"\">"+esc(p)+"</option>").join('')+"</select><span>→</span>"+
-    "<input id='rpNouveau' style='flex:1;min-width:150px' placeholder='Nouveau nom'><button class='btn ok' onclick='renameProjet()'>Renommer</button></div>"+
-    "<div class='muted' style='font-size:.8rem;margin-top:4px'>Renomme le projet dans la liste ET dans toutes les demandes d'impression liées (à préférer à l'édition directe de la cellule si le projet a déjà des demandes).</div>":"";
   const nSae=ETU.filter(e=>e.source==='sae').length, nMan=ETU.length-nSae;
+  const body=ETU.length?ETU.map(e=>etudRowHtml(e)).join('')
+    :"<tr class='etu-empty'><td colspan='"+(ECOLS.length+1)+"' class='muted' style='text-align:center;padding:12px'>Aucun étudiant. Lancez une synchro ou ajoutez une ligne manuelle.</td></tr>";
   document.getElementById('etudSection').innerHTML=
-    "<div class='info' style='margin:0 0 10px'>🔗 <b>Source principale : Carnet SAE GMP</b> (synchronisée). "+
-      "<b>"+nSae+"</b> étudiant(s) synchronisé(s) <span class='badge' style='background:#e0e7ff;color:#4338ca'>SAE</span> (lecture seule) · "+
-      "<b>"+nMan+"</b> ajouté(s) manuellement (éditable, en secours). Les lignes 🔗 se mettent à jour à chaque synchro.</div>"+
+    "<div class='info' style='margin:0 0 10px'>🔗 <b>Source : Carnet SAE GMP</b> (synchronisée, sens unique). "+
+      "<b>"+nSae+"</b> étudiant(s) <span class='badge' style='background:#e0e7ff;color:#4338ca'>🔗 SAE</span> · "+
+      "<b>"+nMan+"</b> <span class='badge' style='background:#eef2f5;color:var(--muted)'>Manuel</span>. "+
+      "La liste est en <b>lecture seule</b> (rien ne remonte vers SAE) ; vous pouvez seulement <b>ajouter</b> ou retirer des lignes manuelles (secours pour un cas hors SAE).</div>"+
     "<div class='row' style='margin-bottom:8px'>"+
       "<button class='btn ok' onclick='syncSae()'>🔄 Synchroniser depuis Carnet SAE GMP</button>"+
-      "<button class='btn sm' onclick='addEtudRow()'>+ Ajouter une ligne (manuelle)</button>"+
-      "<button class='btn sm del' onclick='delSelectedEtud()'>🗑 Supprimer la sélection</button>"+
-      "<button class='btn ok' onclick='saveEtudEdits()'>✔ Enregistrer les modifications</button>"+
+      "<button class='btn sm' onclick='addManualDraft()'>+ Ajouter un étudiant (manuel)</button>"+
+      "<button class='btn ok' onclick='saveManualAdds()'>✔ Enregistrer les ajouts</button>"+
       "<button class='btn sm' onclick='downloadEtud()'>⬇ Télécharger (xlsx)</button>"+
     "</div>"+
     "<div class='pv-tablewrap'><table class='pv-table etu-edit'><thead>"+head1+head2+"</thead><tbody id='etuBody'>"+body+"</tbody></table></div>"+
-    rename+
-    "<div style='font-weight:700;font-size:.85rem;margin:14px 0 4px'>Importer une liste (.xlsx)</div>"+
+    "<div style='font-weight:700;font-size:.85rem;margin:14px 0 4px'>Importer une liste manuelle (.xlsx)</div>"+
     "<div class='muted' style='font-size:.8rem'>Glissez le fichier « Gestion étudiants » : les feuilles <b>BUT 2</b> et <b>BUT 3</b> sont lues automatiquement (Nom, Prénom, Parcours, Intitulé = projet, colonnes Encadrant ; Feuille1 ignorée). <b>L'année est demandée juste avant de confirmer</b> ; l'import ne remplace que les projets de cette année-là (l'autre année est conservée).</div>"+
     "<div class='drop' id='etudDrop' onclick=\"document.getElementById('etudFile').click()\">📂 Cliquez ou glissez un fichier .xlsx ici</div>"+
     "<input type='file' id='etudFile' accept='.xlsx,.xls' style='display:none' onchange='parseEtud(this.files[0])'>"+
@@ -612,32 +601,34 @@ function applyColFilters(){
     tr.style.display=show?'':'none';
   });
 }
-function toggleAllEtud(ch){ document.querySelectorAll('#etuBody tr').forEach(tr=>{ if(tr.style.display==='none')return; const c=tr.querySelector('.esel'); if(c)c.checked=ch; }); }
-function addEtudRow(){
+// Ajoute une ligne de SAISIE (brouillon) en haut du tableau.
+function addManualDraft(){
   const tb=document.getElementById('etuBody'); const empty=tb.querySelector('.etu-empty'); if(empty) empty.remove();
-  const tmp=document.createElement('tbody'); tmp.innerHTML=etudRowHtml({}); const tr=tmp.firstElementChild;
+  const tmp=document.createElement('tbody'); tmp.innerHTML=draftRowHtml(); const tr=tmp.firstElementChild;
   tb.insertBefore(tr,tb.firstChild); const i=tr.querySelector('.ecell'); if(i)i.focus();
 }
-function delSelectedEtud(){
-  const sel=[...document.querySelectorAll('#etuBody tr')].filter(tr=>{ const c=tr.querySelector('.esel'); return c&&c.checked; });
-  if(!sel.length){ toast('⚠️ Aucune ligne sélectionnée'); return; }
-  if(!confirm('Retirer '+sel.length+' ligne(s) de la liste ?\nEffectif après « Enregistrer les modifications ».'))return;
-  sel.forEach(tr=>tr.remove()); const ea=document.getElementById('etuAll'); if(ea)ea.checked=false;
-}
-async function saveEtudEdits(){
+// Enregistre les brouillons saisis (lignes manuelles ajoutées). N'affecte que le manuel.
+async function saveManualAdds(){
   const rows=[]; let skipped=0;
-  document.querySelectorAll('#etuBody tr').forEach(tr=>{
-    if(tr.classList.contains('etu-empty'))return;
+  document.querySelectorAll('#etuBody tr.draft-row').forEach(tr=>{
     const g=k=>{ const el=tr.querySelector('.ecell[data-k="'+k+'"]'); return el?(el.value||'').trim():''; };
     const nom=g('nom'), prenom=g('prenom');
     if(!nom||!prenom){ if(nom||prenom||g('projet')) skipped++; return; }
     rows.push({nom,prenom,projet:g('projet'),annee:g('annee'),formation:g('formation'),parcours:g('parcours'),encadrant1:g('encadrant1'),encadrant2:g('encadrant2'),encadrant3:g('encadrant3')});
   });
+  if(!rows.length){ toast(skipped?'⚠️ Renseignez au moins Nom et Prénom':'⚠️ Aucun ajout à enregistrer (cliquez « + Ajouter »)'); return; }
   if(skipped && !confirm(skipped+' ligne(s) sans Nom ou Prénom seront ignorées. Continuer ?'))return;
   toast('💾 Enregistrement…');
-  const r=await sb.functions.invoke('admin-operators',{body:{action:'etudiants-save',adminCode:PW,etudiants:rows}});
+  const r=await sb.functions.invoke('admin-operators',{body:{action:'etudiants-add',adminCode:PW,etudiants:rows}});
   if(r.error||!r.data||!r.data.ok){toast('❌ Échec'+((r.data&&r.data.error)?' : '+r.data.error:''));return;}
-  toast('✅ '+(r.data.count!=null?r.data.count:rows.length)+' ligne(s) enregistrée(s)'); await loadAll();
+  toast('✅ '+(r.data.count!=null?r.data.count:rows.length)+' ligne(s) ajoutée(s)'); await loadAll();
+}
+// Supprime UNE ligne manuelle (par id). Les lignes SAE ne sont pas supprimables.
+async function delManualRow(id){
+  if(!confirm('Supprimer cette ligne manuelle ?'))return;
+  const r=await sb.functions.invoke('admin-operators',{body:{action:'etudiants-del',adminCode:PW,ids:[id]}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
+  toast('🗑 Ligne supprimée'); await loadAll();
 }
 function downloadEtud(){
   const rows=[["Nom","Prenom","Projet","Annee","Formation","Parcours","Encadrant1","Encadrant2","Encadrant3"]];
@@ -651,16 +642,6 @@ function templateEtud(){
   const ws=XLSX.utils.aoa_to_sheet([["Nom","Prenom","Projet","Formation","Parcours","Encadrant1","Encadrant2","Encadrant3"],["MARTIN","Alice","Projet A","2A","II","Dubois Jean","Leroi Marie",""],["DUPONT","Bob","Projet A","2I","IEC","Dubois Jean","",""]]);
   ws['!cols']=[{wch:18},{wch:18},{wch:25},{wch:12},{wch:12},{wch:20},{wch:20},{wch:20}];
   XLSX.utils.book_append_sheet(wb,ws,"Etudiants");XLSX.writeFile(wb,"modele_etudiants.xlsx");
-}
-async function renameProjet(){
-  const ancien=document.getElementById('rpAncien').value, nouveau=document.getElementById('rpNouveau').value.trim();
-  if(!ancien||!nouveau){toast('⚠️ Choisissez un projet et un nouveau nom');return;}
-  if(ancien===nouveau){toast('Nom identique');return;}
-  if(!confirm('Renommer « '+ancien+' » en « '+nouveau+' » ?\nMet à jour la liste étudiants et toutes les demandes.'))return;
-  toast('✏️ Renommage…');
-  const r=await sb.functions.invoke('admin-operators',{body:{action:'etudiants-rename',adminCode:PW,from:ancien,to:nouveau}});
-  if(r.error||!r.data||!r.data.ok){toast('❌ Échec'+((r.data&&r.data.error)?' : '+r.data.error:''));return;}
-  toast('✅ Projet renommé'); await loadAll();
 }
 // Normalise un en-tête : minuscules, sans accents, sans espaces autour.
 function normH(s){return String(s==null?'':s).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
