@@ -150,6 +150,9 @@
   .etu-edit .filtrow .colf{width:100%;min-width:70px;font-size:.74rem;padding:2px 5px;box-sizing:border-box;font-weight:400}
   .etu-edit .selcol{width:30px;text-align:center;padding-left:6px;padding-right:6px}
   .etu-edit .selcol input{width:15px;height:15px;accent-color:var(--admin)}
+  .etu-edit .sae-row td{background:#f4f6ff}
+  :root[data-theme="dark"] .etu-edit .sae-row td{background:#171b2e}
+  .etu-edit .sae-row .selcol{font-size:.9rem;opacity:.7}
   .drop{border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;color:var(--muted);background:#fafcfe;margin:8px 0}
   :root[data-theme="dark"] .drop{background:#0f2530}
   .drop:hover,.drop.drag{border-color:var(--admin);background:var(--admin-light);color:var(--admin-dark)}
@@ -248,7 +251,7 @@
       <div id="maintSection"><div class="muted">Chargement…</div></div>
     </div>
 
-    <div class="site-version">v4.7.1</div>
+    <div class="site-version">v4.8.0</div>
   </div>
 </div>
 
@@ -534,6 +537,15 @@ const ECOLS=[
 ];
 function etudRowHtml(e){
   e=e||{};
+  // Lignes synchronisées depuis Carnet SAE GMP : lecture seule (non éditables, non supprimables).
+  if(e.source==='sae'){
+    const td=(k)=>"<td data-k='"+k+"'>"+(k==='annee'?(e.annee?esc(anneeLabel(e.annee)):"<span class='muted'>—</span>"):esc(e[k]||''))+"</td>";
+    return "<tr class='sae-row'>"+
+      "<td class='selcol' title='Synchronisé depuis Carnet SAE GMP'>🔗</td>"+
+      ECOLS.map(c=>td(c.k)).join('')+
+      "<td><span class='badge' style='background:#e0e7ff;color:#4338ca'>SAE</span></td>"+
+    "</tr>";
+  }
   const cell=(k)=>{
     if(k==='annee'){
       return "<td><select class='ecell' data-k='annee'><option value=''>—</option>"+
@@ -560,10 +572,14 @@ function renderEtud(){
     "<div class='row'><select id='rpAncien' style='flex:1;min-width:150px'>"+[...new Set(ETU.map(e=>e.projet).filter(Boolean))].sort((a,b)=>a.localeCompare(b)).map(p=>"<option value=\""+esc(p)+"\">"+esc(p)+"</option>").join('')+"</select><span>→</span>"+
     "<input id='rpNouveau' style='flex:1;min-width:150px' placeholder='Nouveau nom'><button class='btn ok' onclick='renameProjet()'>Renommer</button></div>"+
     "<div class='muted' style='font-size:.8rem;margin-top:4px'>Renomme le projet dans la liste ET dans toutes les demandes d'impression liées (à préférer à l'édition directe de la cellule si le projet a déjà des demandes).</div>":"";
+  const nSae=ETU.filter(e=>e.source==='sae').length, nMan=ETU.length-nSae;
   document.getElementById('etudSection').innerHTML=
-    "<div class='muted' style='margin-bottom:6px'>"+ETU.length+" étudiant(s) — "+nproj+" projet(s). Éditez les cellules, cochez pour supprimer, puis <b>Enregistrer les modifications</b>.</div>"+
+    "<div class='info' style='margin:0 0 10px'>🔗 <b>Source principale : Carnet SAE GMP</b> (synchronisée). "+
+      "<b>"+nSae+"</b> étudiant(s) synchronisé(s) <span class='badge' style='background:#e0e7ff;color:#4338ca'>SAE</span> (lecture seule) · "+
+      "<b>"+nMan+"</b> ajouté(s) manuellement (éditable, en secours). Les lignes 🔗 se mettent à jour à chaque synchro.</div>"+
     "<div class='row' style='margin-bottom:8px'>"+
-      "<button class='btn sm' onclick='addEtudRow()'>+ Ajouter une ligne</button>"+
+      "<button class='btn ok' onclick='syncSae()'>🔄 Synchroniser depuis Carnet SAE GMP</button>"+
+      "<button class='btn sm' onclick='addEtudRow()'>+ Ajouter une ligne (manuelle)</button>"+
       "<button class='btn sm del' onclick='delSelectedEtud()'>🗑 Supprimer la sélection</button>"+
       "<button class='btn ok' onclick='saveEtudEdits()'>✔ Enregistrer les modifications</button>"+
       "<button class='btn sm' onclick='downloadEtud()'>⬇ Télécharger (xlsx)</button>"+
@@ -575,7 +591,7 @@ function renderEtud(){
     "<div class='drop' id='etudDrop' onclick=\"document.getElementById('etudFile').click()\">📂 Cliquez ou glissez un fichier .xlsx ici</div>"+
     "<input type='file' id='etudFile' accept='.xlsx,.xls' style='display:none' onchange='parseEtud(this.files[0])'>"+
     "<div class='row'><button class='btn sm' onclick='templateEtud()'>⬇ Modèle</button>"+
-      (ETU.length?"<button class='btn sm del' onclick='clearEtud()'>🗑 Vider toute la liste</button>":"")+"</div>";
+      (nMan?"<button class='btn sm del' onclick='clearEtud()'>🗑 Vider la liste manuelle</button>":"")+"</div>";
   const dz=document.getElementById('etudDrop');
   ['dragover','dragenter'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
   ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag');}));
@@ -588,9 +604,10 @@ function applyColFilters(){
     if(tr.classList.contains('etu-empty')) return;
     let show=true;
     for(const f of filters){
-      const el=tr.querySelector('.ecell[data-k="'+f.k+'"]'); let val=el?(el.value||''):'';
-      if(f.k==='annee' && el){ val=el.value?anneeLabel(el.value):''; }
-      if(!String(val).toLowerCase().includes(f.v)){ show=false; break; }
+      const el=tr.querySelector('.ecell[data-k="'+f.k+'"]'); let val;
+      if(el){ val=f.k==='annee'?(el.value?anneeLabel(el.value):''):el.value; }
+      else { const td=tr.querySelector('td[data-k="'+f.k+'"]'); val=td?td.textContent:''; }   // ligne SAE (lecture seule)
+      if(!String(val||'').toLowerCase().includes(f.v)){ show=false; break; }
     }
     tr.style.display=show?'':'none';
   });
@@ -723,10 +740,18 @@ async function confirmEtud(){
   ovClose(); toast('✅ '+rows.length+' étudiant(s) importé(s) — '+anneeLabel(annee)); await loadAll();
 }
 async function clearEtud(){
-  if(!confirm('Supprimer TOUTE la liste des étudiants (toutes années) ?\nCette action est définitive.'))return;
+  if(!confirm('Supprimer toutes les lignes AJOUTÉES MANUELLEMENT ?\n(Les étudiants synchronisés depuis Carnet SAE GMP ne sont pas touchés.)\nCette action est définitive.'))return;
   const r=await sb.functions.invoke('admin-operators',{body:{action:'etudiants-clear',adminCode:PW}});
   if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
-  toast('🗑 Liste supprimée'); await loadAll();
+  toast('🗑 Lignes manuelles supprimées'); await loadAll();
+}
+// Synchronisation manuelle depuis Carnet SAE GMP (PocketBase). La synchro automatique tourne aussi par cron.
+async function syncSae(){
+  toast('🔄 Synchronisation en cours…');
+  const r=await sb.functions.invoke('sync-sae',{body:{adminCode:PW}});
+  if(r.error||!r.data||!r.data.ok){toast('❌ Synchro échouée'+((r.data&&r.data.error)?' : '+r.data.error:''));return;}
+  toast('✅ '+(r.data.etudiants||0)+' étudiant(s) sur '+(r.data.projets||0)+' projet(s) synchronisé(s)');
+  await loadAll();
 }
 
 /* ══ MOTS DE PASSE (super + admin) ══ */

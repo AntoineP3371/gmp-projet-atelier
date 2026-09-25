@@ -141,29 +141,31 @@ Deno.serve(async (req) => {
           encadrant2: (e.encadrant2 ?? '').toString().trim(),
           encadrant3: (e.encadrant3 ?? '').toString().trim(),
           annee: annee || null,
+          source: 'manuel',
         }
         seen.set(idOf(row), row)   // remplace toute occurrence précédente du même étudiant
       }
       const rows = [...seen.values()]
       const idset = new Set([...seen.keys()])
-      const backup = (await sb.from('etudiants').select('*')).data || []
-      // NOUVELLE année (aucune ligne existante avec cette valeur) → on AJOUTE seulement, rien n'est
-      // remplacé ni supprimé (même si des étudiants du même nom existent sur d'autres années).
-      const yearIsNew = !!annee && !(backup as any[]).some((r) => r.annee === annee)
-      // Lignes que l'import supprime : pour une année EXISTANTE, toute cette année + les fiches SANS
-      // année du même étudiant (anti-doublon) ; sans année fournie → tout ; nouvelle année → rien.
+      // On ne raisonne QUE sur les lignes manuelles : les lignes synchronisées (source='sae')
+      // ne sont jamais touchées par l'import.
+      const backup = ((await sb.from('etudiants').select('*').eq('source', 'manuel')).data || []) as any[]
+      // NOUVELLE année (aucune ligne MANUELLE existante avec cette valeur) → on AJOUTE seulement.
+      const yearIsNew = !!annee && !backup.some((r) => r.annee === annee)
+      // Lignes MANUELLES que l'import supprime : pour une année EXISTANTE, toute cette année + les
+      // fiches sans année du même étudiant (anti-doublon) ; sans année fournie → tout ; nouvelle année → rien.
       const removed = (r: any) => {
         if (!annee) return true
         if (yearIsNew) return false
         return r.annee === annee || (r.annee == null && idset.has(idOf(r)))
       }
       if (annee && !yearIsNew) {
-        const d1 = await sb.from('etudiants').delete().eq('annee', annee)
+        const d1 = await sb.from('etudiants').delete().eq('source', 'manuel').eq('annee', annee)
         if (d1.error) throw d1.error
-        const strayIds = (backup as any[]).filter((r) => r.annee == null && idset.has(idOf(r))).map((r) => r.id).filter((x) => x != null)
+        const strayIds = backup.filter((r) => r.annee == null && idset.has(idOf(r))).map((r) => r.id).filter((x) => x != null)
         if (strayIds.length) { const d2 = await sb.from('etudiants').delete().in('id', strayIds); if (d2.error) throw d2.error }
       } else if (!annee) {
-        const d0 = await sb.from('etudiants').delete().neq('id', 0)
+        const d0 = await sb.from('etudiants').delete().eq('source', 'manuel')
         if (d0.error) throw d0.error
       }
       // nouvelle année : aucun effacement, on passe directement à l'insertion.
@@ -182,6 +184,7 @@ Deno.serve(async (req) => {
     // Enregistrement de l'ÉDITION du tableau : remplace toute la table par la liste fournie
     // (les lignes retirées côté client disparaissent, les modifications sont appliquées).
     if (action === 'etudiants-save') {
+      // Ne gère QUE les lignes manuelles ; les lignes synchronisées (source='sae') sont préservées.
       const rows = ((body.etudiants || []) as any[])
         .filter((e) => e && (e.nom ?? '').toString().trim() && (e.prenom ?? '').toString().trim())
         .map((e) => ({
@@ -193,28 +196,29 @@ Deno.serve(async (req) => {
           encadrant2: (e.encadrant2 ?? '').toString().trim(),
           encadrant3: (e.encadrant3 ?? '').toString().trim(),
           annee: (e.annee ?? '').toString().trim() || null,
+          source: 'manuel',
         }))
-      const backup = (await sb.from('etudiants').select('*')).data || []
-      const del = await sb.from('etudiants').delete().neq('id', 0)
+      const backup = ((await sb.from('etudiants').select('*').eq('source', 'manuel')).data || []) as any[]
+      const del = await sb.from('etudiants').delete().eq('source', 'manuel')
       if (del.error) throw del.error
       if (rows.length) {
         const ins = await sb.from('etudiants').insert(rows)
         if (ins.error) {
-          if (backup.length) await sb.from('etudiants').insert((backup as any[]).map(({ id, ...r }) => r))
+          if (backup.length) await sb.from('etudiants').insert(backup.map(({ id, ...r }) => r))
           throw ins.error
         }
       }
       return json({ ok: true, count: rows.length })
     }
 
-    // Vide la liste : une année précise, les lignes sans année ('__none__'), ou tout.
+    // Vide la liste MANUELLE : une année précise, les lignes sans année ('__none__'), ou toutes.
+    // Les lignes synchronisées (source='sae') ne sont pas touchées (elles reviennent à la synchro).
     if (action === 'etudiants-clear') {
       const annee = (body.annee ?? '').toString().trim()
+      const q = sb.from('etudiants').delete().eq('source', 'manuel')
       const del = annee === '__none__'
-        ? await sb.from('etudiants').delete().is('annee', null)
-        : (annee
-            ? await sb.from('etudiants').delete().eq('annee', annee)
-            : await sb.from('etudiants').delete().neq('id', 0))
+        ? await q.is('annee', null)
+        : (annee ? await q.eq('annee', annee) : await q.not('id', 'is', null))
       if (del.error) throw del.error
       return json({ ok: true })
     }
