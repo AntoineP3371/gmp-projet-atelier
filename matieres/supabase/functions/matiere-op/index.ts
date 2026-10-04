@@ -5,7 +5,8 @@
 // Une seule action générique { action:'db', table, op, rows|patch, eq, creds } + { action:'wipe' } :
 //   • tables du catalogue (matières, formes, bruts, fournisseurs, familles, associations, dates,
 //     budgets, paramètres) : mot de passe ADMIN (creds.adminPw) ;
-//   • mat_demandes — insert : public (colonnes filtrées, statut forcé « en_attente », n° recalculé) ;
+//   • mat_demandes — insert : étudiant identifié par le MOT DE PASSE DE PROJET de Carnet SAE (creds.projetPw ;
+//     projet inconnu ou sans mot de passe là-bas = ouvert), colonnes filtrées, statut forcé « en_attente », n° recalculé ;
 //   • mat_demandes — update : opérateur (creds.opName/opCode) pour le suivi, encadrant du projet
 //     (creds.encNom/encCode) pour la décision, ou annulation par l'étudiant tant que non validée ;
 //   • wipe : mot de passe SUPER admin.
@@ -53,6 +54,37 @@ const GEST_KEYS = [
 const GEST_STATUTS = ['validee', 'commandee', 'recue', 'remise', 'refusee', 'annulee']
 const ENC_STATUTS = ['validee', 'attente_info', 'refusee']
 const ENC_LOCKED = ['commandee', 'recue', 'remise', 'annulee']
+
+// Mot de passe de PROJET de Carnet SAE GMP (voir la fonction projet-access) : exigé pour déposer ou annuler
+// une demande. Projet inconnu de Carnet SAE ou sans mot de passe défini là-bas = ouvert.
+const SAE_URL = 'https://api_evalprojet.gmpbordeaux.fr'
+const SAE_NO_PW = /aucun mot de passe/i
+const normTxt = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
+async function accesProjet(projet: string, pw: string): Promise<'open' | 'ok' | 'bad' | 'down'> {
+  try {
+    const rl = await fetch(SAE_URL + '/etu/list', { headers: { Accept: 'application/json' } })
+    if (!rl.ok) return 'down'
+    const list = await rl.json()
+    const p = (Array.isArray(list) ? list : []).find((x: any) => normTxt(x.nom) === normTxt(projet))
+    if (!p) return 'open'
+    const ru = await fetch(SAE_URL + '/etu/unlock', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: p.token, password: pw || '-' }),
+    })
+    if (ru.ok) { try { await ru.body?.cancel() } catch (_) { /* on ne lit pas les notes */ } return pw ? 'ok' : 'bad' }
+    const j = await ru.json().catch(() => ({}))
+    if (ru.status === 403) return SAE_NO_PW.test(String(j.error ?? '')) ? 'open' : 'bad'
+    if (ru.status === 404) return 'open'
+    return 'down'
+  } catch (_) { return 'down' }
+}
+// Réponse d'erreur si l'accès au projet est refusé (HTTP 200 + ok:false : le client lit le code), sinon null.
+async function refusProjet(projet: string, pw: unknown): Promise<Response | null> {
+  const a = await accesProjet(projet, String(pw ?? ''))
+  if (a === 'bad') return json({ ok: false, error: 'projet-pw' })
+  if (a === 'down') return json({ ok: false, error: 'sae-down' })
+  return null
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -131,6 +163,10 @@ Deno.serve(async (req) => {
       if (!rows.length || rows.length > 20) return json({ ok: false, error: 'bad-input' }, 400)
       const now = new Date().toISOString()
       const clean: any[] = []
+      for (const proj of new Set(rows.map((r) => String(r?.projet ?? '').trim()).filter(Boolean))) {
+        const refus = await refusProjet(proj, c.projetPw)
+        if (refus) return refus
+      }
       for (const r of rows) {
         const o: any = {}
         for (const k of DEM_INSERT_COLS) if (r && k in r) o[k] = r[k]
@@ -181,7 +217,10 @@ Deno.serve(async (req) => {
         allowed = true
       } else if (patch.statut === 'annulee' && only(['statut', 'statut_at', 'historique']) &&
                  ['en_attente', 'attente_info'].includes(cur.statut)) {
-        allowed = true   // annulation par l'étudiant tant que la demande n'est pas validée
+        // annulation par l'étudiant tant que la demande n'est pas validée (mot de passe du projet requis)
+        const refus = await refusProjet(cur.projet, c.projetPw)
+        if (refus) return refus
+        allowed = true
       }
       if (!allowed) return json({ ok: false, error: 'auth' }, 401)
       const { error } = await sb.from('mat_demandes').update(patch).eq('id', eq.id)

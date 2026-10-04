@@ -623,7 +623,7 @@
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.0.0</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.1.0</div>
 
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
@@ -635,6 +635,20 @@
     <div class="modal-actions" style="justify-content:center">
       <button class="btn btn-close" onclick="closeOverlay('ovCode')">Annuler</button>
       <button class="btn btn-ok" onclick="confirmCode()">Valider</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODALE : mot de passe du projet (Carnet SAE) ============ -->
+<div class="overlay" id="ovProjetPw">
+  <div class="modal" style="text-align:center">
+    <h2>🔐 Mot de passe du projet</h2>
+    <div class="meta" id="ppSub"></div>
+    <input type="password" id="ppInput" autocomplete="off" placeholder="mot de passe du projet" style="font-size:.9rem" onkeydown="if(event.key==='Enter')submitProjetPw()">
+    <div class="field-err" id="ppErr">Mot de passe incorrect</div>
+    <div class="modal-actions" style="justify-content:center">
+      <button class="btn btn-close" onclick="cancelProjetPw()">Annuler</button>
+      <button class="btn btn-ok" onclick="submitProjetPw()">Valider</button>
     </div>
   </div>
 </div>
@@ -1064,8 +1078,45 @@ function renderProjetCards(boxId, ctx, withAutre){
   if(withAutre) h+="<div><div class='proj-grid'><div class='proj-card proj-card-autre' data-p='__autre__' onclick=\"pickProjetCard(this,'"+ctx+"')\">+ Autre projet…<small>Nouveau projet, pas encore dans la liste</small></div></div></div>";
   box.innerHTML=h||"<div class='empty'>Aucun projet pour le moment.</div>";
 }
-function pickProjetCard(el, ctx){
+// ── Mot de passe de PROJET de Carnet SAE GMP (celui des notes), vérifié côté serveur (fonction projet-access).
+// Un projet sans mot de passe là-bas (ou saisi à la main via « Autre projet ») reste ouvert. Une fois saisi,
+// le mot de passe est gardé le temps de l'onglet (sessionStorage) pour ne pas le redemander.
+const pwKey = p => 'projpw-'+String(p||'').trim().toLowerCase();
+const getPw = p => { try{ return sessionStorage.getItem(pwKey(p))||''; }catch(e){ return ''; } };
+const setPw = (p,v) => { try{ v ? sessionStorage.setItem(pwKey(p),v) : sessionStorage.removeItem(pwKey(p)); }catch(e){} };
+async function projetAccess(action, projet, password){
+  try{
+    const {data,error}=await sb.functions.invoke('projet-access',{body:{action,projet,password}});
+    if(error||!data) return {ok:false,error:'sae-down'};
+    return data;
+  }catch(e){ return {ok:false,error:'sae-down'}; }
+}
+let _ppResolve=null, _ppProjet='';
+async function unlockProjet(projet){
+  const st=await projetAccess('status',projet);
+  if(!st.ok){ showToast('❌ Carnet SAE est injoignable : impossible de vérifier le mot de passe du projet. Réessayez dans un moment.'); return false; }
+  if(!st.protected) return true;
+  const saved=getPw(projet);
+  if(saved){ const v=await projetAccess('verify',projet,saved); if(v.ok) return true; setPw(projet,''); }
+  if(_ppResolve) _ppResolve(false);
+  _ppProjet=projet;
+  document.getElementById('ppSub').innerHTML='Projet <b>'+esc(projet)+'</b> : saisissez le mot de passe de votre projet (le même que pour consulter vos notes dans Carnet SAE). Demandez-le à votre encadrant si besoin.';
+  document.getElementById('ppInput').value=''; document.getElementById('ppErr').classList.remove('show');
+  openOverlay('ovProjetPw'); setTimeout(()=>document.getElementById('ppInput').focus(),50);
+  return new Promise(res=>{ _ppResolve=res; });
+}
+async function submitProjetPw(){
+  const pw=document.getElementById('ppInput').value, err=document.getElementById('ppErr');
+  if(!pw){ err.textContent='Saisissez le mot de passe'; err.classList.add('show'); return; }
+  const v=await projetAccess('verify',_ppProjet,pw);
+  if(v.ok){ setPw(_ppProjet,pw); closeOverlay('ovProjetPw'); const r=_ppResolve; _ppResolve=null; if(r) r(true); return; }
+  err.textContent = v.error==='bad' ? 'Mot de passe incorrect' : 'Carnet SAE injoignable, réessayez';
+  err.classList.add('show');
+}
+function cancelProjetPw(){ closeOverlay('ovProjetPw'); const r=_ppResolve; _ppResolve=null; if(r) r(false); }
+async function pickProjetCard(el, ctx){
   const p=el.dataset.p;
+  if(p!=='__autre__' && !(await unlockProjet(p))) return;
   if(ctx==='s'){ document.getElementById('sprojet').value=p; onSuiviProjet(); rechercherSuivi(); return; }
   document.getElementById('fprojet').value=p; onProjetChange();
 }
@@ -1378,11 +1429,13 @@ async function submitDemande(){
     // E-mail facultatif : envoyé À PART (jamais stocké dans la table demandes, lisible en anon) ;
     // il sera rangé côté serveur dans la table verrouillée demande_contacts.
     const email=(document.getElementById('femail').value||'').trim();
-    const res=await sb.functions.invoke('demande-op',{ body:{ action:'create', demande:demande, email:email } });
+    const res=await sb.functions.invoke('demande-op',{ body:{ action:'create', demande:demande, email:email, projetPw:getPw(projet) } });
     busy(false);
     if(res.error || !res.data || !res.data.ok){
       const e=res.data&&res.data.error;
-      showToast(e==='limit'?('⛔ Limite de '+(res.data.lim)+' impressions atteinte pour ce projet.'):('❌ Erreur : '+(e||'envoi')));
+      showToast(e==='limit'?('⛔ Limite de '+(res.data.lim)+' impressions atteinte pour ce projet.'):
+        e==='projet-pw'?'❌ Mot de passe du projet invalide ou expiré — changez de projet et saisissez-le de nouveau.':
+        e==='sae-down'?'❌ Carnet SAE est injoignable — réessayez dans un moment.':('❌ Erreur : '+(e||'envoi')));
       return;
     }
     resetStudentForm();
@@ -2418,11 +2471,11 @@ async function setSuiviEmail(id){
   const email=(inp.value||'').trim();
   if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showToast('⚠️ Adresse e-mail invalide'); return; }
   busy(true,'Enregistrement…');
-  const res=await sb.functions.invoke('demande-op',{ body:{ action:'set-email', id:id, email:email } });
+  const res=await sb.functions.invoke('demande-op',{ body:{ action:'set-email', id:id, email:email, projetPw:getPw(document.getElementById('sprojet').value) } });
   busy(false);
   if(res.error || !res.data || !res.data.ok){
     const e=res.data&&res.data.error;
-    showToast('❌ '+(e==='closed'?'Demande déjà terminée':(e==='bad-email'?'Adresse invalide':'Erreur')));
+    showToast('❌ '+(e==='closed'?'Demande déjà terminée':(e==='bad-email'?'Adresse invalide':(e==='projet-pw'?'Mot de passe du projet invalide ou expiré — changez de projet':(e==='sae-down'?'Carnet SAE injoignable — réessayez':'Erreur')))));
     return;
   }
   showToast('📧 E-mail enregistré — vous serez prévenu·e quand ce sera imprimé');

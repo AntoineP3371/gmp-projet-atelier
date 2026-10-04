@@ -1,6 +1,6 @@
 /* Mode démo (?demo=1) : faux client Supabase en mémoire, données fictives.
    Rien n'est lu ni écrit dans la vraie base ; tout est perdu au rechargement.
-   Codes : encadrant / gestionnaire = 1234 · admin = admin · super admin = super */
+   Codes : encadrant / gestionnaire = 1234 · admin = admin · super admin = super · mot de passe du projet « Porte A380 » = secret */
 (function(){
   const iso = d => d.toISOString();
   const ago = n => iso(new Date(Date.now() - n*86400000));
@@ -171,6 +171,12 @@
         invoke: async (name, o) => {
           const b = (o && o.body) || {};
           if(name === 'verify-code') return {data:{ok: String(b.code) === '1234'}, error:null};
+          // Mot de passe de projet (Carnet SAE) simulé : seul le projet « Porte A380 » est protégé, mot de passe « secret ».
+          if(name === 'projet-access'){
+            const prot = b.projet === 'Porte A380';
+            if(b.action === 'status') return {data:{ok:true, protected:prot}, error:null};
+            if(b.action === 'verify') return {data: (!prot || b.password === 'secret') ? {ok:true, protected:prot} : {ok:false, error:'bad'}, error:null};
+          }
           if(name === 'admin-op'){
             if(b.adminCode === 'super') return {data:{ok:true, role:'super'}, error:null};
             if(b.adminCode === 'admin') return {data:{ok:true, role:'admin'}, error:null};

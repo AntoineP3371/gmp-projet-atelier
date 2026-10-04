@@ -118,14 +118,33 @@ Toutes les écritures passent par l'Edge Function (clé service) ; la clé publi
 | Écriture | Qui |
 |---|---|
 | Catalogue (matières, formes, bruts, fournisseurs, familles, associations, dates, budgets, paramètres) | mot de passe **admin** |
-| Dépôt d'une demande | public — colonnes filtrées, statut forcé « en attente », n° de demande recalculé |
+| Dépôt d'une demande | étudiant identifié par le **mot de passe de son projet** (voir ci-dessous) — colonnes filtrées, statut forcé « en attente », n° de demande recalculé |
 | Décision sur une demande | **encadrant du projet** (nom + code personnel) ; impossible une fois commandée/remise |
 | Suivi (commandée, prête, remise, coût final…) | **opérateur** (nom + code personnel) |
-| Annulation | l'étudiant, tant que la demande n'est pas validée |
+| Annulation | l'étudiant (mot de passe du projet), tant que la demande n'est pas validée |
 | Vidage de tables (Admin globale → Maintenance) | mot de passe **super admin** |
 
 Limite connue : le **prix et le poids estimés** sont calculés dans le navigateur de l'étudiant et envoyés tels quels (comme pour
 les autres applis) ; l'encadrant et le gestionnaire les voient et le gestionnaire peut corriger le « coût final ».
+
+## Identification par le mot de passe de projet (Carnet SAE)
+
+L'étudiant s'identifie en cliquant sur son projet, puis saisit le **mot de passe du projet** : c'est celui que Carnet SAE GMP
+utilise déjà pour consulter les notes (défini par l'encadrant là-bas). Il est exigé pour **déposer** une demande, **l'annuler** et
+**ouvrir le Suivi** (qui n'affiche plus que les demandes d'un seul projet). Il est vérifié par la fonction `projet-access`
+(dossier `usinage/supabase/functions/`), qui interroge Carnet SAE ; `matiere-op` le revérifie à chaque dépôt/annulation.
+
+- Projet **inconnu de Carnet SAE** ou **sans mot de passe défini** là-bas (dont « Autre projet… ») : accès libre, comme avant.
+- Carnet SAE injoignable : accès refusé (message « Carnet SAE injoignable »), pour ne pas ouvrir la porte par défaut.
+- Le mot de passe saisi est gardé le temps de l'onglet (sessionStorage), jamais stocké côté Atelier.
+- **Limite** : le mot de passe protège l'*interface* du Suivi, pas l'API : les demandes restent lisibles avec la clé publique (comme
+  toutes les applis Atelier). Il n'y a pas de limite de tentatives côté Carnet SAE (la fonction ajoute seulement 0,6 s par échec).
+- Dépendance au message d'erreur de Carnet SAE (« Aucun mot de passe défini… », `pb_hooks/etu-access.pb.js`) pour reconnaître un
+  projet sans mot de passe ; s'il change, adapter `NO_PW` dans `projet-access`, `demande-op` et `matiere-op`.
+
+**Ordre de déploiement** : `projet-access` (nouvelle) d'abord, puis `demande-op` et `matiere-op` (à redéployer), puis seulement la
+mise en ligne du site — sinon l'identification par projet échoue (« Carnet SAE injoignable ») tant que `projet-access` n'existe pas.
+En démo (`?demo=1`) : le projet « Porte A380 » est protégé, mot de passe `secret`.
 
 ## Fichiers
 

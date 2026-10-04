@@ -336,18 +336,26 @@ table.data input,table.data select{padding:5px 7px;font-size:.84rem}
   <section id="view-suivi" class="view">
     <div class="card">
       <h2>Suivi des demandes</h2>
-      <div class="filters">
-        <input id="s-search" placeholder="Rechercher un projet, un étudiant, une matière…" oninput="renderSuivi()" style="min-width:240px">
-        <select id="s-projet" onchange="renderSuivi()"><option value="">Tous les projets</option></select>
-        <select id="s-statut" onchange="renderSuivi()"><option value="">Tous les statuts</option></select>
-        <select id="s-matiere" onchange="renderSuivi()"><option value="">Toutes les matières</option></select>
+      <div id="s-gate">
+        <div class="sub">Choisissez votre projet pour suivre vos demandes (le mot de passe du projet vous sera demandé).</div>
+        <div id="s-projet-cards" class="proj-wrap"></div>
       </div>
-      <details class="help">
-        <summary>Aide : que veut dire chaque statut ?</summary>
-        <div id="statutHelp"></div>
-      </details>
-      <div id="suiviBudgets"></div>
-      <div id="suiviList"></div>
+      <select id="s-projet" style="display:none"><option value="">—</option></select>
+      <div id="s-panel" style="display:none">
+        <div class="sub" id="s-projet-chosen" style="margin:0 0 12px"></div>
+        <div class="filters">
+          <input id="s-search" placeholder="Rechercher un étudiant, une matière…" oninput="renderSuivi()" style="min-width:240px">
+          <select id="s-statut" onchange="renderSuivi()"><option value="">Tous les statuts</option></select>
+          <select id="s-matiere" onchange="renderSuivi()"><option value="">Toutes les matières</option></select>
+          <div class="toolbar-right"><button class="btn sm" onclick="changerProjetSuivi()">↩ Changer de projet</button></div>
+        </div>
+        <details class="help">
+          <summary>Aide : que veut dire chaque statut ?</summary>
+          <div id="statutHelp"></div>
+        </details>
+        <div id="suiviBudgets"></div>
+        <div id="suiviList"></div>
+      </div>
     </div>
   </section>
 
@@ -424,7 +432,7 @@ table.data input,table.data select{padding:5px 7px;font-size:.84rem}
     </div>
   </section>
 
-  <div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.0.0</div>
+  <div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.1.0</div>
 </div>
 
 <!-- ══════════ FENÊTRES ══════════ -->
@@ -595,6 +603,18 @@ table.data input,table.data select{padding:5px 7px;font-size:.84rem}
   <div class="err" id="ed-err"></div>
 </div></div>
 
+<div class="overlay" id="ovProjetPw"><div class="modal" style="max-width:430px">
+  <button class="modal-x" onclick="cancelProjetPw()" aria-label="Fermer">✕</button>
+  <h2>🔐 Mot de passe du projet</h2>
+  <div class="sub" id="pp-sub"></div>
+  <input id="pp-pw" type="password" placeholder="mot de passe du projet" autocomplete="off" onkeydown="if(event.key==='Enter')submitProjetPw()">
+  <div class="err" id="pp-err"></div>
+  <div class="actions">
+    <button class="btn" onclick="cancelProjetPw()">Annuler</button>
+    <button class="btn primary" onclick="submitProjetPw()">Valider</button>
+  </div>
+</div></div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -608,6 +628,47 @@ if(DEMO){ const f=document.getElementById('testFlag'); f.textContent='MODE DÉMO
    publique n'a plus que la lecture. En mode démo, on écrit directement dans la fausse base en mémoire. */
 let _adminPw='', _encCode='', _gestCode='';
 const creds = () => ({ adminPw:_adminPw, encNom:_encNom, encCode:_encCode, opName:_gestNom, opCode:_gestCode });
+
+/* Identification par projet : MOT DE PASSE DE PROJET de Carnet SAE GMP (celui des notes), vérifié côté serveur par
+   la fonction projet-access. Un projet sans mot de passe là-bas (ou saisi à la main) reste ouvert. Une fois
+   saisi, il est gardé le temps de l'onglet (sessionStorage) pour ne pas le redemander. */
+const pwKey = p => 'projpw-'+String(p||'').trim().toLowerCase();
+const getPw = p => { try{ return sessionStorage.getItem(pwKey(p))||''; }catch(e){ return ''; } };
+const setPw = (p,v) => { try{ v ? sessionStorage.setItem(pwKey(p),v) : sessionStorage.removeItem(pwKey(p)); }catch(e){} };
+async function projetAccess(action, projet, password){
+  try{
+    const {data,error}=await sb.functions.invoke('projet-access',{body:{action,projet,password}});
+    if(error||!data) return {ok:false,error:'sae-down'};
+    return data;
+  }catch(e){ return {ok:false,error:'sae-down'}; }
+}
+let _ppResolve=null, _ppProjet='';
+// Résout true si l'accès au projet est accordé (projet ouvert, mot de passe déjà saisi, ou saisi maintenant).
+async function unlockProjet(projet){
+  const st=await projetAccess('status',projet);
+  if(!st.ok){ toast('Carnet SAE est injoignable : impossible de vérifier le mot de passe du projet. Réessayez dans un moment.'); return false; }
+  if(!st.protected) return true;
+  const saved=getPw(projet);
+  if(saved){ const v=await projetAccess('verify',projet,saved); if(v.ok) return true; setPw(projet,''); }
+  if(_ppResolve) _ppResolve(false);
+  _ppProjet=projet;
+  $('#pp-sub').innerHTML='Projet <b>'+esc(projet)+'</b> : saisissez le mot de passe de votre projet (le même que pour consulter vos notes dans Carnet SAE). Demandez-le à votre encadrant si besoin.';
+  $('#pp-pw').value=''; $('#pp-err').classList.remove('show');
+  openOverlay('ovProjetPw'); setTimeout(()=>$('#pp-pw').focus(),50);
+  return new Promise(res=>{ _ppResolve=res; });
+}
+async function submitProjetPw(){
+  const pw=$('#pp-pw').value;
+  if(!pw) return fail($('#pp-err'),'Saisissez le mot de passe.');
+  const v=await projetAccess('verify',_ppProjet,pw);
+  if(v.ok){ setPw(_ppProjet,pw); closeOverlay('ovProjetPw'); const r=_ppResolve; _ppResolve=null; if(r) r(true); return; }
+  fail($('#pp-err'), v.error==='bad' ? 'Mot de passe incorrect.' : 'Carnet SAE injoignable, réessayez.');
+}
+function cancelProjetPw(){ closeOverlay('ovProjetPw'); const r=_ppResolve; _ppResolve=null; if(r) r(false); }
+const ERR_MSG = {
+  'projet-pw':'Mot de passe du projet invalide ou expiré — changez de projet et saisissez-le de nouveau.',
+  'sae-down':'Carnet SAE est injoignable — réessayez dans un moment.'
+};
 function makeWriter(){
   return { from(table){
     const st={op:null,rows:null,patch:null,eq:{}};
@@ -621,9 +682,10 @@ function makeWriter(){
     };
     async function call(){
       try{
-        const {data,error}=await sb.functions.invoke('matiere-op',{body:{action:'db',table,op:st.op,rows:st.rows,patch:st.patch,eq:st.eq,creds:creds()}});
+        const proj=(st.rows&&st.rows[0]&&st.rows[0].projet)||((DEMANDES.find(d=>d.id===st.eq.id)||{}).projet)||'';
+        const {data,error}=await sb.functions.invoke('matiere-op',{body:{action:'db',table,op:st.op,rows:st.rows,patch:st.patch,eq:st.eq,creds:{...creds(),projetPw:getPw(proj)}}});
         if(error) return {error:{message:error.message||String(error)}};
-        if(!data||data.ok===false) return {error:{message:'Refusé : '+((data&&data.error)||'non autorisé')}};
+        if(!data||data.ok===false) return {error:{message:ERR_MSG[data&&data.error]||('Refusé : '+((data&&data.error)||'non autorisé'))}};
         return {data:null,error:null};
       }catch(e){ return {error:{message:String(e)}}; }
     }
@@ -917,7 +979,8 @@ function buildAll(){
   const mOpts=[...new Set([...MATIERES.map(m=>m.nom),...DEMANDES.map(d=>d.matiere)])].filter(Boolean).sort(byFr).map(m=>opt(m)).join('');
   const keep=id=>$(id).value;
   const kp=[keep('#s-projet'),keep('#s-statut'),keep('#s-matiere'),keep('#f-projet'),keep('#f-matiere'),keep('#f-statut'),keep('#f-forme'),keep('#f-brut'),keep('#f-fournisseur')];
-  $('#s-projet').innerHTML='<option value="">Tous les projets</option>'+pOpts;
+  $('#s-projet').innerHTML='<option value="">—</option>'+pOpts;
+  renderProjetCards('s-projet-cards',false,allProjets());
   $('#s-statut').innerHTML='<option value="">Tous les statuts</option>'+sOpts;
   $('#s-matiere').innerHTML='<option value="">Toutes les matières</option>'+mOpts;
   $('#f-projet').innerHTML='<option value="">Projet : tous</option>'+pOpts;
@@ -939,7 +1002,7 @@ function buildAll(){
 /* ────────────────────────── NOUVELLE DEMANDE ────────────────────────── */
 function buildNouvelle(){
   const keepM=$('#n-matiere').value;
-  renderProjetCards();
+  renderProjetCards('n-projet-cards',true,PROJETS);
   const mats=MATIERES.filter(m=>m.actif!==false);
   $('#n-matiere').innerHTML=mats.map(m=>opt(m.nom)).join('');
   if(keepM&&mats.some(m=>m.nom===keepM)) $('#n-matiere').value=keepM;
@@ -948,22 +1011,24 @@ function buildNouvelle(){
   onMatiereChange();
 }
 // Cartes de projets groupées par parcours (identification étudiant, comme Carnet SAE).
-function renderProjetCards(){
-  const box=$('#n-projet-cards'); if(!box) return;
+function renderProjetCards(boxId, withAutre, list){
+  const box=$('#'+boxId); if(!box) return;
   const groups={};
-  PROJETS.forEach(p=>{ const par=parcoursForProjet(p)||'Autres projets'; (groups[par]=groups[par]||[]).push(p); });
+  list.forEach(p=>{ const par=parcoursForProjet(p)||'Autres projets'; (groups[par]=groups[par]||[]).push(p); });
   const keys=Object.keys(groups).sort(byFr);
   let h=keys.map(k=>`<div class="proj-group"><div class="proj-group-title">${esc(k)}</div><div class="proj-grid">`+
     groups[k].slice().sort(byFr).map(p=>`<div class="proj-card" data-p="${esc(p)}"><h3>${esc(p)}</h3></div>`).join('')+
     '</div></div>').join('');
-  h+=`<div class="proj-group"><div class="proj-grid"><div class="proj-card proj-card-autre" data-p="__autre"><h3>+ Autre projet…</h3><p>Nouveau projet, pas encore dans la liste</p></div></div></div>`;
-  box.innerHTML=h;
-  const cur=$('#n-projet').value;
+  if(withAutre) h+=`<div class="proj-group"><div class="proj-grid"><div class="proj-card proj-card-autre" data-p="__autre"><h3>+ Autre projet…</h3><p>Nouveau projet, pas encore dans la liste</p></div></div></div>`;
+  box.innerHTML=h || '<div class="hint">Aucun projet pour le moment.</div>';
+  const cur=boxId==='n-projet-cards' ? $('#n-projet').value : '';
   if(cur) box.querySelectorAll('.proj-card').forEach(c=>c.classList.toggle('active',c.dataset.p===cur));
 }
-// Délégation de clic sur les cartes (posée une seule fois : le conteneur existe dès le chargement de la page).
+// Délégation de clic sur les cartes (posée une seule fois : les conteneurs existent dès le chargement de la page).
 $('#n-projet-cards').addEventListener('click', e=>{ const c=e.target.closest('.proj-card'); if(c) pickProjet(c.dataset.p); });
-function pickProjet(p){
+$('#s-projet-cards').addEventListener('click', e=>{ const c=e.target.closest('.proj-card'); if(c) pickProjetSuivi(c.dataset.p); });
+async function pickProjet(p){
+  if(p!=='__autre' && !(await unlockProjet(p))) return;
   $('#n-projet').innerHTML = PROJETS.map(x=>opt(x)).join('')+opt('__autre','Autre projet…');
   $('#n-projet').value=p;
   document.querySelectorAll('#n-projet-cards .proj-card').forEach(c=>c.classList.toggle('active',c.dataset.p===p));
@@ -1227,9 +1292,22 @@ function stepsHtml(d){
   if(d.remise_at) p.push(fmtDate(d.remise_at)+' remise');
   return p.join(' → ');
 }
+// Suivi : on n'affiche que les demandes d'UN projet, après saisie de son mot de passe (porte d'entrée par cartes).
+const allProjets = () => [...new Set([...PROJETS,...DEMANDES.map(d=>d.projet)])].filter(Boolean).sort(byFr);
+async function pickProjetSuivi(p){
+  if(!(await unlockProjet(p))) return;
+  if(![...$('#s-projet').options].some(o=>o.value===p)) $('#s-projet').insertAdjacentHTML('beforeend',opt(p));
+  $('#s-projet').value=p; renderSuivi();
+}
+function changerProjetSuivi(){ $('#s-projet').value=''; renderSuivi(); }
 function renderSuivi(){
+  const fp=$('#s-projet').value;
+  $('#s-gate').style.display = fp ? 'none' : 'block';
+  $('#s-panel').style.display = fp ? 'block' : 'none';
+  if(!fp) return;
+  $('#s-projet-chosen').innerHTML='Projet : <b>'+esc(fp)+'</b>';
   const q=($('#s-search').value||'').toLowerCase().trim();
-  const fp=$('#s-projet').value, fs=$('#s-statut').value, fm=$('#s-matiere').value;
+  const fs=$('#s-statut').value, fm=$('#s-matiere').value;
   const rows=DEMANDES.filter(d=>{
     if(fp&&d.projet!==fp) return false;
     if(fs&&d.statut!==fs) return false;

@@ -19,6 +19,37 @@ async function sha256hex(s: string): Promise<string> {
   return [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, '0')).join('')
 }
 
+// Mot de passe de PROJET de Carnet SAE GMP (voir la fonction projet-access) : exigé pour déposer une demande
+// ou ajouter un e-mail. Projet inconnu de Carnet SAE ou sans mot de passe défini là-bas = ouvert.
+const SAE_URL = 'https://api_evalprojet.gmpbordeaux.fr'
+const SAE_NO_PW = /aucun mot de passe/i
+const normTxt = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
+async function accesProjet(projet: string, pw: string): Promise<'open' | 'ok' | 'bad' | 'down'> {
+  try {
+    const rl = await fetch(SAE_URL + '/etu/list', { headers: { Accept: 'application/json' } })
+    if (!rl.ok) return 'down'
+    const list = await rl.json()
+    const p = (Array.isArray(list) ? list : []).find((x: any) => normTxt(x.nom) === normTxt(projet))
+    if (!p) return 'open'
+    const ru = await fetch(SAE_URL + '/etu/unlock', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: p.token, password: pw || '-' }),
+    })
+    if (ru.ok) { try { await ru.body?.cancel() } catch (_) { /* on ne lit pas les notes */ } return pw ? 'ok' : 'bad' }
+    const j = await ru.json().catch(() => ({}))
+    if (ru.status === 403) return SAE_NO_PW.test(String(j.error ?? '')) ? 'open' : 'bad'
+    if (ru.status === 404) return 'open'
+    return 'down'
+  } catch (_) { return 'down' }
+}
+// Renvoie une Response d'erreur si l'accès au projet est refusé (HTTP 200 + ok:false pour que le client lise le code), sinon null.
+async function refusProjet(projet: string, pw: unknown): Promise<Response | null> {
+  const a = await accesProjet(projet, String(pw ?? ''))
+  if (a === 'bad') return json({ ok: false, error: 'projet-pw' })
+  if (a === 'down') return json({ ok: false, error: 'sae-down' })
+  return null
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   try {
@@ -49,6 +80,8 @@ Deno.serve(async (req) => {
       const d = b.demande || {}
       const projet = (d.projet ?? '').toString()
       if (!projet) return json({ ok: false, error: 'no projet' }, 400)
+      const refus = await refusProjet(projet, b.projetPw)
+      if (refus) return refus
       // Limite par projet (vérifiée serveur)
       const { data: params } = await sb.from('parametres').select('cle, valeur')
       let limDef = 10
@@ -78,8 +111,10 @@ Deno.serve(async (req) => {
     if (action === 'set-email') {
       const email = (b.email ?? '').toString().trim()
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ ok: false, error: 'bad-email' }, 400)
-      const { data: dem } = await sb.from('demandes').select('statut').eq('id', b.id).maybeSingle()
+      const { data: dem } = await sb.from('demandes').select('statut, projet').eq('id', b.id).maybeSingle()
       if (!dem) return json({ ok: false, error: 'not-found' }, 404)
+      const refus = await refusProjet(dem.projet, b.projetPw)
+      if (refus) return refus
       if (dem.statut === 'imprimee' || dem.statut === 'refusee') return json({ ok: false, error: 'closed' }, 409)
       await sb.from('demande_contacts').upsert([{ demande_id: b.id, email }])
       await sb.from('demandes').update({ has_email: true }).eq('id', b.id)
