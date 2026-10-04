@@ -5,16 +5,24 @@ Appli web (fichier unique `index.html`) pour gérer les **demandes d'achat de co
 
 Même base Supabase et même charte que les applis *Usinage* et *Impression 3D* du dépôt.
 
-- **Écran 1 — Nouvelle demande** : l'encadrant s'**identifie d'abord** (son nom — pris **uniquement** dans
-  la liste des encadrants de la table `etudiants`, gérée depuis la page principale — + code PIN encadrant).
-  Ensuite les **projets, parcours et formations proposés sont limités à ceux qu'il encadre** (d'après
-  `etudiants`) ; le parcours et la formation s'auto-remplissent au choix du projet. Puis il ajoute un ou
-  plusieurs **blocs fournisseur** (nom du fournisseur une fois) contenant chacun un ou plusieurs
-  **articles** (intitulé, référence, quantité, prix unitaire estimé, lien). Total estimé calculé
-  automatiquement, barre de budget du parcours mise à jour en direct.
-- **Écran 2 — Suivi** (public, sans code) : filtres projet / encadrant / statut / parcours, panneau
-  d'**aide décrivant chaque statut**, demandes regroupées par projet, pastille de statut, étapes
-  horodatées, total par projet, barres de budget par parcours.
+- **Écran 1 — Nouvelle demande** : deux façons de s'identifier.
+  - **Étudiant** : il choisit son **projet** (cartes groupées par parcours, comme dans Carnet SAE) et saisit le
+    **mot de passe du projet** de Carnet SAE GMP (celui qui sert à consulter les notes), vérifié côté serveur.
+    Il choisit son nom dans la liste du projet (ou saisit nom/prénom). Parcours et formation viennent de la
+    fiche projet. Sa demande est enregistrée « **en attente de l'encadrant** » : elle n'est **pas visible du
+    gestionnaire** tant que l'encadrant ne l'a pas validée.
+  - **Encadrant** (bouton « Je suis encadrant… ») : nom (liste de la table `etudiants`) + **mot de passe de son
+    compte Carnet SAE** (sans compte : code personnel Atelier). Les projets proposés sont ceux qu'il encadre.
+    Sa demande est **validée d'office** et part directement chez le gestionnaire.
+  Dans les deux cas : un ou plusieurs **blocs fournisseur** contenant chacun un ou plusieurs **articles**
+  (intitulé, référence, quantité, prix unitaire estimé, lien), total estimé et barre de budget en direct.
+- **Écran 2 — Suivi** (protégé par le **mot de passe du projet**) : on choisit son projet, on saisit son mot de
+  passe, puis on voit les demandes de ce projet (filtre texte / statut, aide sur les statuts, étapes
+  horodatées avec la décision de l'encadrant et son commentaire, barres de budget). Un étudiant peut
+  **annuler** une ligne tant que l'encadrant ne l'a pas validée.
+- **Écran 2 bis — Espace encadrant** (mot de passe Carnet SAE) : liste des demandes des étudiants de ses projets,
+  regroupées par dépôt. **Chaque ligne a sa propre décision** : **Valider** (transmise au gestionnaire, WhatsApp envoyé alors), **Mettre en attente — manque d'information** (commentaire de ligne obligatoire, visible par l'étudiant) ou **Refuser** ; un bouton « Tout valider » sert de raccourci. Une décision reste modifiable tant que le gestionnaire n'a pas commandé la ligne. Il y voit aussi les lignes qu'il a déposées directement (et peut les annuler tant qu'elles sont
+  « validées »).
 - **Écran 3 — Espace gestionnaire** (code opérateur) : compteurs, filtres (dont projet et encadrant),
   tableau avec **colonne Contexte** et **colonne Article & fournisseur** séparées, 5 vues au choix
   (**Par date**, **Par statut** — ordre demandée → commandée → reçue partielle → reçue → remise →
@@ -32,11 +40,16 @@ Même base Supabase et même charte que les applis *Usinage* et *Impression 3D* 
     `com_gestionnaires`), une par une ou toutes, avec confirmation à taper. Ne touche jamais les tables
     des autres applis.
 
-Statuts : `demandee` → `commandee` → `recue_partielle` / `recue_complete` → `remise`, plus `refusee` / `annulee`.
+Statuts : `en_attente` (étudiant, à valider) / `attente_info` → `demandee` (validée, à commander) → `commandee` → `recue_partielle` / `recue_complete` → `remise`, plus `refusee` / `annulee`.
+Le gestionnaire ne voit (et ne peut traiter) que les lignes déjà validées ; son compteur « Chez les encadrants » indique ce qui est en attente.
 
 ---
 
 ## Mise en route
+
+### 0. Mise à jour « demande par les étudiants + validation par l'encadrant »
+
+Si les tables existent déjà : relancer **`schema.sql`** (il ajoute les colonnes `etudiant_nom`, `etudiant_prenom`, `lot_id`, `encadrant_at`, `encadrant_commentaire`…) puis **redéployer l'Edge Function `commande-op`** (nouvelles actions `create-etu` et `enc-decide`). La fonction `projet-access` est déjà déployée (appli Impression 3D). Les demandes existantes restent « validées » (statut `demandee`).
 
 ### 1. Créer les tables dans Supabase
 
@@ -89,7 +102,8 @@ Poussé avec le dépôt → `https://gmpbordeaux.fr/gmp-projet-atelier/commandes
 
 | Accès | Code | Vérifié par |
 |---|---|---|
-| Encadrant (créer / annuler une demande) | **code PIN encadrant commun** | Edge Function `verify-code` puis re-vérifié par `commande-op` |
+| Étudiant (déposer / annuler / suivre) | **mot de passe du projet** (Carnet SAE) | Edge Function `projet-access` (suivi) et `commande-op` (dépôt, annulation) |
+| Encadrant (déposer, valider, annuler) | **mot de passe du compte Carnet SAE** (sinon code personnel Atelier) | Edge Function `verify-code` puis re-vérifié par `commande-op` |
 | Gestionnaire | **code opérateur** (table `operateurs`) | idem |
 | Admin / Super admin | **mot de passe admin** / `super1234` | Edge Function `admin-op` (`login`) puis re-vérifié par `commande-op` |
 
@@ -101,7 +115,7 @@ par l'appli Impression 3D. La liste des noms gestionnaires vient de `operateurs_
 
 ## Notification WhatsApp au(x) gestionnaire(s) — à chaque nouvelle demande
 
-À l'envoi d'une demande, l'Edge Function `commande-op` envoie un message WhatsApp (CallMeBot) aux
+À la **validation** d'une demande d'étudiant par l'encadrant (ou au dépôt direct d'un encadrant), l'Edge Function `commande-op` envoie un message WhatsApp (CallMeBot) aux
 opérateurs **abonnés**. Pour l'activer :
 
 1. **SQL** — coller tout `notif-achats.sql` dans le SQL Editor (ajoute `operateurs.notif_achats` +

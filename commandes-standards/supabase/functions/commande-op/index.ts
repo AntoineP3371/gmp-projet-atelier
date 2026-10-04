@@ -3,7 +3,10 @@
 // Même projet Supabase que reservation-machines / impression 3D.
 //
 // Auth par action :
-//   create / cancel        : code PIN encadrant (parametres.code_encadrant)
+//   create                  : encadrant (mot de passe Carnet SAE) — ligne validée d'office
+//   create-etu              : étudiant, mot de passe du PROJET (Carnet SAE) — ligne « en attente » de l'encadrant
+//   enc-decide              : encadrant du projet — valide / met en attente / refuse CHAQUE ligne d'étudiant
+//   cancel                  : étudiant (mot de passe du projet) tant que non validée ; encadrant demandeur ensuite
 //   statut / bulk-order /
 //   edit / comment          : code opérateur (nom + code, table operateurs)
 //   fourn-* / budget-save   : mot de passe admin  (parametres.admin_pw_hash | env ADMIN_PW_HASH | super)
@@ -24,6 +27,36 @@ function json(body: unknown, status = 200) {
 async function sha256hex(s: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+// ── Mot de passe de PROJET (étudiants) : celui de Carnet SAE GMP pour consulter les notes (voir la fonction projet-access).
+// Projet inconnu de Carnet SAE ou sans mot de passe défini là-bas = ouvert.
+const SAE_NO_PW = /aucun mot de passe/i
+const normTxt = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
+async function accesProjet(projet: string, pw: string): Promise<'open' | 'ok' | 'bad' | 'down'> {
+  try {
+    const rl = await fetch(SAE_URL + '/etu/list', { headers: { Accept: 'application/json' } })
+    if (!rl.ok) return 'down'
+    const list = await rl.json()
+    const p = (Array.isArray(list) ? list : []).find((x: any) => normTxt(x.nom) === normTxt(projet))
+    if (!p) return 'open'
+    const ru = await fetch(SAE_URL + '/etu/unlock', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: p.token, password: pw || '-' }),
+    })
+    if (ru.ok) { try { await ru.body?.cancel() } catch (_) { /* on ne lit pas les notes */ } return pw ? 'ok' : 'bad' }
+    const j = await ru.json().catch(() => ({}))
+    if (ru.status === 403) return SAE_NO_PW.test(String(j.error ?? '')) ? 'open' : 'bad'
+    if (ru.status === 404) return 'open'
+    return 'down'
+  } catch (_) { return 'down' }
+}
+// Réponse d'erreur si l'accès au projet est refusé (HTTP 200 + ok:false : le client lit le code), sinon null.
+async function refusProjet(projet: string, pw: unknown): Promise<Response | null> {
+  const a = await accesProjet(projet, String(pw ?? ''))
+  if (a === 'bad') return json({ ok: false, error: 'projet-pw' })
+  if (a === 'down') return json({ ok: false, error: 'sae-down' })
+  return null
 }
 
 // ── Code ENCADRANT = mot de passe du compte « Carnet SAE GMP » (collection sae_users) ──
@@ -94,45 +127,10 @@ Deno.serve(async (req) => {
     }
     const histPush = (h: unknown, entry: unknown) => [ ...(Array.isArray(h) ? h : []), entry ]
 
-    // ───────────── création d'une demande (encadrant) ─────────────
-    if (action === 'create') {
-      const ctx = b.ctx || {}
-      if (!(await encOk(ctx.encadrant, b.encCode))) return json({ ok: false, error: 'auth' }, 401)
-      const groupe = (ctx.groupe ?? '').toString().trim()
-      const lines = (Array.isArray(b.lines) ? b.lines : []).filter((l: any) => (l?.intitule ?? '').toString().trim())
-      if (!groupe || !lines.length) return json({ ok: false, error: 'bad-input' }, 400)
-      const { data: all } = await sb.from('commandes').select('numero, groupe')
-      let base = 0
-      for (const r of (all || []) as any[]) {
-        if ((r.groupe || '').toLowerCase() === groupe.toLowerCase()) base = Math.max(base, Number(r.numero) || 0)
-      }
-      const now = new Date().toISOString()
-      const par = (ctx.encadrant ?? '').toString()
-      const rows = lines.map((l: any, i: number) => {
-        const q = Number(l.quantite) || 1
-        const cu = (l.cout_unitaire === null || l.cout_unitaire === '' || l.cout_unitaire === undefined) ? null : Number(l.cout_unitaire)
-        return {
-          numero: base + i + 1,
-          formation: (ctx.formation ?? '').toString(),
-          parcours: (ctx.parcours ?? '').toString(),
-          groupe,
-          encadrant: par,
-          fournisseur: (l.fournisseur ?? '').toString().trim(),
-          intitule: (l.intitule ?? '').toString().trim(),
-          reference: (l.reference ?? '').toString().trim(),
-          lien: (l.lien ?? '').toString().trim(),
-          quantite: q,
-          cout_unitaire: cu,
-          cout_total: cu != null ? Math.round(cu * q * 100) / 100 : null,
-          statut: 'demandee',
-          historique: [{ t: now, statut: 'demandee', par }],
-        }
-      })
-      const ins = await sb.from('commandes').insert(rows)
-      if (ins.error) throw ins.error
-
-      // Notification WhatsApp (CallMeBot) aux gestionnaires abonnés — ne doit jamais faire échouer la demande.
+    // Notification WhatsApp (CallMeBot) aux gestionnaires abonnés — ne doit jamais faire échouer l'opération.
+    const notifyAchats = async (rows: any[], par: string, ctx: any) => {
       try {
+        const groupe = (ctx.groupe ?? '').toString()
         const nbA = rows.length
         const fournSet = new Set(rows.map((r) => r.fournisseur).filter(Boolean))
         const total = rows.reduce((s, r) => s + (Number(r.cout_total) || 0), 0)
@@ -146,7 +144,7 @@ Deno.serve(async (req) => {
         const msg =
 `📦 Nouvelle demande d'achat — Atelier GMP
 
-Par : ${par || '?'}
+Validée par : ${par || '?'}
 Projet : ${groupe}${ctx.parcours ? ' · ' + ctx.parcours : ''}${ctx.formation ? ' · ' + ctx.formation : ''}
 ${nbA} article(s) chez ${fournSet.size} fournisseur(s)
 Total estimé : ${totalTxt}
@@ -165,21 +163,163 @@ gmpbordeaux.fr/gmp-projet-atelier/commandes-standards/`.replace(/'/g, '’')
             try { await fetch(u) } catch (_) { /* ignore un envoi raté */ }
           }
         }
-      } catch (_) { /* la notif ne bloque jamais la création */ }
+      } catch (_) { /* la notif ne bloque jamais l'opération */ }
+    }
+    const cleanLines = (ls: unknown) => (Array.isArray(ls) ? ls : []).filter((l: any) => (l?.intitule ?? '').toString().trim())
+    const lineRow = (l: any) => {
+      const q = Number(l.quantite) || 1
+      const cu = (l.cout_unitaire === null || l.cout_unitaire === '' || l.cout_unitaire === undefined) ? null : Number(l.cout_unitaire)
+      return {
+        fournisseur: (l.fournisseur ?? '').toString().trim(),
+        intitule: (l.intitule ?? '').toString().trim(),
+        reference: (l.reference ?? '').toString().trim(),
+        lien: (l.lien ?? '').toString().trim(),
+        quantite: q,
+        cout_unitaire: cu,
+        cout_total: cu != null ? Math.round(cu * q * 100) / 100 : null,
+      }
+    }
+    // Le n° de ligne continue par projet.
+    const baseNumero = async (groupe: string) => {
+      const { data: all } = await sb.from('commandes').select('numero, groupe')
+      let base = 0
+      for (const r of (all || []) as any[]) {
+        if ((r.groupe || '').toLowerCase() === groupe.toLowerCase()) base = Math.max(base, Number(r.numero) || 0)
+      }
+      return base
+    }
+    // Un encadrant peut-il décider pour ce projet ? (s'il y a des encadrants renseignés pour le projet, il doit en faire partie)
+    const encadreProjet = async (projet: string, nom: string) => {
+      const { data: et } = await sb.from('etudiants').select('encadrant1, encadrant2, encadrant3').eq('projet', projet)
+      const encs = new Set<string>()
+      for (const r of (et || []) as any[]) for (const x of [r.encadrant1, r.encadrant2, r.encadrant3]) if (x) encs.add(norm(x))
+      return !encs.size || encs.has(norm(nom))
+    }
+
+    // ───────────── création d'une demande (encadrant) ─────────────
+    if (action === 'create') {
+      const ctx = b.ctx || {}
+      if (!(await encOk(ctx.encadrant, b.encCode))) return json({ ok: false, error: 'auth' }, 401)
+      const groupe = (ctx.groupe ?? '').toString().trim()
+      const lines = cleanLines(b.lines)
+      if (!groupe || !lines.length) return json({ ok: false, error: 'bad-input' }, 400)
+      const base = await baseNumero(groupe)
+      const now = new Date().toISOString()
+      const par = (ctx.encadrant ?? '').toString()
+      const rows = lines.map((l: any, i: number) => ({
+        numero: base + i + 1,
+        formation: (ctx.formation ?? '').toString(),
+        parcours: (ctx.parcours ?? '').toString(),
+        groupe,
+        encadrant: par,
+        ...lineRow(l),
+        statut: 'demandee',
+        encadrant_at: now,
+        historique: [{ t: now, statut: 'demandee', par }],
+      }))
+      const ins = await sb.from('commandes').insert(rows)
+      if (ins.error) throw ins.error
+
+      await notifyAchats(rows, par, ctx)
 
       return json({ ok: true, count: rows.length })
     }
 
-    // ───────────── annulation d'une ligne (encadrant, tant que « demandée ») ─────────────
+    // ───────────── dépôt d'une demande par un ÉTUDIANT (mot de passe du projet) ─────────────
+    // Les lignes sont « en_attente » : l'encadrant du projet doit les valider avant qu'elles arrivent chez le gestionnaire.
+    if (action === 'create-etu') {
+      const ctx = b.ctx || {}
+      const groupe = (ctx.groupe ?? '').toString().trim()
+      const nom = (ctx.etudiant_nom ?? '').toString().trim(), prenom = (ctx.etudiant_prenom ?? '').toString().trim()
+      const lines = cleanLines(b.lines)
+      if (!groupe || !lines.length || lines.length > 40 || (!nom && !prenom)) return json({ ok: false, error: 'bad-input' }, 400)
+      const refus = await refusProjet(groupe, b.projetPw)
+      if (refus) return refus
+      const base = await baseNumero(groupe)
+      const now = new Date().toISOString()
+      const par = `${prenom} ${nom}`.trim()
+      const lot = crypto.randomUUID()
+      const rows = lines.map((l: any, i: number) => ({
+        numero: base + i + 1,
+        formation: (ctx.formation ?? '').toString(),
+        parcours: (ctx.parcours ?? '').toString(),
+        groupe,
+        encadrant: '',
+        etudiant_nom: nom,
+        etudiant_prenom: prenom,
+        lot_id: lot,
+        ...lineRow(l),
+        statut: 'en_attente',
+        historique: [{ t: now, statut: 'en_attente', par }],
+      }))
+      const ins = await sb.from('commandes').insert(rows)
+      if (ins.error) throw ins.error
+      return json({ ok: true, count: rows.length })
+    }
+
+    // ───────────── décisions de l'encadrant, LIGNE PAR LIGNE, sur les demandes d'étudiants ─────────────
+    // b.items = [{ id, decision: 'valider' | 'info' | 'refus', comment }]
+    if (action === 'enc-decide') {
+      const nomEnc = (b.encNom ?? '').toString()
+      if (!(await encOk(nomEnc, b.encCode))) return json({ ok: false, error: 'auth' }, 401)
+      const items: any[] = Array.isArray(b.items) ? b.items : []
+      if (!items.length || items.length > 100) return json({ ok: false, error: 'bad-input' }, 400)
+      for (const it of items) {
+        if (!['valider', 'info', 'refus'].includes(String(it?.decision))) return json({ ok: false, error: 'bad-input' }, 400)
+        if (it.decision === 'info' && !String(it?.comment ?? '').trim()) return json({ ok: false, error: 'comment-required' }, 400)
+      }
+      const MODIFIABLES = ['en_attente', 'attente_info', 'demandee', 'refusee']
+      // Tout est vérifié AVANT d'écrire : si une seule ligne pose problème, rien n'est modifié.
+      const cibles: { c: any; it: any }[] = []
+      const okProjet = new Map<string, boolean>()
+      for (const it of items) {
+        const { data: c } = await sb.from('commandes').select('*').eq('id', it.id).maybeSingle()
+        if (!c || !c.lot_id) return json({ ok: false, error: 'not-found' }, 404)   // seules les demandes d'étudiants se décident ici
+        if (!okProjet.has(c.groupe)) okProjet.set(c.groupe, await encadreProjet(c.groupe, nomEnc))
+        if (!okProjet.get(c.groupe)) return json({ ok: false, error: 'auth' }, 401)
+        if (!MODIFIABLES.includes(c.statut)) return json({ ok: false, error: 'locked' }, 409)
+        cibles.push({ c, it })
+      }
+      const now = new Date().toISOString()
+      const newlyValidated: any[] = []
+      for (const { c, it } of cibles) {
+        const statut = it.decision === 'valider' ? 'demandee' : it.decision === 'info' ? 'attente_info' : 'refusee'
+        const com = String(it.comment ?? '').trim().slice(0, 1000)
+        const avant = c.statut
+        const { error } = await sb.from('commandes').update({
+          statut, encadrant: nomEnc, encadrant_at: now, encadrant_commentaire: com, encadrant_commentaire_at: com ? now : null,
+          historique: histPush(c.historique, { t: now, statut, par: nomEnc }),
+        }).eq('id', c.id)
+        if (error) throw error
+        if (statut === 'demandee' && ['en_attente', 'attente_info'].includes(avant)) newlyValidated.push({ ...c, statut })
+      }
+      // Une seule notification par projet pour l'ensemble des lignes nouvellement validées.
+      const parProjet = new Map<string, any[]>()
+      for (const r of newlyValidated) { if (!parProjet.has(r.groupe)) parProjet.set(r.groupe, []); parProjet.get(r.groupe)!.push(r) }
+      for (const [groupe, rs] of parProjet) {
+        await notifyAchats(rs, nomEnc, { groupe, parcours: rs[0].parcours, formation: rs[0].formation })
+      }
+      return json({ ok: true, count: cibles.length })
+    }
+
+    // ───────────── annulation d'une ligne ─────────────
+    // Tant que l'encadrant n'a pas validé : l'étudiant (mot de passe du projet). Ensuite, tant que « demandée » :
+    // l'encadrant qui a validé / créé la demande (mot de passe Carnet SAE).
     if (action === 'cancel') {
-      const { data: c } = await sb.from('commandes').select('statut, historique, encadrant').eq('id', b.id).maybeSingle()
+      const { data: c } = await sb.from('commandes').select('statut, historique, encadrant, groupe').eq('id', b.id).maybeSingle()
       if (!c) return json({ ok: false, error: 'not-found' }, 404)
-      // Annulation réservée à l'encadrant qui a créé la demande (son code personnel).
-      if (!(await encOk(c.encadrant, b.encCode))) return json({ ok: false, error: 'auth' }, 401)
-      if (c.statut !== 'demandee') return json({ ok: false, error: 'too-late' }, 409)
+      let par = 'encadrant'
+      if (['en_attente', 'attente_info'].includes(c.statut)) {
+        const refus = await refusProjet(c.groupe, b.projetPw)
+        if (refus) return refus
+        par = 'étudiant'
+      } else {
+        if (!(await encOk(c.encadrant, b.encCode))) return json({ ok: false, error: 'auth' }, 401)
+        if (c.statut !== 'demandee') return json({ ok: false, error: 'too-late' }, 409)
+      }
       const now = new Date().toISOString()
       const { error } = await sb.from('commandes')
-        .update({ statut: 'annulee', historique: histPush(c.historique, { t: now, statut: 'annulee', par: 'encadrant' }) })
+        .update({ statut: 'annulee', historique: histPush(c.historique, { t: now, statut: 'annulee', par }) })
         .eq('id', b.id)
       if (error) throw error
       return json({ ok: true })
@@ -191,6 +331,7 @@ gmpbordeaux.fr/gmp-projet-atelier/commandes-standards/`.replace(/'/g, '’')
       const { data: c } = await sb.from('commandes').select('*').eq('id', b.id).maybeSingle()
       if (!c) return json({ ok: false, error: 'not-found' }, 404)
       const st = (b.statut ?? '').toString()
+      if (['en_attente', 'attente_info'].includes(c.statut)) return json({ ok: false, error: 'not-validated' }, 409)
       const now = new Date().toISOString()
       const patch: any = { statut: st, historique: histPush(c.historique, { t: now, statut: st, par: (b.opName ?? 'gestionnaire').toString() }) }
       if (st === 'demandee') { patch.commandee_at = null; patch.recue_at = null; patch.remise_at = null; patch.recue_note = '' }
@@ -214,8 +355,8 @@ gmpbordeaux.fr/gmp-projet-atelier/commandes-standards/`.replace(/'/g, '’')
       const ids = Array.isArray(b.ids) ? b.ids : []
       const now = new Date().toISOString()
       for (const id of ids) {
-        const { data: c } = await sb.from('commandes').select('commandee_at, historique').eq('id', id).maybeSingle()
-        if (!c) continue
+        const { data: c } = await sb.from('commandes').select('commandee_at, historique, statut').eq('id', id).maybeSingle()
+        if (!c || ['en_attente', 'attente_info'].includes(c.statut)) continue
         await sb.from('commandes').update({
           statut: 'commandee',
           commandee_at: c.commandee_at || now,

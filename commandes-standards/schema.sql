@@ -34,7 +34,8 @@ create table if not exists public.commandes (
 
   -- Suivi (géré par le gestionnaire)
   statut               text not null default 'demandee',
-    -- demandee | commandee | recue_partielle | recue_complete | remise | refusee | annulee
+    -- en_attente (Ã©tudiant â†’ Ã  valider par l'encadrant) | attente_info | demandee (= validÃ©e, Ã  commander)
+    -- | commandee | recue_partielle | recue_complete | remise | refusee | annulee
   recue_note           text default '',              -- "complet" | "partiel" | texte libre
   commandee_at         timestamptz,
   recue_at             timestamptz,
@@ -44,7 +45,15 @@ create table if not exists public.commandes (
   commentaire_demandeur   text default '',
   commentaire_gestionnaire text default '',
 
-  historique           jsonb not null default '[]'::jsonb  -- [{t, statut, par}]
+  historique           jsonb not null default '[]'::jsonb,  -- [{t, statut, par}]
+
+  -- Demandes dÃ©posÃ©es par un Ã‰TUDIANT (validÃ©es ensuite par l'encadrant du projet)
+  etudiant_nom         text default '',
+  etudiant_prenom      text default '',
+  lot_id               text default '',              -- identifie les lignes dÃ©posÃ©es ensemble (une dÃ©cision d'encadrant par lot)
+  encadrant_at         timestamptz,                  -- date de la dÃ©cision de l'encadrant
+  encadrant_commentaire text default '',
+  encadrant_commentaire_at timestamptz
 );
 
 alter table public.commandes add column if not exists numero                  integer default 0;
@@ -57,12 +66,19 @@ alter table public.commandes add column if not exists remise_at               ti
 alter table public.commandes add column if not exists commentaire_demandeur   text default '';
 alter table public.commandes add column if not exists commentaire_gestionnaire text default '';
 alter table public.commandes add column if not exists historique              jsonb not null default '[]'::jsonb;
+alter table public.commandes add column if not exists etudiant_nom             text default '';
+alter table public.commandes add column if not exists etudiant_prenom          text default '';
+alter table public.commandes add column if not exists lot_id                   text default '';
+alter table public.commandes add column if not exists encadrant_at             timestamptz;
+alter table public.commandes add column if not exists encadrant_commentaire    text default '';
+alter table public.commandes add column if not exists encadrant_commentaire_at timestamptz;
 
 create index if not exists commandes_statut_idx    on public.commandes (statut);
 create index if not exists commandes_groupe_idx    on public.commandes (lower(groupe));
 create index if not exists commandes_parcours_idx  on public.commandes (parcours);
 create index if not exists commandes_fournisseur_idx on public.commandes (lower(fournisseur));
 create index if not exists commandes_created_idx   on public.commandes (created_at);
+create index if not exists commandes_lot_idx       on public.commandes (lot_id);
 
 -- ---------- Table des fournisseurs (liste gérée en Admin) -----------
 create table if not exists public.com_fournisseurs (

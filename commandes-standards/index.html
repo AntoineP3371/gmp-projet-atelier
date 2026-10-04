@@ -175,6 +175,39 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
   border-radius:9px;font-size:.88rem;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1}
 .hint{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:.84rem;color:var(--muted);margin-bottom:14px}
+.st-info{background:var(--amber-light);color:var(--amber);outline:1px dashed var(--amber);outline-offset:-1px}
+.st-val{background:var(--primary-light);color:var(--primary-dark);outline:1px solid var(--primary);outline-offset:-1px}
+/* Identification des étudiants par projet (cartes groupées par parcours, comme Carnet SAE) */
+.proj-wrap{display:flex;flex-direction:column;gap:16px}
+.proj-group-title{font-size:.76rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.proj-card{border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--surface);cursor:pointer;
+  transition:border-color .15s,background .15s,transform .1s}
+.proj-card:hover{border-color:var(--primary);background:var(--primary-light)}
+.proj-card:active{transform:scale(.98)}
+.proj-card h3{font-size:.92rem;font-weight:700}
+.proj-card p{font-size:.78rem;color:var(--muted);margin-top:3px}
+.proj-card-autre{border-style:dashed}
+.enc-direct{margin-top:18px;padding-top:14px;border-top:1px dashed var(--border)}
+/* Espace encadrant : décision sur les demandes des étudiants */
+.dcard{border:1.5px solid var(--border);border-left:5px solid var(--amber);border-radius:12px;padding:14px;margin-bottom:14px;background:var(--surface)}
+.dcard.s-validee{border-left-color:var(--primary)}
+.dcard.s-attente_info{border-left-color:#ca8a04}
+.dcard.s-refusee{border-left-color:var(--danger)}
+.decl{display:flex;flex-direction:column;gap:4px;min-width:200px}
+.decl label{display:flex;gap:6px;align-items:center;font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text)}
+.decl input[type=radio]{width:auto;accent-color:var(--primary)}
+.decl input:not([type=radio]){font-size:.8rem;padding:5px 8px}
+.dcard.s-fait{border-left-color:var(--green)}
+.dtitle{font-weight:800;margin-bottom:4px}
+.dmeta{font-size:.84rem;color:var(--muted);line-height:1.6;margin-bottom:8px}
+.choice{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;margin:6px 0;cursor:pointer;background:var(--surface);font-size:.9rem;font-weight:600}
+.choice:has(input:checked){border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark)}
+.choice input{width:auto;margin-top:4px;accent-color:var(--primary)}
+.choice small{display:block;font-weight:400;color:var(--muted)}
+.modal-x{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--muted);font-size:1rem;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.modal-x:hover{border-color:var(--danger);color:var(--danger)}
 .inline-code-cell{width:90px}
 @media(max-width:640px){body{padding-top:60px}.toolbar-right{margin-left:0;width:100%}.logo-bar img{max-height:46px}}
 </style>
@@ -213,6 +246,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
   <nav>
     <button class="nav-btn active" data-view="nouvelle" onclick="showView('nouvelle')">➕ Nouvelle demande</button>
     <button class="nav-btn" data-view="suivi" onclick="showView('suivi')">🔎 Suivi</button>
+    <button class="nav-btn tint" data-view="encadrant" onclick="showView('encadrant')">👨‍🏫 Espace encadrant</button>
     <button class="nav-btn tint" data-view="gestionnaire" onclick="showView('gestionnaire')">🛒 Espace gestionnaire</button>
     <button class="nav-btn admin" id="btnAdmin" onclick="adminToggle()">⚙️ Admin</button>
   </nav>
@@ -234,18 +268,30 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
   <!-- ══════════ NOUVELLE DEMANDE ══════════ -->
   <section id="view-nouvelle" class="view active">
     <div class="card" id="nouvelleGate">
-      <h2>Identifiez-vous</h2>
-      <div class="sub">La création d'une demande est réservée aux encadrants. Saisissez le mot de passe de votre compte Carnet SAE GMP (sans compte Carnet SAE : votre code personnel Atelier, à définir à la 1ʳᵉ connexion).</div>
-      <div class="grid2">
-        <label class="f">Encadrant
-          <select id="d-encadrant" onchange="onEncadrantChange()"></select></label>
-        <label class="f" id="d-encadrant-autre-wrap" style="display:none">Nom de l'encadrant
-          <input id="d-encadrant-autre" placeholder="Nom Prénom"></label>
-        <label class="f">Votre mot de passe
-          <input id="d-pin" type="password" maxlength="64" placeholder="mot de passe Carnet SAE / code personnel" autocomplete="off" onkeydown="if(event.key==='Enter')encLogin()"></label>
+      <h2>Qui êtes-vous ?</h2>
+      <div class="sub"><b>Étudiant</b> : choisissez votre projet (le mot de passe du projet vous sera demandé — le même que pour consulter vos notes dans Carnet SAE). Votre demande sera d’abord <b>vérifiée par votre encadrant</b>, puis transmise au gestionnaire des achats.</div>
+      <div id="n-projet-cards" class="proj-wrap"></div>
+
+      <div class="enc-direct">
+        <div id="encDirectIn">
+          <button class="btn sm" type="button" onclick="toggleEncDirect()">👨‍🏫 Je suis encadrant : déposer directement une demande</button>
+          <div id="encDirect" style="display:none;margin-top:12px">
+            <div class="sub">Saisissez le mot de passe de votre compte Carnet SAE GMP (sans compte Carnet SAE : votre code personnel Atelier, à définir à la 1ʳᵉ connexion). Votre demande est alors <b>validée d’office</b> et part directement chez le gestionnaire.</div>
+            <div class="grid2">
+              <label class="f">Encadrant
+                <select id="d-encadrant"></select></label>
+              <label class="f">Votre mot de passe
+                <input id="d-pin" type="password" maxlength="64" placeholder="mot de passe Carnet SAE / code personnel" autocomplete="off" onkeydown="if(event.key==='Enter')encLogin()"></label>
+            </div>
+            <button class="btn primary" style="margin-top:12px" onclick="encLogin()">Entrer</button>
+            <div class="err" id="d-login-err"></div>
+          </div>
+        </div>
+        <div id="encDirectLogged" style="display:none">
+          Vous êtes identifié(e) comme encadrant : <b id="encDirectWho"></b>.
+          <button class="btn sm primary" type="button" style="margin-left:8px" onclick="startEncMode()">Déposer une demande en tant qu’encadrant</button>
+        </div>
       </div>
-      <button class="btn primary" style="margin-top:12px" onclick="encLogin()">Entrer</button>
-      <div class="err" id="d-login-err"></div>
     </div>
 
     <div id="nouvellePanel" style="display:none">
@@ -253,10 +299,18 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
       <h2>Contexte de la demande</h2>
       <div class="sub" id="encWho"></div>
       <div class="grid2">
-        <label class="f">Projet / groupe
+        <label class="f" id="d-groupe-wrap">Projet / groupe
           <select id="d-groupe" onchange="onProjetChange()"></select></label>
         <label class="f" id="d-groupe-autre-wrap" style="display:none">Nom du projet
           <input id="d-groupe-autre" placeholder="ex. Porte A380" autocomplete="off"></label>
+        <div id="d-etu-block" style="display:none">
+          <label class="f" id="d-etu-wrap">Étudiant
+            <select id="d-etu" onchange="onEtuChange()"></select></label>
+          <label class="f" id="d-nom-wrap" style="display:none">Nom
+            <input id="d-nom" autocomplete="off" placeholder="DUPONT"></label>
+          <label class="f" id="d-prenom-wrap" style="display:none">Prénom
+            <input id="d-prenom" autocomplete="off" placeholder="Jean"></label>
+        </div>
         <label class="f">Parcours
           <select id="d-parcours" onchange="toggleCtxAutre();renderBudgetHint()"></select></label>
         <label class="f" id="d-parcours-autre-wrap" style="display:none">Nouveau parcours
@@ -284,23 +338,59 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
     </div>
   </section>
 
-  <!-- ══════════ SUIVI ══════════ -->
+  <!-- ══════════ SUIVI (protégé par le mot de passe du projet) ══════════ -->
   <section id="view-suivi" class="view">
     <div class="card">
       <h2>Suivi des demandes</h2>
-      <div class="filters">
-        <input id="s-search" placeholder="Rechercher un projet, un encadrant, un article…" oninput="renderSuivi()" style="min-width:240px">
-        <select id="s-projet" onchange="renderSuivi()"><option value="">Tous les projets</option></select>
-        <select id="s-encadrant" onchange="renderSuivi()"><option value="">Tous les encadrants</option></select>
-        <select id="s-statut" onchange="renderSuivi()"><option value="">Tous les statuts</option></select>
-        <select id="s-parcours" onchange="renderSuivi()"><option value="">Tous les parcours</option></select>
+      <div id="s-gate">
+        <div class="sub">Choisissez votre projet pour suivre vos demandes (le mot de passe du projet vous sera demandé).</div>
+        <div id="s-projet-cards" class="proj-wrap"></div>
       </div>
-      <details class="statut-help">
-        <summary>Aide : que veut dire chaque statut ?</summary>
-        <div id="statutHelp"></div>
-      </details>
-      <div id="suiviBudgets"></div>
-      <div id="suiviList"></div>
+      <select id="s-projet" style="display:none"><option value="">—</option></select>
+      <div id="s-panel" style="display:none">
+        <div class="sub" id="s-projet-chosen" style="margin:0 0 12px"></div>
+        <div class="filters">
+          <input id="s-search" placeholder="Rechercher un article, un étudiant, un fournisseur…" oninput="renderSuivi()" style="min-width:240px">
+          <select id="s-statut" onchange="renderSuivi()"><option value="">Tous les statuts</option></select>
+          <div class="toolbar-right"><button class="btn sm" onclick="changerProjetSuivi()">↩ Changer de projet</button></div>
+        </div>
+        <details class="statut-help">
+          <summary>Aide : que veut dire chaque statut ?</summary>
+          <div id="statutHelp"></div>
+        </details>
+        <div id="suiviBudgets"></div>
+        <div id="suiviList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ESPACE ENCADRANT ══════════ -->
+  <section id="view-encadrant" class="view">
+    <div class="card" id="encGate">
+      <h2>Espace encadrant</h2>
+      <div class="sub">Vérifiez et validez les demandes d’achat de vos étudiants avant qu’elles partent chez le gestionnaire. Identifiez-vous avec votre nom et le mot de passe de votre compte Carnet SAE GMP (sans compte Carnet SAE : votre code personnel Atelier).</div>
+      <div class="grid2">
+        <label class="f">Encadrant <select id="ev-nom"></select></label>
+        <label class="f">Votre mot de passe
+          <input id="ev-code" type="password" maxlength="64" placeholder="mot de passe Carnet SAE / code personnel" autocomplete="off" onkeydown="if(event.key==='Enter')encLogin2()"></label>
+      </div>
+      <button class="btn primary" style="margin-top:12px" onclick="encLogin2()">Entrer</button>
+      <div class="err" id="ev-err"></div>
+    </div>
+    <div id="encPanel" style="display:none">
+      <div class="card">
+        <div class="filters" style="margin-bottom:6px">
+          <span class="mini" id="ev-who"></span>
+          <div class="toolbar-right">
+            <select id="ev-statut" onchange="renderEnc()">
+              <option value="todo">À traiter</option>
+              <option value="all">Toutes les demandes de mes projets</option>
+            </select>
+            <button class="btn sm" onclick="encLogout()">Changer d’encadrant</button>
+          </div>
+        </div>
+        <div id="encList"></div>
+      </div>
     </div>
   </section>
 
@@ -385,7 +475,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
 
 <!-- (Gestionnaires + Vidage retirés : centralisés dans « Administration globale → Maintenance » du portail) -->
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.2.0</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.3.0</div>
 
 <!-- Modales -->
 <div class="overlay" id="ovConfirm"><div class="modal">
@@ -429,6 +519,18 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
 </div></div>
 
 <datalist id="dl-fourn"></datalist>
+<div class="overlay" id="ovProjetPw"><div class="modal" style="max-width:430px;position:relative">
+  <button class="modal-x" onclick="cancelProjetPw()" aria-label="Fermer">✕</button>
+  <h2>🔐 Mot de passe du projet</h2>
+  <div class="sub" id="pp-sub"></div>
+  <input id="pp-pw" type="password" placeholder="mot de passe du projet" autocomplete="off" onkeydown="if(event.key==='Enter')submitProjetPw()">
+  <div class="err" id="pp-err"></div>
+  <div class="actions">
+    <button class="btn" onclick="cancelProjetPw()">Annuler</button>
+    <button class="btn primary" onclick="submitProjetPw()">Valider</button>
+  </div>
+</div></div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -439,7 +541,9 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 const FORMATIONS = ['BUT 1 Init','BUT 1 App','BUT 2 Init','BUT 2 App','BUT 3 Init','BUT 3 App'];
 const PARCOURS_BASE = ['II','CPD','SNRV'];
 const STATUTS = {
-  demandee:{label:'Demandée',cls:'st-dem'},
+  en_attente:{label:'En attente de l’encadrant',cls:'st-dem'},
+  attente_info:{label:'En attente d’information',cls:'st-info'},
+  demandee:{label:'Validée — à commander',cls:'st-val'},
   commandee:{label:'Commandée',cls:'st-cmd'},
   recue_partielle:{label:'Reçue partielle',cls:'st-part'},
   recue_complete:{label:'Reçue',cls:'st-rec'},
@@ -447,15 +551,29 @@ const STATUTS = {
   refusee:{label:'Refusée',cls:'st-ref'},
   annulee:{label:'Annulée',cls:'st-ann'}
 };
-const ACTIVE_STATUTS = ['demandee','commandee','recue_partielle','recue_complete','remise'];
+const PENDING = ['en_attente','attente_info'];     // pas encore validées par l'encadrant : invisibles du gestionnaire
+const MODIFIABLES = ['en_attente','attente_info','demandee','refusee'];   // l'encadrant peut encore (re)décider
+const ACTIVE_STATUTS = ['en_attente','attente_info','demandee','commandee','recue_partielle','recue_complete','remise'];   // comptent dans le budget
 const STATUT_HELP = {
-  demandee:'La demande est enregistrée. Le gestionnaire ne l’a pas encore traitée.',
+  en_attente:'Demande déposée par un étudiant : l’encadrant du projet doit la vérifier avant qu’elle parte chez le gestionnaire.',
+  attente_info:'L’encadrant a besoin de précisions : allez le voir pour compléter votre demande (voir son commentaire).',
+  demandee:'Validée par l’encadrant. Le gestionnaire des achats ne l’a pas encore commandée.',
   commandee:'Le gestionnaire a passé la commande auprès du fournisseur.',
   recue_partielle:'Une partie des articles est arrivée à l’atelier ; il en manque.',
   recue_complete:'Tous les articles sont arrivés à l’atelier.',
   remise:'Les pièces ont été remises à l’encadrant demandeur. Dossier terminé.',
-  refusee:'La demande n’a pas été retenue par le gestionnaire (voir son commentaire).',
-  annulee:'La demande a été annulée par l’encadrant.'
+  refusee:'La demande n’a pas été retenue (voir le commentaire de l’encadrant ou du gestionnaire).',
+  annulee:'La demande a été annulée.'
+};
+const byFr = (a,b) => String(a).localeCompare(String(b),'fr');
+const ERR_MSG = {
+  'auth':'Refusé : mot de passe incorrect ou droits insuffisants (le projet doit être l’un des vôtres).',
+  'projet-pw':'Mot de passe du projet invalide ou expiré — changez de projet et saisissez-le de nouveau.',
+  'sae-down':'Carnet SAE est injoignable — réessayez dans un moment.',
+  'comment-required':'Indiquez ce qui manque dans le commentaire.',
+  'locked':'Cette demande est déjà en cours de traitement par le gestionnaire : elle ne peut plus être modifiée.',
+  'not-validated':'Cette demande n’a pas encore été validée par l’encadrant.',
+  'too-late':'Trop tard : la demande est déjà traitée.'
 };
 
 let COMMANDES = [];
@@ -471,6 +589,7 @@ let GROUPES = [];
 let _sid = 0;            // compteur de blocs fournisseur
 let _gestOk=false, _gestNom='', _gestCode='', _adminOk=false, _adminRole='', _adminPw='', _gestView='date';
 let _encOk=false, _encNom='', _encCode='';
+let _mode='', _etuProjet='';   // _mode : '' (porte d'entrée) | 'etu' (étudiant, par projet) | 'enc' (encadrant, dépôt direct)
 let _editId=null, _commentId=null, _commentField='', _fournEdit=[];
 
 /* Toutes les écritures passent par l'Edge Function commande-op (version publique). */
@@ -478,10 +597,60 @@ async function op(action, args){
   try{
     const {data,error} = await sb.functions.invoke('commande-op', { body:{ action, ...(args||{}) } });
     if(error){ toast('Erreur réseau : '+(error.message||error)); return null; }
-    if(!data || data.ok===false){ toast('Refusé : '+((data&&data.error)||'non autorisé')); return null; }
+    if(!data || data.ok===false){ const code=data&&data.error; toast(ERR_MSG[code]||('Refusé : '+(code||'non autorisé'))); return null; }
     return data;
   }catch(e){ toast('Erreur : '+e); return null; }
 }
+/* ---------- Identification par projet : MOT DE PASSE DE PROJET de Carnet SAE GMP ----------
+   (celui des notes), vérifié côté serveur par la fonction projet-access. Un projet sans mot de passe là-bas
+   (ou saisi à la main) reste ouvert. Une fois saisi, il est gardé le temps de l'onglet (sessionStorage). */
+const pwKey = p => 'projpw-'+String(p||'').trim().toLowerCase();
+const getPw = p => { try{ return sessionStorage.getItem(pwKey(p))||''; }catch(e){ return ''; } };
+const setPw = (p,v) => { try{ v ? sessionStorage.setItem(pwKey(p),v) : sessionStorage.removeItem(pwKey(p)); }catch(e){} };
+async function projetAccess(action, projet, password){
+  try{
+    const {data,error}=await sb.functions.invoke('projet-access',{body:{action,projet,password}});
+    if(error||!data) return {ok:false,error:'sae-down'};
+    return data;
+  }catch(e){ return {ok:false,error:'sae-down'}; }
+}
+let _ppResolve=null, _ppProjet='';
+// Résout true si l'accès au projet est accordé (projet ouvert, mot de passe déjà saisi, ou saisi maintenant).
+async function unlockProjet(projet){
+  const st=await projetAccess('status',projet);
+  if(!st.ok){ toast('Carnet SAE est injoignable : impossible de vérifier le mot de passe du projet. Réessayez dans un moment.'); return false; }
+  if(!st.protected) return true;
+  const saved=getPw(projet);
+  if(saved){ const v=await projetAccess('verify',projet,saved); if(v.ok) return true; setPw(projet,''); }
+  if(_ppResolve) _ppResolve(false);
+  _ppProjet=projet;
+  $('#pp-sub').innerHTML='Projet <b>'+esc(projet)+'</b> : saisissez le mot de passe de votre projet (le même que pour consulter vos notes dans Carnet SAE). Demandez-le à votre encadrant si besoin.';
+  $('#pp-pw').value=''; $('#pp-err').classList.remove('show');
+  openOverlay('ovProjetPw'); setTimeout(()=>$('#pp-pw').focus(),50);
+  return new Promise(res=>{ _ppResolve=res; });
+}
+async function submitProjetPw(){
+  const pw=$('#pp-pw').value;
+  if(!pw) return fail($('#pp-err'),'Saisissez le mot de passe.');
+  const v=await projetAccess('verify',_ppProjet,pw);
+  if(v.ok){ setPw(_ppProjet,pw); closeOverlay('ovProjetPw'); const r=_ppResolve; _ppResolve=null; if(r) r(true); return; }
+  fail($('#pp-err'), v.error==='bad' ? 'Mot de passe incorrect.' : 'Carnet SAE injoignable, réessayez.');
+}
+function cancelProjetPw(){ closeOverlay('ovProjetPw'); const r=_ppResolve; _ppResolve=null; if(r) r(false); }
+
+// Cartes de projets groupées par parcours (comme Carnet SAE).
+function renderProjetCards(boxId, withAutre, list){
+  const box=$('#'+boxId); if(!box) return;
+  const groups={};
+  list.forEach(p=>{ const par=parcoursForProjet(p)||'Autres projets'; (groups[par]=groups[par]||[]).push(p); });
+  const keys=Object.keys(groups).sort(byFr);
+  let h=keys.map(k=>`<div class="proj-group"><div class="proj-group-title">${esc(k)}</div><div class="proj-grid">`+
+    groups[k].slice().sort(byFr).map(p=>`<div class="proj-card" data-p="${esc(p)}"><h3>${esc(p)}</h3></div>`).join('')+
+    '</div></div>').join('');
+  if(withAutre) h+=`<div class="proj-group"><div class="proj-grid"><div class="proj-card proj-card-autre" data-p="__autre"><h3>+ Autre projet…</h3><p>Nouveau projet, pas encore dans la liste</p></div></div></div>`;
+  box.innerHTML=h || '<div class="hint">Aucun projet pour le moment.</div>';
+}
+const allProjets = () => [...new Set([...PROJETS,...COMMANDES.map(c=>c.groupe)])].filter(Boolean).sort(byFr);
 
 /* ---------- utils ---------- */
 const $ = s => document.querySelector(s);
@@ -496,6 +665,8 @@ function showView(v){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
   $('#view-'+v).classList.add('active');
   if(v==='suivi') renderSuivi();
+  if(v==='encadrant') updateEncView();
+  if(v==='nouvelle') renderGateEnc();
   if(v==='gestionnaire' && _gestOk) renderGest();
 }
 function openOverlay(id){ $('#'+id).classList.add('open'); }
@@ -567,6 +738,7 @@ function parcoursList(){
 function refreshCurrentView(){
   const v = document.querySelector('.view.active')?.id||'';
   if(v==='view-suivi') renderSuivi();
+  if(v==='view-encadrant' && _encOk){ const a=document.activeElement; if(!(a && $('#encList').contains(a))) renderEnc(); }
   if(v==='view-gestionnaire' && _gestOk) renderGest();
 }
 
@@ -575,7 +747,7 @@ function opt(v,label){ return `<option value="${esc(v)}">${esc(label!=null?label
 function buildSelects(){
   const forms=[...new Set([...FORMATIONS, ...COMMANDES.map(c=>c.formation)])].filter(Boolean);
   const parc = parcoursList();
-  if(_encOk){
+  if(_mode==='enc'){
     // encadrant identifié : projet/parcours/formation gérés par applyEncadrantScope() + verrou onProjetChange()
     applyEncadrantScope();
     onProjetChange();
@@ -585,32 +757,42 @@ function buildSelects(){
     const keepG=$('#d-groupe').value;
     $('#d-groupe').innerHTML = GROUPES.map(g=>opt(g)).join('') + opt('__autre','Autre projet…');
     if(keepG) $('#d-groupe').value = keepG;
+    if(_mode==='etu'){
+      if(_etuProjet!=='__autre' && ![...$('#d-groupe').options].some(o=>o.value===_etuProjet)) $('#d-groupe').insertAdjacentHTML('afterbegin', opt(_etuProjet));
+      $('#d-groupe').value=_etuProjet;
+      onProjetChange(); setupEtuFields();
+    }
   }
   buildEncadrantSelect();
+  renderProjetCards('n-projet-cards', true, PROJETS);
   // filtres
   const statutOpts = Object.entries(STATUTS).map(([k,v])=>opt(k,v.label)).join('');
   $('#s-statut').innerHTML = '<option value="">Tous les statuts</option>'+statutOpts;
-  $('#f-statut').innerHTML = '<option value="">Statut : tous</option>'+statutOpts;
+  $('#f-statut').innerHTML = '<option value="">Statut : tous</option>'+Object.entries(STATUTS).filter(([k])=>!PENDING.includes(k)).map(([k,v])=>opt(k,v.label)).join('');
+  const keepS=$('#s-projet').value;
+  $('#s-projet').innerHTML = '<option value="">—</option>'+allProjets().map(g=>opt(g)).join('');
+  if(keepS && [...$('#s-projet').options].some(o=>o.value===keepS)) $('#s-projet').value=keepS;
+  renderProjetCards('s-projet-cards', false, allProjets());
   const pOpts = parc.map(p=>opt(p)).join('');
-  $('#s-parcours').innerHTML = '<option value="">Tous les parcours</option>'+pOpts;
   $('#f-parcours').innerHTML = '<option value="">Parcours : tous</option>'+pOpts;
   const gOpts = GROUPES.map(g=>opt(g)).join('');
-  $('#s-projet').innerHTML = '<option value="">Tous les projets</option>'+gOpts;
   $('#f-projet').innerHTML = '<option value="">Projet : tous</option>'+gOpts;
   const eOpts = [...new Set([...ENCADRANTS, ...COMMANDES.map(c=>c.encadrant)])].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr')).map(e=>opt(e)).join('');
-  $('#s-encadrant').innerHTML = '<option value="">Tous les encadrants</option>'+eOpts;
   $('#f-encadrant').innerHTML = '<option value="">Encadrant : tous</option>'+eOpts;
   $('#f-formation').innerHTML = '<option value="">Formation : toutes</option>'+forms.map(f=>opt(f)).join('');
   $('#f-fournisseur').innerHTML = '<option value="">Fournisseur : tous</option>'+[...new Set([...FOURNISSEURS.map(f=>f.nom), ...COMMANDES.map(c=>c.fournisseur)])].filter(Boolean).sort().map(f=>opt(f)).join('');
   loadOperateurNames();
 }
 function buildEncadrantSelect(){
-  const keep=$('#d-encadrant').value;
   // Plus d'option « Autre… » : seul l'admin crée les encadrants (en les ajoutant à un projet).
-  $('#d-encadrant').innerHTML = ENCADRANTS.length
+  const html = ENCADRANTS.length
     ? "<option value=''>— Choisir un encadrant —</option>"+ENCADRANTS.map(e=>opt(e)).join('')
     : "<option value=''>— Aucun encadrant : voir l'administrateur —</option>";
-  if(keep && [...$('#d-encadrant').options].some(o=>o.value===keep)) $('#d-encadrant').value=keep;
+  ['#d-encadrant','#ev-nom'].forEach(id=>{
+    const keep=$(id).value;
+    $(id).innerHTML=html;
+    if(keep && [...$(id).options].some(o=>o.value===keep)) $(id).value=keep;
+  });
 }
 async function loadOperateurNames(){
   try{
@@ -661,7 +843,6 @@ async function toggleGestNotif(nom, on){
   if(OPS_INFO[nom]) OPS_INFO[nom].notif_achats=on;
   toast(on ? nom+' recevra les demandes par WhatsApp' : nom+' ne recevra plus les demandes par WhatsApp');
 }
-function onEncadrantChange(){ $('#d-encadrant-autre-wrap').style.display = $('#d-encadrant').value==='__autre'?'flex':'none'; }
 // Restreint projets / parcours / formation aux projets encadrés par _encNom (table etudiants)
 function applyEncadrantScope(){
   const mine = projetsForEncadrant(_encNom);
@@ -707,10 +888,11 @@ function onProjetChange(){
       $(sel).value=val;
     };
     const past=COMMANDES.find(c=>c.groupe===v);
-    setSel('#d-parcours', parcoursForProjet(v) || (past && past.parcours) || '');
-    setSel('#d-formation', formationForProjet(v) || (past && past.formation) || '');
-    lockCtx(true);
-    $('#d-ctx-note').textContent = 'Parcours et formation repris de la fiche projet (non modifiables).';
+    const pc=parcoursForProjet(v) || (past && past.parcours) || '', fo=formationForProjet(v) || (past && past.formation) || '';
+    setSel('#d-parcours', pc);
+    setSel('#d-formation', fo);
+    lockCtx(!!(pc && fo));
+    $('#d-ctx-note').textContent = (pc && fo) ? 'Parcours et formation repris de la fiche projet (non modifiables).' : 'Parcours ou formation non renseignés pour ce projet : choisissez-les.';
   } else {
     lockCtx(true);
     $('#d-ctx-note').textContent = '';
@@ -718,43 +900,137 @@ function onProjetChange(){
   toggleCtxAutre();
   renderBudgetHint();
 }
-async function encLogin(){
-  const err=$('#d-login-err'); err.classList.remove('show');
-  let nom=$('#d-encadrant').value;
-  if(nom==='__autre') nom=$('#d-encadrant-autre').value.trim();
-  const pin=$('#d-pin').value.trim();
-  if(!nom){ return fail(err,'Choisissez votre nom.'); }
-  if(pin.length<4){ return fail(err,'Le code doit comporter au moins 4 caractères.'); }
-  let ecode=pin;
-  let ok=false, mustChange=false, notAuth=false, msg='', sae=false;
-  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:pin}}); ok=!error && !!(data&&data.ok); mustChange=!error && !!(data&&data.mustChange); notAuth=!error && !!(data&&data.notAuthorized); msg=(!error&&data&&data.msg)||''; sae=!error && !!(data&&data.sae); }catch(e){ ok=false; }
-  if(notAuth){ return fail(err,'Encadrant inconnu. Demandez à l’administrateur de vous ajouter à un projet.'); }
-  if(!ok && mustChange){
-    // Connexion avec le code par défaut 000000 → choisir SON code (6 chiffres, différent de 000000).
-    var nc=prompt("Choisissez votre code personnel (au moins 4 caractères) :");
-    if(nc===null){ return fail(err,'Connexion annulée.'); }
-    nc=nc.trim();
-    if(nc.length<4 || nc==='000000'){ return fail(err,'Code invalide : au moins 4 caractères.'); }
-    try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:nc,setup:true}}); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
-    if(!ok){ return fail(err,'Impossible de définir le code (déjà défini ? réessayez).'); }
-    ecode=nc;
-  }
-  if(!ok){ return fail(err,msg||(sae?'Code incorrect (mot de passe de votre compte Carnet SAE).':'Code personnel incorrect.')); }
-  _encOk=true; _encNom=nom; _encCode=ecode;
+/* ---------- Identification : étudiant (cartes de projet) ou encadrant (mot de passe Carnet SAE) ---------- */
+function etudiantsProjet(p){
+  const map=new Map();
+  const add=e=>{ const k=(e.nom+'|'+e.prenom).toLowerCase(); if(k!=='|'&&!map.has(k)) map.set(k,{nom:e.nom,prenom:e.prenom}); };
+  ETUDIANTS.filter(e=>e.projet===p).forEach(add);
+  COMMANDES.filter(c=>c.groupe===p).forEach(c=>add({nom:c.etudiant_nom||'',prenom:c.etudiant_prenom||''}));
+  return [...map.values()].sort((a,b)=>byFr(a.nom+a.prenom,b.nom+b.prenom));
+}
+async function pickProjet(p){
+  if(p!=='__autre' && !(await unlockProjet(p))) return;
+  _mode='etu'; _etuProjet=p;
+  if(p!=='__autre' && ![...$('#d-groupe').options].some(o=>o.value===p)) $('#d-groupe').insertAdjacentHTML('afterbegin', opt(p));
+  $('#d-groupe').value=p;
+  showNouvellePanel();
+}
+function toggleEncDirect(){ const e=$('#encDirect'); e.style.display = e.style.display==='none' ? 'block' : 'none'; }
+function startEncMode(){
+  if(!_encOk) return;
+  _mode='enc'; _etuProjet='';
+  showNouvellePanel();
+}
+function backToGate(){
+  _mode=''; _etuProjet='';
+  $('#nouvellePanel').style.display='none';
+  $('#nouvelleGate').style.display='block';
+  renderGateEnc();
+}
+function renderGateEnc(){
+  $('#encDirectIn').style.display = _encOk ? 'none' : 'block';
+  $('#encDirectLogged').style.display = _encOk ? 'block' : 'none';
+  if(_encOk) $('#encDirectWho').textContent = _encNom;
+}
+function showNouvellePanel(){
   $('#nouvelleGate').style.display='none';
   $('#nouvellePanel').style.display='block';
-  const mine = projetsForEncadrant(nom);
-  $('#encWho').innerHTML = `Demande créée par <b>${esc(nom)}</b> — <a href="#" onclick="encLogout();return false;">changer d'encadrant</a>. `
-    + (mine.length ? `Projets que vous encadrez : ${mine.length}.` : `Aucun projet trouvé à votre nom dans la liste — tous les projets sont proposés.`);
-  applyEncadrantScope();
+  const etu=_mode==='etu';
+  $('#d-groupe-wrap').style.display = etu ? 'none' : 'flex';
+  $('#d-etu-block').style.display = etu ? 'contents' : 'none';
+  if(etu){
+    const forms=[...new Set([...FORMATIONS, ...COMMANDES.map(c=>c.formation)])].filter(Boolean);
+    $('#d-formation').innerHTML = forms.map(f=>opt(f)).join('');
+    $('#d-parcours').innerHTML = parcoursList().map(p=>opt(p)).join('') + opt('__autre','Autre…');
+    $('#encWho').innerHTML = (_etuProjet==='__autre' ? 'Nouveau projet' : 'Projet <b>'+esc(_etuProjet)+'</b>')
+      + ' — <a href="#" onclick="backToGate();return false;">changer de projet</a>. Votre demande sera <b>vérifiée par votre encadrant</b> avant d’être transmise au gestionnaire.';
+    onProjetChange(); setupEtuFields();
+  } else {
+    const mine = projetsForEncadrant(_encNom);
+    $('#encWho').innerHTML = `Demande créée par <b>${esc(_encNom)}</b> — <a href="#" onclick="encLogout();return false;">changer d'encadrant</a>. `
+      + (mine.length ? `Projets que vous encadrez : ${mine.length}.` : `Aucun projet trouvé à votre nom dans la liste — tous les projets sont proposés.`)
+      + ' Votre demande est <b>validée d’office</b>.';
+    applyEncadrantScope();
+    onProjetChange();
+  }
   if(!$('#suppliers').children.length) addSupplier();
-  onProjetChange();
+}
+let _ets=[];
+function setupEtuFields(){
+  const v=$('#d-groupe').value, autre=v==='__autre';
+  if(autre){
+    _ets=[];
+    $('#d-etu-wrap').style.display='none';
+  } else {
+    _ets=etudiantsProjet(v);
+    $('#d-etu-wrap').style.display='flex';
+    $('#d-etu').innerHTML=_ets.map((e,i)=>opt(i,(e.prenom+' '+e.nom).trim())).join('')+opt('__autre','Autre personne…');
+    if(!_ets.length) $('#d-etu').value='__autre';
+  }
+  onEtuChange();
+}
+function onEtuChange(){
+  const other = $('#d-groupe').value==='__autre' || $('#d-etu').value==='__autre';
+  $('#d-nom-wrap').style.display = other ? 'flex' : 'none';
+  $('#d-prenom-wrap').style.display = other ? 'flex' : 'none';
+}
+
+// Vérifie nom + mot de passe (Carnet SAE, sinon code Atelier) ; 1re connexion avec un code Atelier par défaut : choix d'un code.
+async function verifyCode(kind,nom,code){
+  let ok=false, mustChange=false, notAuth=false, ecode=code, msg='', sae=false;
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind,name:nom,code}}); ok=!error&&!!(data&&data.ok); mustChange=!error&&!!(data&&data.mustChange); notAuth=!error&&!!(data&&data.notAuthorized); msg=(!error&&data&&data.msg)||''; sae=!error&&!!(data&&data.sae); }catch(e){}
+  if(notAuth) return {ok:false,msg:kind==='encadrant'?'Encadrant inconnu. Demandez à l’administrateur de vous ajouter à un projet.':'Opérateur inconnu — voir l’administrateur.'};
+  if(!ok&&mustChange){
+    let nc=prompt('Première connexion : choisissez votre code personnel (au moins 4 caractères, différent de 000000) :');
+    if(nc===null) return {ok:false,msg:'Connexion annulée.'};
+    nc=nc.trim();
+    if(nc.length<4||nc==='000000') return {ok:false,msg:'Code invalide : au moins 4 caractères, différent de 000000.'};
+    try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind,name:nom,code:nc,setup:true}}); ok=!error&&!!(data&&data.ok); }catch(e){ ok=false; }
+    if(!ok) return {ok:false,msg:'Impossible de définir le code (déjà défini ? réessayez).'};
+    ecode=nc;
+  }
+  return ok?{ok:true,code:ecode}:{ok:false,msg:msg||(sae?'Code incorrect (mot de passe de votre compte Carnet SAE).':'Nom ou code incorrect.')};
+}
+function setEncSession(nom,code){
+  _encOk=true; _encNom=nom; _encCode=code;
+  $('#d-pin').value=''; $('#ev-code').value='';
+  renderGateEnc(); updateEncView();
+}
+// Depuis « Nouvelle demande » : l'encadrant s'identifie puis dépose directement (validée d'office).
+async function encLogin(){
+  const err=$('#d-login-err'); err.classList.remove('show');
+  const nom=$('#d-encadrant').value, pin=$('#d-pin').value.trim();
+  if(!nom) return fail(err,'Choisissez votre nom.');
+  if(pin.length<4) return fail(err,'Le code doit comporter au moins 4 caractères.');
+  const r=await verifyCode('encadrant',nom,pin);
+  if(!r.ok) return fail(err,r.msg);
+  setEncSession(nom,r.code);
+  startEncMode();
+}
+// Depuis « Espace encadrant » : identification pour valider les demandes des étudiants.
+async function encLogin2(){
+  const err=$('#ev-err'); err.classList.remove('show');
+  const nom=$('#ev-nom').value, pin=$('#ev-code').value.trim();
+  if(!nom) return fail(err,'Choisissez votre nom.');
+  if(pin.length<4) return fail(err,'Le code comporte au moins 4 caractères.');
+  const r=await verifyCode('encadrant',nom,pin);
+  if(!r.ok) return fail(err,r.msg);
+  setEncSession(nom,r.code);
 }
 function encLogout(){
   _encOk=false; _encNom=''; _encCode='';
-  $('#d-pin').value='';
-  $('#nouvellePanel').style.display='none';
-  $('#nouvelleGate').style.display='block';
+  $('#d-pin').value=''; $('#ev-code').value='';
+  if(_mode==='enc') backToGate();
+  renderGateEnc(); updateEncView();
+}
+function updateEncView(){
+  $('#encGate').style.display = _encOk ? 'none' : 'block';
+  $('#encPanel').style.display = _encOk ? 'block' : 'none';
+  if(_encOk){
+    const mine=projetsForEncadrant(_encNom);
+    $('#ev-who').innerHTML=`Connecté : <b>${esc(_encNom)}</b> — ${mine.length?mine.length+' projet(s) encadré(s)':'aucun projet à votre nom'}`;
+    renderEnc();
+  }
 }
 function renderStatutHelp(){
   $('#statutHelp').innerHTML = Object.keys(STATUTS).map(k=>{
@@ -876,8 +1152,8 @@ function renderBudgetHint(extra){
 
 async function submitDemande(){
   const err=$('#d-err'); err.classList.remove('show');
-  if(!_encOk){ return fail(err,'Identifiez-vous d’abord.'); }
-  const encadrant=_encNom;
+  const etu=_mode==='etu';
+  if(!etu && !(_mode==='enc' && _encOk)){ return fail(err,'Identifiez-vous d’abord.'); }
   let formation=$('#d-formation').value;
   if(formation==='__autre') formation=$('#d-formation-autre').value.trim();
   let parcours=$('#d-parcours').value;
@@ -890,69 +1166,104 @@ async function submitDemande(){
   if(!formation){ return fail(err,'Indiquez la formation.'); }
   if(!sups.length){ return fail(err,'Ajoutez au moins un article avec un intitulé.'); }
   if(sups.some(s=>!s.nom)){ return fail(err,'Indiquez le nom du fournisseur pour chaque bloc.'); }
+  let etuNom='', etuPrenom='';
+  if(etu){
+    if($('#d-groupe').value!=='__autre' && $('#d-etu').value!=='__autre'){ const e=_ets[+$('#d-etu').value]; if(e){ etuNom=e.nom; etuPrenom=e.prenom; } }
+    else { etuNom=$('#d-nom').value.trim(); etuPrenom=$('#d-prenom').value.trim(); }
+    if(!etuNom && !etuPrenom){ return fail(err,'Indiquez votre nom et votre prénom.'); }
+  }
 
   const lines=[];
   sups.forEach(s=>s.arts.forEach(l=>lines.push({
     fournisseur:s.nom, intitule:l.intitule, reference:l.reference, lien:l.lien,
     quantite:l.quantite, cout_unitaire:l.cout_unitaire
   })));
-  const res = await op('create', { encCode:_encCode, ctx:{formation,parcours,groupe,encadrant}, lines });
-  if(!res){ return fail(err,'Code PIN encadrant incorrect, ou enregistrement impossible.'); }
+  const res = etu
+    ? await op('create-etu', { projetPw:getPw(groupe), ctx:{formation,parcours,groupe,etudiant_nom:etuNom,etudiant_prenom:etuPrenom}, lines })
+    : await op('create', { encCode:_encCode, ctx:{formation,parcours,groupe,encadrant:_encNom}, lines });
+  if(!res){ return fail(err, etu ? 'Enregistrement impossible (mot de passe du projet ?).' : 'Mot de passe encadrant incorrect, ou enregistrement impossible.'); }
   $('#suppliers').innerHTML=''; _sid=0; addSupplier();
   await loadCommandes();
-  toast((res.count||lines.length)+' ligne(s) enregistrée(s) ✅');
-  showView('suivi');
+  if(etu){
+    toast((res.count||lines.length)+' ligne(s) envoyée(s) ✅ — votre encadrant doit les valider');
+    openSuiviFor(groupe);
+  } else {
+    toast((res.count||lines.length)+' ligne(s) enregistrée(s) ✅ — validées d’office');
+    $('#ev-statut').value='all';
+    showView('encadrant');
+  }
 }
 function fail(el,msg){ el.textContent=msg; el.classList.add('show'); }
 
-/* ---------- SUIVI ---------- */
+/* ---------- SUIVI : on n'affiche que les demandes d'UN projet, après saisie de son mot de passe ---------- */
+$('#n-projet-cards').addEventListener('click', e=>{ const c=e.target.closest('.proj-card'); if(c) pickProjet(c.dataset.p); });
+$('#s-projet-cards').addEventListener('click', e=>{ const c=e.target.closest('.proj-card'); if(c) pickProjetSuivi(c.dataset.p); });
+async function pickProjetSuivi(p){
+  if(!(await unlockProjet(p))) return;
+  openSuiviFor(p);
+}
+function openSuiviFor(p){
+  if(![...$('#s-projet').options].some(o=>o.value===p)) $('#s-projet').insertAdjacentHTML('beforeend',opt(p));
+  $('#s-projet').value=p;
+  showView('suivi');
+}
+function changerProjetSuivi(){ $('#s-projet').value=''; renderSuivi(); }
 function renderSuivi(){
+  const fp=$('#s-projet').value;
+  $('#s-gate').style.display = fp ? 'none' : 'block';
+  $('#s-panel').style.display = fp ? 'block' : 'none';
+  if(!fp) return;
+  $('#s-projet-chosen').innerHTML='Projet : <b>'+esc(fp)+'</b>';
   const q=($('#s-search').value||'').toLowerCase().trim();
-  const fs=$('#s-statut').value, fp=$('#s-parcours').value, fpr=$('#s-projet').value, fe=$('#s-encadrant').value;
-  let rows = COMMANDES.filter(c=>{
+  const fs=$('#s-statut').value;
+  const rows = COMMANDES.filter(c=>{
+    if(c.groupe!==fp) return false;
     if(fs && c.statut!==fs) return false;
-    if(fp && c.parcours!==fp) return false;
-    if(fpr && c.groupe!==fpr) return false;
-    if(fe && c.encadrant!==fe) return false;
-    if(q){ const hay=(c.groupe+' '+c.encadrant+' '+c.intitule+' '+c.reference+' '+c.fournisseur).toLowerCase(); if(!hay.includes(q)) return false; }
+    if(q){ const hay=(c.encadrant+' '+c.etudiant_nom+' '+c.etudiant_prenom+' '+c.intitule+' '+c.reference+' '+c.fournisseur).toLowerCase(); if(!hay.includes(q)) return false; }
     return true;
   });
-  // budgets
-  const parc = [...new Set(rows.map(r=>r.parcours).filter(Boolean))].sort();
-  $('#suiviBudgets').innerHTML = parc.map(p=>budgetBar(p)).join('');
-  // groupé par groupe
-  const groups={};
-  rows.forEach(r=>{ (groups[r.groupe||'(sans groupe)']=groups[r.groupe||'(sans groupe)']||[]).push(r); });
-  const keys=Object.keys(groups).sort((a,b)=>a.localeCompare(b,'fr'));
-  if(!keys.length){ $('#suiviList').innerHTML='<div class="hint">Aucune demande.</div>'; return; }
-  $('#suiviList').innerHTML = keys.map(k=>{
-    const g=groups[k];
-    const tot=g.reduce((s,c)=>s+(Number(c.cout_total)||0),0);
-    const meta=g[0];
-    return `<div class="group-head"><span>${esc(k)} <span class="mini">— ${esc(meta.parcours||'')} · ${esc(meta.formation||'')} · ${esc(meta.encadrant||'')}</span></span>
-      <span class="tot">${g.length} ligne(s) · total ${eur(tot)}</span></div>
+  $('#suiviBudgets').innerHTML = [...new Set(rows.map(r=>r.parcours).filter(Boolean))].sort().map(p=>budgetBar(p)).join('');
+  if(!rows.length){ $('#suiviList').innerHTML='<div class="hint">Aucune demande.</div>'; return; }
+  const tot=rows.reduce((s,c)=>s+(Number(c.cout_total)||0),0);
+  const meta=rows[0];
+  const encs=encadrantsForProjet(fp);
+  $('#suiviList').innerHTML = `<div class="group-head"><span>${esc(fp)} <span class="mini">— ${esc(meta.parcours||'')} · ${esc(meta.formation||'')}${encs.length?' · '+esc(encs.join(', ')):''}</span></span>
+      <span class="tot">${rows.length} ligne(s) · total ${eur(tot)}</span></div>
       <div class="tablewrap"><table class="data">
       <tr><th>N°</th><th>Article</th><th>Réf.</th><th>Qté</th><th>Coût</th><th>Statut</th><th>Étapes</th><th></th></tr>
-      ${g.sort((a,b)=>(a.numero||0)-(b.numero||0)).map(c=>rowSuivi(c)).join('')}
+      ${rows.slice().sort((a,b)=>(a.numero||0)-(b.numero||0)).map(c=>rowSuivi(c)).join('')}
       </table></div>`;
-  }).join('');
+}
+// Résumé daté des étapes ; la décision de l'encadrant est retrouvée dans l'historique (elle reste visible même si le gestionnaire agit ensuite).
+function encDecisionLabel(c){
+  if(!c.lot_id || !c.encadrant_at || !c.encadrant) return null;
+  const h=(Array.isArray(c.historique)?c.historique:[]).filter(x=>x && x.par===c.encadrant).pop();
+  const st=h ? h.statut : c.statut;
+  return st==='refusee' ? 'refusée' : st==='attente_info' ? 'mise en attente' : 'validée';
 }
 function steps(c){
   const parts=[];
   parts.push(fmtDate(c.created_at)+' demandée');
+  const d=encDecisionLabel(c);
+  if(d) parts.push(fmtDate(c.encadrant_at)+' '+d+' par '+esc(c.encadrant));
   if(c.commandee_at) parts.push(fmtDate(c.commandee_at)+' commandée');
   if(c.recue_at) parts.push(fmtDate(c.recue_at)+' reçue'+(c.recue_note?' ('+esc(c.recue_note)+')':''));
   if(c.remise_at) parts.push(fmtDate(c.remise_at)+' remise');
   return parts.join(' → ');
 }
 function fmtDate(s){ if(!s) return ''; const d=new Date(s); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}); }
+function fmtDateTime(s){ if(!s) return ''; const d=new Date(s); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+const etuName = c => ((c.etudiant_prenom||'')+' '+(c.etudiant_nom||'')).trim();
 function rowSuivi(c){
   const st=STATUTS[c.statut]||STATUTS.demandee;
   const link = c.lien ? ` <a href="${esc(c.lien)}" target="_blank" rel="noopener">🔗</a>` : '';
-  const canCancel = c.statut==='demandee';
+  const canCancel = PENDING.includes(c.statut);   // l'étudiant peut annuler tant que l'encadrant n'a pas validé
   return `<tr>
     <td>${c.numero||''}</td>
-    <td>${esc(c.intitule)}${link}${c.commentaire_gestionnaire?`<div class="ctx">🛒 ${esc(c.commentaire_gestionnaire)}</div>`:''}${c.commentaire_demandeur?`<div class="ctx">✏️ ${esc(c.commentaire_demandeur)}</div>`:''}<div class="ctx">${esc(c.fournisseur||'')}</div></td>
+    <td>${esc(c.intitule)}${link}<div class="ctx">🏬 ${esc(c.fournisseur||'')}</div>
+      ${etuName(c)?`<div class="ctx">👤 ${esc(etuName(c))}</div>`:''}
+      ${c.encadrant_commentaire?`<div class="ctx">👨‍🏫 <b>${esc(c.encadrant||'Encadrant')}</b> : ${esc(c.encadrant_commentaire)}</div>`:''}
+      ${c.commentaire_gestionnaire?`<div class="ctx">🛒 ${esc(c.commentaire_gestionnaire)}</div>`:''}${c.commentaire_demandeur?`<div class="ctx">✏️ ${esc(c.commentaire_demandeur)}</div>`:''}</td>
     <td>${esc(c.reference||'')}</td>
     <td>${c.quantite||''}</td>
     <td>${eur(c.cout_total)}</td>
@@ -962,11 +1273,96 @@ function rowSuivi(c){
   </tr>`;
 }
 async function cancelLine(id){
-  const pin=prompt('Votre code encadrant (celui qui a créé la demande) pour annuler cette ligne :'); if(!pin) return;
-  const res=await op('cancel', { id, encCode:pin.trim() });
+  const c=COMMANDES.find(x=>x.id===id); if(!c) return;
+  if(!confirm('Annuler cette ligne de demande ?')) return;
+  const res=await op('cancel', { id, projetPw:getPw(c.groupe) });
   if(!res) return;
   await loadCommandes();
   toast('Ligne annulée');
+}
+
+/* ---------- ESPACE ENCADRANT : validation des demandes des étudiants ---------- */
+const lotKey = c => c.lot_id || ('d|'+c.groupe+'|'+(c.encadrant||'')+'|'+String(c.created_at||'').slice(0,19));
+function renderEnc(){
+  if(!_encOk) return;
+  const mine=projetsForEncadrant(_encNom);
+  const lots=new Map();
+  COMMANDES.filter(c=>mine.includes(c.groupe) || c.encadrant===_encNom).forEach(c=>{ const k=lotKey(c); if(!lots.has(k)) lots.set(k,[]); lots.get(k).push(c); });
+  let list=[...lots.entries()].map(([k,ls])=>({k,ls:ls.slice().sort((a,b)=>(a.numero||0)-(b.numero||0))}));
+  if($('#ev-statut').value==='todo') list=list.filter(l=>l.ls.some(c=>PENDING.includes(c.statut)));
+  list.sort((a,b)=>new Date(b.ls[0].created_at)-new Date(a.ls[0].created_at));
+  if(!list.length){
+    $('#encList').innerHTML='<div class="hint">'+(mine.length?'Aucune demande à traiter 🎉':'Aucun projet n’est rattaché à votre nom dans la liste des étudiants.')+'</div>';
+    return;
+  }
+  $('#encList').innerHTML=list.map(encCard).join('');
+}
+// Décision par LIGNE : chaque ligne d'une demande d'étudiant a ses propres choix et son propre commentaire.
+const lineChoice = c => c.statut==='attente_info' ? 'info' : c.statut==='refusee' ? 'refus' : c.statut==='demandee' ? 'valider' : '';
+function encCard({k,ls}){
+  const c0=ls[0], student=!!c0.lot_id;
+  const sts=new Set(ls.map(c=>c.statut));
+  const total=ls.reduce((s,c)=>s+(Number(c.cout_total)||0),0);
+  const modifIds=student ? ls.filter(c=>MODIFIABLES.includes(c.statut)).map(c=>c.id) : [];
+  const cls = sts.has('en_attente') ? 's-en_attente' : sts.has('attente_info') ? 's-attente_info' : sts.has('refusee') ? 's-refusee' : sts.has('demandee') ? 's-validee' : 's-fait';
+  const who = student ? (etuName(c0) || 'un étudiant') : (c0.encadrant || 'un encadrant');
+  const lines=ls.map(c=>{
+    const st=STATUTS[c.statut]||STATUTS.demandee;
+    const cancel = !student && c.statut==='demandee' && c.encadrant===_encNom
+      ? ` <button class="btn sm danger" onclick="cancelLineEnc(${c.id})">Annuler</button>` : '';
+    const cur=lineChoice(c);
+    const rd=(v,label)=>`<label><input type="radio" name="dec-${c.id}" value="${v}" ${cur===v?'checked':''}> ${label}</label>`;
+    const dec = modifIds.includes(c.id)
+      ? `<div class="decl">${rd('valider','✔ Valider')}${rd('info','⏸ En attente d’info')}${rd('refus','✖ Refuser')}
+         <input id="ec-${c.id}" value="${esc(c.encadrant_commentaire||'')}" placeholder="Commentaire (obligatoire si en attente)" autocomplete="off"></div>`
+      : (student ? '<span class="mini">Traitée par le gestionnaire</span>' : '');
+    return `<tr>
+      <td><b>${esc(c.intitule)}</b>${c.lien?` <a href="${esc(c.lien)}" target="_blank" rel="noopener">🔗</a>`:''}<div class="ctx">🏬 ${esc(c.fournisseur||'—')}</div></td>
+      <td>${esc(c.reference||'')}</td><td>${c.quantite||''}</td><td>${eur(c.cout_total)}</td>
+      <td><span class="pill ${st.cls}">${st.label}</span>${cancel}</td>
+      ${student?`<td>${dec}</td>`:''}</tr>`;
+  }).join('');
+  const pend=modifIds.filter(id=>{ const c=ls.find(x=>x.id===id); return PENDING.includes(c.statut); });
+  return `<div class="dcard ${cls}">
+    <div class="dtitle">${student?'Demande de ':'Demande déposée par '}${esc(who)} — projet ${esc(c0.groupe)}</div>
+    <div class="dmeta">${esc(c0.parcours||'')} · ${esc(c0.formation||'')} · déposée le ${esc(fmtDateTime(c0.created_at))} · ${ls.length} ligne(s) · total estimé <b>${eur(total)}</b>
+      ${budgetBar(c0.parcours)}</div>
+    <div class="tablewrap"><table class="data">
+      <tr><th>Article &amp; fournisseur</th><th>Réf.</th><th>Qté</th><th>Total</th><th>Statut</th>${student?'<th>Ma décision</th>':''}</tr>${lines}</table></div>
+    ${!student ? `<div class="hint" style="margin-top:10px">Déposée directement par ${esc(c0.encadrant||'un encadrant')} : validée d’office, elle est déjà chez le gestionnaire.</div>`
+      : !modifIds.length ? `<div class="hint" style="margin-top:10px">Toutes les lignes sont en cours de traitement par le gestionnaire : elles ne peuvent plus être modifiées ici.</div>`
+      : `<div class="row-actions" style="margin-top:10px">
+          ${pend.length>1?`<button class="btn" onclick="validerTout('${k}')">✔ Tout valider (${pend.length} lignes en attente)</button>`:''}
+          <button class="btn primary" onclick="saveDecisions('${k}')">Enregistrer mes décisions</button></div>`}
+  </div>`;
+}
+// Coche « Valider » sur toutes les lignes encore en attente d'une demande (raccourci).
+function validerTout(lot){
+  COMMANDES.filter(c=>c.lot_id===lot && PENDING.includes(c.statut)).forEach(c=>{
+    const r=document.querySelector(`input[name="dec-${c.id}"][value="valider"]`); if(r) r.checked=true;
+  });
+}
+async function saveDecisions(lot){
+  const items=[];
+  for(const c of COMMANDES.filter(x=>x.lot_id===lot && MODIFIABLES.includes(x.statut))){
+    const sel=document.querySelector(`input[name="dec-${c.id}"]:checked`); if(!sel) continue;
+    const com=(($('#ec-'+c.id)||{}).value||'').trim();
+    if(sel.value===lineChoice(c) && com===(c.encadrant_commentaire||'')) continue;   // inchangée
+    if(sel.value==='info' && !com) return toast('Ligne « '+c.intitule+' » : indiquez ce qui manque dans le commentaire.');
+    items.push({id:c.id, decision:sel.value, comment:com});
+  }
+  if(!items.length) return toast('Cochez une décision pour au moins une ligne.');
+  const res=await op('enc-decide', { encNom:_encNom, encCode:_encCode, items });
+  if(!res) return;
+  await loadCommandes(); renderEnc();
+  const n=k=>items.filter(i=>i.decision===k).length;
+  toast([n('valider')?n('valider')+' validée(s)':'', n('info')?n('info')+' en attente d’info':'', n('refus')?n('refus')+' refusée(s)':''].filter(Boolean).join(' · ')+' ✔️');
+}
+async function cancelLineEnc(id){
+  if(!confirm('Annuler cette ligne ?')) return;
+  const res=await op('cancel', { id, encCode:_encCode });
+  if(!res) return;
+  await loadCommandes(); renderEnc(); toast('Ligne annulée');
 }
 
 /* ---------- GESTIONNAIRE ---------- */
@@ -997,6 +1393,7 @@ function gestFiltered(){
   const q=($('#f-search').value||'').toLowerCase().trim();
   const fs=$('#f-statut').value,fp=$('#f-parcours').value,ff=$('#f-formation').value,fo=$('#f-fournisseur').value,fe=$('#f-encadrant').value,fpr=$('#f-projet').value;
   return COMMANDES.filter(c=>{
+    if(PENDING.includes(c.statut)) return false;   // pas encore validée par l'encadrant
     if(fs&&c.statut!==fs) return false;
     if(fpr&&c.groupe!==fpr) return false;
     if(fp&&c.parcours!==fp) return false;
@@ -1015,7 +1412,7 @@ function renderGest(){
   const aRet=COMMANDES.filter(c=>c.statut==='recue_complete').length;
   const dep=COMMANDES.filter(c=>ACTIVE_STATUTS.includes(c.statut)&&new Date(c.created_at)>=ys).reduce((s,c)=>s+(Number(c.cout_total)||0),0);
   $('#gestStats').innerHTML = [
-    ['À commander',aCmd],['En attente de réception',aRec],['À récupérer',aRet],['Dépensé depuis le 1ᵉʳ sept.',eur(dep)]
+    ['À commander',aCmd],['En attente de réception',aRec],['À récupérer',aRet],['Chez les encadrants (à valider)',COMMANDES.filter(c=>PENDING.includes(c.statut)).length],['Dépensé depuis le 1ᵉʳ sept.',eur(dep)]
   ].map(([k,v])=>`<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
 
   const rows=gestFiltered();
@@ -1073,17 +1470,18 @@ function gestTable(rows){
       const st=STATUTS[c.statut]||STATUTS.demandee;
       return `<tr>
         <td class="mini">${fmtDate(c.created_at)}</td>
-        <td><b>${esc(c.groupe||'—')}</b><div class="ctx">${esc(c.formation||'')}${c.parcours?' · '+esc(c.parcours):''}</div><div class="ctx">${esc(c.encadrant||'')}</div></td>
+        <td><b>${esc(c.groupe||'—')}</b><div class="ctx">${esc(c.formation||'')}${c.parcours?' · '+esc(c.parcours):''}</div><div class="ctx">${etuName(c)?'👤 '+esc(etuName(c))+' · ':''}${esc(c.encadrant||'')}</div></td>
         <td>${esc(c.intitule)}${c.lien?` <a href="${esc(c.lien)}" target="_blank" rel="noopener">🔗</a>`:''}
           <div class="ctx">🏬 ${esc(c.fournisseur||'—')}</div>
           ${c.commentaire_gestionnaire?`<div class="ctx">🛒 ${esc(c.commentaire_gestionnaire)}</div>`:''}
+          ${c.encadrant_commentaire?`<div class="ctx">👨‍🏫 ${esc(c.encadrant_commentaire)}</div>`:''}
           ${c.commentaire_demandeur?`<div class="ctx">✏️ ${esc(c.commentaire_demandeur)}</div>`:''}</td>
         <td>${esc(c.reference||'')}</td>
         <td>${c.quantite||''}</td>
         <td>${eur(c.cout_total)}</td>
         <td><span class="pill ${st.cls}">${st.label}</span></td>
         <td><div class="row-actions">
-          ${c.statut!=='demandee'?`<button class="btn sm" onclick="patchStatut(${c.id},'demandee')">Demandée</button>`:''}
+          ${c.statut!=='demandee'?`<button class="btn sm" onclick="patchStatut(${c.id},'demandee')">À commander</button>`:''}
           ${c.statut!=='commandee'?`<button class="btn sm" onclick="patchStatut(${c.id},'commandee')">Commandé</button>`:''}
           ${c.statut!=='recue_complete'?`<button class="btn sm" onclick="patchStatut(${c.id},'recue_complete')">Reçu</button>`:''}
           ${c.statut!=='recue_partielle'?`<button class="btn sm" onclick="patchStatut(${c.id},'recue_partielle')">Partiel</button>`:''}
@@ -1145,7 +1543,7 @@ async function saveComment(){
 /* ---------- exports ---------- */
 function exportRows(){
   return gestFiltered().map(c=>({
-    Date:c.created_at?.slice(0,10)||'', Formation:c.formation, Parcours:c.parcours, Groupe:c.groupe, Encadrant:c.encadrant,
+    Date:c.created_at?.slice(0,10)||'', Formation:c.formation, Parcours:c.parcours, Groupe:c.groupe, Étudiant:etuName(c), Encadrant:c.encadrant,
     Fournisseur:c.fournisseur, Intitulé:c.intitule, Référence:c.reference, Lien:c.lien, Quantité:c.quantite,
     'Coût unitaire':c.cout_unitaire??'', 'Coût total':c.cout_total??'', Statut:(STATUTS[c.statut]||{}).label||c.statut,
     'Commandée le':c.commandee_at?.slice(0,10)||'', 'Reçue le':c.recue_at?.slice(0,10)||'', 'Remise le':c.remise_at?.slice(0,10)||'',
