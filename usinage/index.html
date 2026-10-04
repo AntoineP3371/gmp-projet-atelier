@@ -6,7 +6,7 @@
 <script>(function(){try{var t=localStorage.getItem('theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <title>Réservations des machines-outils</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0083ba">
+<meta name="theme-color" content="#c2255c">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -18,20 +18,20 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
-    --bg:#f3f9fc; --surface:#fff; --border:#d6e6ef;
-    --primary:#0083ba; --primary-light:#e2f4fc; --primary-dark:#00688f;
-    --booked:#c2e9fa; --booked-border:#00aeef; --free-text:#16a34a;
-    --text:#13303d; --muted:#5b7686;
+    --bg:#fcf4f7; --surface:#fff; --border:#ecdbe2;
+    --primary:#c2255c; --primary-light:#fce4ec; --primary-dark:#8c1744;
+    --booked:#f8c6d8; --booked-border:#e0507f; --free-text:#16a34a;
+    --text:#2e1721; --muted:#7a6169;
     --danger:#ef4444; --danger-light:#fee2e2;
     --admin:#7c3aed; --admin-light:#ede9fe; --admin-dark:#5b21b6;
-    --disabled-bg:#eef3f6; --disabled-border:#90a8b4;
+    --disabled-bg:#f4eef1; --disabled-border:#b2979f;
     --radius:10px; --shadow:0 2px 12px rgba(0,40,60,.08);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:64px 16px 48px}
   .home-btn{position:fixed;top:12px;left:12px;z-index:60;display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 13px;font-size:.85rem;font-weight:600;color:var(--text);text-decoration:none;box-shadow:var(--shadow);transition:background .15s,border-color .15s}
   .home-btn:hover{background:var(--primary-light);border-color:var(--primary)}
-  .logo-bar{display:flex;justify-content:center;align-items:center;padding:44px 0 18px}
+  .logo-bar{display:flex;justify-content:center;align-items:center;padding:4px 0 18px}
   .logo-bar img{max-height:70px;max-width:100%;width:auto;height:auto;object-fit:contain;mix-blend-mode:multiply}
   :root[data-theme="dark"] .logo-bar img{mix-blend-mode:screen;filter:invert(1) hue-rotate(180deg)}
   header{display:flex;align-items:center;gap:14px;margin-bottom:16px}
@@ -75,8 +75,8 @@
   .tcar-op{font-size:clamp(.75rem,1.6vh,.95rem);color:#4b5563;font-weight:600}
   .tcar-pj{font-size:clamp(.72rem,1.5vh,.9rem);color:var(--muted);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tcar-foot{flex-shrink:0;font-size:.75rem;color:var(--muted);text-align:right}
-  :root[data-theme="dark"] .tcar-nm{color:#8fb8f0}
-  :root[data-theme="dark"] .tcar-cell.blk{background:#1a2832;color:#94a3b8}
+  :root[data-theme="dark"] .tcar-nm{color:#f2a4be}
+  :root[data-theme="dark"] .tcar-cell.blk{background:#2a1d23;color:#94a3b8}
   /* Le chatbot ne doit pas s'afficher par-dessus le carrousel plein écran */
   body.carousel-open #chatFab,body.carousel-open #chatPanel{display:none!important}
   header .icon{height:44px;width:auto;background:none;border-radius:0;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -124,7 +124,7 @@
   .table-wrap{overflow-x:auto;border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);background:var(--surface)}
   #mainWrap{overflow:auto;max-height:calc(100vh - 310px)}
   table{border-collapse:collapse;width:100%;min-width:680px}
-  th{background:#e8f5fb;padding:10px 8px;font-size:.82rem;font-weight:700;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap}
+  th{background:#fbeaf0;padding:10px 8px;font-size:.82rem;font-weight:700;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap}
   th.today-col{background:var(--primary-light);color:var(--primary-dark)}
   td{border:1px solid var(--border);padding:0;vertical-align:top}
   /* Séparation plus marquée entre deux machines (première ligne de chaque machine) */
@@ -133,17 +133,17 @@
   .machine-color-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;border:1px solid rgba(0,0,0,.15);vertical-align:middle}
   .slot-cell{min-width:130px;height:auto;min-height:100px;padding:6px 8px;position:relative;transition:background .15s}
   .slot-cell.free{background:#fff;cursor:pointer}
-  .slot-cell.free:hover{background:#e8f6fc}
+  .slot-cell.free:hover{background:#fdf0f5}
   .slot-cell.booked{cursor:grab}
   .slot-cell.booked:active{cursor:grabbing}
   .slot-cell.booked:hover{filter:brightness(.94)}
-  .slot-cell.drop-target{outline:2px dashed var(--primary);outline-offset:-2px;background:#ddf2fb!important}
+  .slot-cell.drop-target{outline:2px dashed var(--primary);outline-offset:-2px;background:#f9dce7!important}
   .slot-cell.disabled{background:var(--disabled-bg);border-left:3px solid var(--disabled-border)!important;cursor:default}
-  .slot-cell.today-col.free{background:#e8f6fc}
-  .slot-cell.today-col.disabled{background:#e8edf4}
+  .slot-cell.today-col.free{background:#fdf0f5}
+  .slot-cell.today-col.disabled{background:#f3eaee}
   /* Fond du jour en cours porté aussi par le <td> : évite une bande blanche sous les
      cellules courtes quand une autre cellule de la ligne (réservation) allonge la ligne. */
-  td.day-col.today-col{background:#e8f6fc}
+  td.day-col.today-col{background:#fdf0f5}
   .slot-time{font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.03em;margin-bottom:3px}
   .slot-free-label{font-size:.78rem;color:var(--free-text);font-weight:600}
   .slot-name{font-size:.82rem;font-weight:700;color:#1e3a8a;line-height:1.3;word-break:break-word}
@@ -171,7 +171,7 @@
   #grid table{border-collapse:separate;border-spacing:0}
   #grid th,#grid td{border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
   #grid th{border-bottom:2px solid var(--border)}
-  #grid thead th{position:sticky;top:0;z-index:2;background:#e8f5fb}
+  #grid thead th{position:sticky;top:0;z-index:2;background:#fbeaf0}
   #grid thead th:first-child{position:sticky;top:0;left:0;z-index:3}
   #grid td.machine-label{position:sticky;left:0;z-index:1;box-shadow:2px 0 4px rgba(0,0,0,.06)}
   .carousel-header-full{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px;flex-wrap:wrap}
@@ -204,7 +204,7 @@
   .btn-admin-ok{background:var(--admin);color:#fff;border:none;padding:9px 20px}
   .btn-admin-ok:hover{background:var(--admin-dark)}
   .booking-info{background:#f8faff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px}
-  .booking-info .row{display:flex;justify-content:space-between;font-size:.85rem;padding:4px 0;border-bottom:1px solid #f0f3fa}
+  .booking-info .row{display:flex;justify-content:space-between;font-size:.85rem;padding:4px 0;border-bottom:1px solid #f6edf1}
   .booking-info .row:last-child{border-bottom:none}
   .booking-info .row span:first-child{color:var(--muted);font-weight:600;min-width:80px}
   .booking-info .row span:last-child{color:var(--text);font-weight:500}
@@ -392,7 +392,7 @@
   .stats-bar-count{width:24px;text-align:right;color:var(--muted);font-size:.72rem;flex-shrink:0}
   .stats-period-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
   .stats-period-btn{background:var(--primary-light);color:var(--primary-dark);border:1.5px solid var(--border);border-radius:7px;padding:5px 12px;font-size:.78rem;cursor:pointer;transition:background .15s}
-  .stats-period-btn:hover{background:#cde9f6}
+  .stats-period-btn:hover{background:#f8d3e1}
   .stats-period-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
   .stats-custom-range{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:.8rem}
   .stats-custom-range input[type=date]{border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:.8rem}
@@ -413,17 +413,17 @@
 <!-- ═══ Refonte visuelle (CSS seul — aucun contenu ni logique modifié) ═══ -->
 <style>
   :root{
-    --bg:#eef3f6; --border:#d5e1e9;
-    --primary:#0e7ca8; --primary-light:#e1f1f8; --primary-dark:#08556f;
-    --text:#10222b; --muted:#5b7686;
+    --bg:#f8f1f4; --border:#e6d6dd;
+    --primary:#b3245a; --primary-light:#f9e1ea; --primary-dark:#7f1a41;
+    --text:#2a141d; --muted:#7a6169;
     --danger:#c2352c; --danger-light:#fbe7e5;
     --admin:#6d4ae0; --admin-light:#edeafb; --admin-dark:#4b2fb0;
     --green:#15803d;
   }
   body{
     background:
-      linear-gradient(rgba(0,131,186,.05) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(0,131,186,.05) 1px,transparent 1px),
+      linear-gradient(rgba(194,37,92,.05) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(194,37,92,.05) 1px,transparent 1px),
       var(--bg);
     background-size:34px 34px, 34px 34px, auto;
     background-attachment:fixed;
@@ -442,32 +442,32 @@
 
   /* ═══ THÈME SOMBRE ═══ */
   :root[data-theme="dark"]{
-    --bg:#0d1a21; --surface:#16262f; --border:#294551;
-    --primary:#3ba7d0; --primary-light:#12313f; --primary-dark:#8fd2ea;
-    --text:#e6eef2; --muted:#93aab7;
+    --bg:#1c1015; --surface:#281a21; --border:#4a2f3b;
+    --primary:#e0678f; --primary-light:#3a1824; --primary-dark:#f2a4be;
+    --text:#f3e8ed; --muted:#b79aa6;
     --danger:#e4675e; --danger-light:#331715;
     --admin:#a791f0; --admin-light:#241d3a; --admin-dark:#cbbaf8;
     --green:#4fb166;
-    --booked:#183a4a; --booked-border:#3ba7d0; --free-text:#5fc47a;
-    --disabled-bg:#1a2730; --disabled-border:#5a7380;
+    --booked:#4a1f30; --booked-border:#e0678f; --free-text:#5fc47a;
+    --disabled-bg:#2a1d23; --disabled-border:#80606c;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.45);
   }
   :root[data-theme="dark"] body{
     background:
-      linear-gradient(rgba(59,167,208,.06) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(59,167,208,.06) 1px,transparent 1px),
+      linear-gradient(rgba(224,103,143,.06) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(224,103,143,.06) 1px,transparent 1px),
       var(--bg);
     background-size:34px 34px, 34px 34px, auto; background-attachment:fixed;
   }
-  :root[data-theme="dark"] th,:root[data-theme="dark"] #grid thead th{background:#132633;color:var(--muted)}
+  :root[data-theme="dark"] th,:root[data-theme="dark"] #grid thead th{background:#2a1a22;color:var(--muted)}
   :root[data-theme="dark"] .slot-cell.free{background:var(--surface)}
-  :root[data-theme="dark"] .slot-cell.free:hover,:root[data-theme="dark"] .slot-cell.today-col.free{background:#1c3340}
-  :root[data-theme="dark"] .slot-cell.today-col.disabled{background:#1a2832}
-  :root[data-theme="dark"] td.day-col.today-col{background:#1c3340}
-  :root[data-theme="dark"] .slot-cell.drop-target{background:#1c3a4a!important}
-  :root[data-theme="dark"] .slot-name,:root[data-theme="dark"] .slot-projet-nom{color:#8fb8f0}
-  :root[data-theme="dark"] .slot-operateur{color:#b7c6d0}
-  :root[data-theme="dark"] .booking-info{background:#122430}
+  :root[data-theme="dark"] .slot-cell.free:hover,:root[data-theme="dark"] .slot-cell.today-col.free{background:#3a2330}
+  :root[data-theme="dark"] .slot-cell.today-col.disabled{background:#2a1d23}
+  :root[data-theme="dark"] td.day-col.today-col{background:#3a2330}
+  :root[data-theme="dark"] .slot-cell.drop-target{background:#4a2a3a!important}
+  :root[data-theme="dark"] .slot-name,:root[data-theme="dark"] .slot-projet-nom{color:#f2a4be}
+  :root[data-theme="dark"] .slot-operateur{color:#d6bcc7}
+  :root[data-theme="dark"] .booking-info{background:#2a1a22}
   :root[data-theme="dark"] .machine-item input.mname,:root[data-theme="dark"] .machine-item input[type=color]{background:var(--surface);color:var(--text)}
   :root[data-theme="dark"] .form-group input:focus{background-color:var(--surface)}
   :root[data-theme="dark"] .btn-export{background:#0f2a1c;color:#5fc47a;border-color:#2b6b46}
@@ -475,8 +475,8 @@
   :root[data-theme="dark"] .disclaimer-note{background:#2b1c0f;border-color:#5a3a1a;color:#e0a64a}
   :root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea{background:var(--surface);color:var(--text)}
   /* Colonne « machine » : fond sombre uniforme, mais on garde le liseré coloré (border-left inline) */
-  :root[data-theme="dark"] .machine-label{background:#152531!important;color:var(--text)}
-  :root[data-theme="dark"] tr.machine-start > td{border-top-color:#4a6779}
+  :root[data-theme="dark"] .machine-label{background:#2a1a22!important;color:var(--text)}
+  :root[data-theme="dark"] tr.machine-start > td{border-top-color:#7a4f62}
 </style>
 </head>
 <body>
@@ -568,13 +568,13 @@
 <div class="table-wrap" id="mainWrap"><div id="grid"><div class="loading-bar"><div class="spinner"></div> Chargement des données…</div></div></div>
 
 <div class="legend">
-  <span class="legend-item"><span class="legend-dot" style="background:#fff;border-color:#e2e6f0"></span>Libre</span>
-  <span class="legend-item"><span class="legend-dot" style="background:#c2e9fa;border-color:#00aeef"></span>Réservé (couleur machine)</span>
-  <span class="legend-item"><span class="legend-dot" style="background:#e8f6fc;border-color:#e2e6f0"></span>Aujourd'hui</span>
+  <span class="legend-item"><span class="legend-dot" style="background:#fff;border-color:#eadde3"></span>Libre</span>
+  <span class="legend-item"><span class="legend-dot" style="background:#f8c6d8;border-color:#e0507f"></span>Réservé (couleur machine)</span>
+  <span class="legend-item"><span class="legend-dot" style="background:#fdf0f5;border-color:#eadde3"></span>Aujourd'hui</span>
   <span class="legend-item"><span class="legend-dot" style="background:#f1f5f9;border-color:#94a3b8"></span>Bloqué</span>
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.3.0</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.3.1</div>
 
 <div class="overlay" id="overlay" onclick="closeOnBg(event)">
   <div class="modal" id="modal"></div>
@@ -884,10 +884,10 @@ async function quickToggleMachineStatus(machine){
 
 function buildPrintTable(pageMachines, week){
   var html="<table style='width:100%;border-collapse:collapse;font-size:.72rem'>";
-  html+="<thead><tr><th style='padding:3px 6px;text-align:left;border:1px solid #ccc;background:#e2f4fc'>Machine / Créneau</th>";
+  html+="<thead><tr><th style='padding:3px 6px;text-align:left;border:1px solid #ccc;background:#fce4ec'>Machine / Créneau</th>";
   week.forEach(d=>{
     var isT=isToday(d);
-    html+="<th style='padding:3px 6px;text-align:center;border:1px solid #ccc;background:"+(isT?'#b3e5fa':'#e2f4fc')+"'>"+d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'})+"</th>";
+    html+="<th style='padding:3px 6px;text-align:center;border:1px solid #ccc;background:"+(isT?'#f8c6d8':'#fce4ec')+"'>"+d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'})+"</th>";
   });
   html+="</tr></thead><tbody>";
   pageMachines.forEach(machine=>{
@@ -910,7 +910,7 @@ function buildPrintTable(pageMachines, week){
         } else if(r){
           td+='background:'+colorLight+';border-left:2px solid '+color+';';
           inner+='<strong>'+esc(r.nom)+' '+esc(r.prenom)+'</strong>'
-            +(r.operateur?'<br><span style="color:#0083ba">'+esc(r.operateur)+'</span>':'')
+            +(r.operateur?'<br><span style="color:#c2255c">'+esc(r.operateur)+'</span>':'')
             +(r.projet?'<br><strong style="color:#1e3a8a">'+esc(r.projet)+'</strong>'+([r.encadrant1,r.encadrant2,r.encadrant3].filter(Boolean).length?'<div style="text-align:right;font-style:italic;color:#5b7686">'+[r.encadrant1,r.encadrant2,r.encadrant3].filter(Boolean).map(function(x){return esc(encAbrege(x));}).join('<br>')+'</div>':''):'');
         } else if(isPanne){
           td+='background:#fef2f2;color:#b91c1c;';
@@ -935,8 +935,8 @@ function printPlanning(){
   var container=document.getElementById('printContainer');
   container.innerHTML=pages.map((pageMachines,pi)=>{
     return "<div class='print-page'>"
-      +"<div style='display:flex;align-items:baseline;gap:12px;margin-bottom:6px;border-bottom:2px solid #0083ba;padding-bottom:4px'>"
-      +"<strong style='font-size:.95rem;color:#0083ba'>Planning des réservations — Atelier GMP</strong>"
+      +"<div style='display:flex;align-items:baseline;gap:12px;margin-bottom:6px;border-bottom:2px solid #c2255c;padding-bottom:4px'>"
+      +"<strong style='font-size:.95rem;color:#c2255c'>Planning des réservations — Atelier GMP</strong>"
       +"<span style='font-size:.78rem;color:#5b7686'>"+weekLabel+"</span>"
       +(pages.length>1?"<span style='margin-left:auto;font-size:.72rem;color:#5b7686'>Page "+(pi+1)+" / "+pages.length+"</span>":"")
       +"</div>"

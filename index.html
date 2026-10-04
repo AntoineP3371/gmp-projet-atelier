@@ -18,6 +18,7 @@
     --additive:#7c3aed; --additive-light:#f1ecfe; --additive-dark:#5b21b6;
     --com:#0e8f6e; --com-light:#e0f3ec; --com-dark:#0a6b52;
     --mat:#c2620a; --mat-light:#fbead6; --mat-dark:#8f4606;
+    --res:#c2255c; --res-light:#fce4ec; --res-dark:#8c1744;
     --danger:#ef4444; --danger-light:#fee2e2;
     --admin:#7c3aed; --admin-dark:#5b21b6; --green:#16a34a;
     --radius:16px; --shadow:0 6px 26px rgba(0,40,60,.12);
@@ -39,30 +40,30 @@
     display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;
     transition:transform .15s,box-shadow .15s,border-color .15s;position:relative;overflow:hidden}
   .card::before{content:"";position:absolute;top:0;left:0;right:0;height:6px}
-  .card.usinage::before{background:var(--primary)}
+  .card.usinage::before{background:var(--res)}
   .card.additive::before{background:var(--additive)}
   .card.commandes::before{background:var(--com)}
   .card.matieres::before{background:var(--mat)}
   .card:hover{transform:translateY(-5px);box-shadow:0 14px 40px rgba(0,40,60,.2)}
-  .card.usinage:hover{border-color:var(--primary)}
+  .card.usinage:hover{border-color:var(--res)}
   .card.additive:hover{border-color:var(--additive)}
   .card.commandes:hover{border-color:var(--com)}
   .card.matieres:hover{border-color:var(--mat)}
   .card .icon{width:78px;height:78px}
-  .card.usinage .icon{color:var(--primary)}
+  .card.usinage .icon{color:var(--res)}
   .card.additive .icon{color:var(--additive)}
   .card.commandes .icon{color:var(--com)}
   .card.matieres .icon{color:var(--mat)}
   .card .badge{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
     padding:4px 12px;border-radius:20px}
-  .card.usinage .badge{background:var(--primary-light);color:var(--primary-dark)}
+  .card.usinage .badge{background:var(--res-light);color:var(--res-dark)}
   .card.additive .badge{background:var(--additive-light);color:var(--additive-dark)}
   .card.commandes .badge{background:var(--com-light);color:var(--com-dark)}
   .card.matieres .badge{background:var(--mat-light);color:var(--mat-dark)}
   .card h2{font-size:1.35rem;font-weight:800}
   .card p{font-size:.88rem;color:var(--muted);line-height:1.5}
   .card .go{margin-top:6px;font-weight:700;font-size:.92rem;display:inline-flex;align-items:center;gap:6px}
-  .card.usinage .go{color:var(--primary-dark)}
+  .card.usinage .go{color:var(--res-dark)}
   .card.additive .go{color:var(--additive-dark)}
   .card.commandes .go{color:var(--com-dark)}
   .card.matieres .go{color:var(--mat-dark)}
@@ -85,6 +86,7 @@
     --additive:#6d4ae0; --additive-light:#edeafb; --additive-dark:#4b2fb0;
     --com:#0e8f6e; --com-light:#e0f3ec; --com-dark:#0a6b52;
     --mat:#c2620a; --mat-light:#fbead6; --mat-dark:#8f4606;
+    --res:#b3245a; --res-light:#f9e1ea; --res-dark:#7f1a41;
     --admin:#6d4ae0; --admin-dark:#4b2fb0; --green:#15803d;
   }
   body{
@@ -113,6 +115,7 @@
     --additive:#a791f0; --additive-light:#241d3a; --additive-dark:#cbbaf8;
     --com:#3bbd97; --com-light:#12352a; --com-dark:#a7e6d2;
     --mat:#e08a3c; --mat-light:#3a2712; --mat-dark:#f0b27a;
+    --res:#e0678f; --res-light:#3a1824; --res-dark:#f2a4be;
     --admin:#a791f0; --admin-dark:#cbbaf8; --green:#4fb166;
   }
   :root[data-theme="dark"] body{
@@ -241,7 +244,7 @@
   </div>
 
   <footer>Atelier GMP — IUT Bordeaux</footer>
-  <div class="site-version">v5.3.0</div>
+  <div class="site-version">v5.3.1</div>
 
 
 
