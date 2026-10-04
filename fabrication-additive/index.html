@@ -623,7 +623,7 @@
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.1.1</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.2.0</div>
 
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
@@ -684,9 +684,9 @@
 <div class="overlay" id="ovEncNom">
   <div class="modal" style="text-align:center">
     <h2>Espace encadrant</h2>
-    <div class="meta">Choisissez votre nom et saisissez votre code (au moins 4 caractères ; défaut 000000 à la 1ʳᵉ connexion).</div>
+    <div class="meta">Choisissez votre nom et saisissez le <b>mot de passe de votre compte Carnet SAE GMP</b>. Sans compte Carnet SAE : votre code personnel Atelier (au moins 4 caractères ; défaut 000000 à la 1ʳᵉ connexion).</div>
     <select id="encNomSelect" style="width:100%;text-align:left"></select>
-    <input type="password" id="encCodeInput" maxlength="20" placeholder="Votre code (au moins 4 caractères)" autocomplete="off" style="width:100%;margin-top:8px;text-align:left" onkeydown="if(event.key==='Enter')confirmEncNom()">
+    <input type="password" id="encCodeInput" maxlength="64" placeholder="Mot de passe Carnet SAE / code personnel" autocomplete="off" style="width:100%;margin-top:8px;text-align:left" onkeydown="if(event.key==='Enter')confirmEncNom()">
     <div class="field-err" id="encErr">Nom ou code incorrect</div>
     <div class="modal-actions" style="justify-content:center">
       <button class="btn btn-close" onclick="closeOverlay('ovEncNom')">Annuler</button>
@@ -1715,8 +1715,8 @@ async function confirmEncNom(){
   const err=document.getElementById('encErr'); const inp=document.getElementById('encCodeInput');
   if(!nom){ err.textContent='Choisissez votre nom.'; err.classList.add('show'); return; }
   if(code.length<4){ err.textContent='Le code doit comporter au moins 4 caractères.'; err.classList.add('show'); inp.classList.add('err'); return; }
-  let ok=false, mustChange=false, notAuth=false;
-  try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'encadrant', name:nom, code:code } }); ok=!error && !!(data&&data.ok); mustChange=!error && !!(data&&data.mustChange); notAuth=!error && !!(data&&data.notAuthorized); }catch(e){ ok=false; }
+  let ok=false, mustChange=false, notAuth=false, msg='', sae=false;
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'encadrant', name:nom, code:code } }); ok=!error && !!(data&&data.ok); mustChange=!error && !!(data&&data.mustChange); notAuth=!error && !!(data&&data.notAuthorized); msg=(!error&&data&&data.msg)||''; sae=!error && !!(data&&data.sae); }catch(e){ ok=false; }
   if(notAuth){ err.textContent='Encadrant inconnu — voir l’administrateur.'; err.classList.add('show'); return; }
   let ecode=code;
   if(!ok && mustChange){
@@ -1727,7 +1727,7 @@ async function confirmEncNom(){
     try{ const {data,error}=await sb.functions.invoke('verify-code',{ body:{ kind:'encadrant', name:nom, code:nc, setup:true } }); ok=!error && !!(data&&data.ok); }catch(e){ ok=false; }
     ecode=nc;
   }
-  if(!ok){ err.textContent='Code incorrect.'; err.classList.add('show'); inp.classList.add('err'); return; }
+  if(!ok){ err.textContent=msg||(sae?'Code incorrect (mot de passe de votre compte Carnet SAE).':'Code incorrect.'); err.classList.add('show'); inp.classList.add('err'); return; }
   currentEncadrantNom=nom; _encadrantCode=ecode;
   document.getElementById('encNomLabel').textContent=nom;
   closeOverlay('ovEncNom');

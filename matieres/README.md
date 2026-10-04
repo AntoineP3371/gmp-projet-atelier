@@ -120,7 +120,7 @@ Toutes les écritures passent par l'Edge Function (clé service) ; la clé publi
 |---|---|
 | Catalogue (matières, formes, bruts, fournisseurs, familles, associations, dates, budgets, paramètres) | mot de passe **admin** |
 | Dépôt d'une demande | étudiant identifié par le **mot de passe de son projet** (voir ci-dessous) — colonnes filtrées, statut forcé « en attente », n° de demande recalculé |
-| Décision sur une demande | **encadrant du projet** (nom + code personnel) ; impossible une fois commandée/remise |
+| Décision sur une demande | **encadrant du projet**, avec le **mot de passe de son compte Carnet SAE GMP** (vérifié là-bas ; à défaut de compte Carnet SAE, son code personnel Atelier) ; impossible une fois commandée/remise |
 | Suivi (commandée, prête, remise, coût final…) | **opérateur** (nom + code personnel) |
 | Annulation | l'étudiant (mot de passe du projet), tant que la demande n'est pas validée |
 | Vidage de tables (Admin globale → Maintenance) | mot de passe **super admin** |

@@ -363,11 +363,11 @@ table.data input,table.data select{padding:5px 7px;font-size:.84rem}
   <section id="view-encadrant" class="view">
     <div class="card" id="encGate">
       <h2>Espace encadrant</h2>
-      <div class="sub">Vérifiez et validez les demandes de matière de vos projets. Identifiez-vous avec votre nom et votre code personnel.</div>
+      <div class="sub">Vérifiez et validez les demandes de matière de vos projets. Identifiez-vous avec votre nom et le mot de passe de votre compte Carnet SAE GMP (sans compte Carnet SAE : votre code personnel Atelier).</div>
       <div class="grid2">
         <label class="f">Encadrant <select id="e-nom"></select></label>
-        <label class="f">Votre code
-          <input id="e-code" type="password" maxlength="20" placeholder="au moins 4 caractères" autocomplete="off" onkeydown="if(event.key==='Enter')encLogin()"></label>
+        <label class="f">Votre mot de passe
+          <input id="e-code" type="password" maxlength="64" placeholder="mot de passe Carnet SAE / code personnel" autocomplete="off" onkeydown="if(event.key==='Enter')encLogin()"></label>
       </div>
       <button class="btn primary" style="margin-top:12px" onclick="encLogin()">Entrer</button>
       <div class="err" id="e-err"></div>
@@ -432,7 +432,7 @@ table.data input,table.data select{padding:5px 7px;font-size:.84rem}
     </div>
   </section>
 
-  <div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.1.1</div>
+  <div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.2.0</div>
 </div>
 
 <!-- ══════════ FENÊTRES ══════════ -->
@@ -1361,8 +1361,8 @@ async function cancelDemande(id){
 
 /* ────────────────────────── ENCADRANT ────────────────────────── */
 async function verifyCode(kind,nom,code,askNew){
-  let ok=false, mustChange=false, notAuth=false, ecode=code;
-  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind,name:nom,code}}); ok=!error&&!!(data&&data.ok); mustChange=!error&&!!(data&&data.mustChange); notAuth=!error&&!!(data&&data.notAuthorized); }catch(e){}
+  let ok=false, mustChange=false, notAuth=false, ecode=code, msg='', sae=false;
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind,name:nom,code}}); ok=!error&&!!(data&&data.ok); mustChange=!error&&!!(data&&data.mustChange); notAuth=!error&&!!(data&&data.notAuthorized); msg=(!error&&data&&data.msg)||''; sae=!error&&!!(data&&data.sae); }catch(e){}
   if(notAuth) return {ok:false,msg:kind==='encadrant'?'Encadrant inconnu. Demandez à l’administrateur de vous ajouter à un projet.':'Opérateur inconnu — voir l’administrateur.'};
   if(!ok&&mustChange){
     let nc=prompt('Première connexion : choisissez votre code personnel (au moins 4 caractères, différent de 000000) :');
@@ -1373,7 +1373,7 @@ async function verifyCode(kind,nom,code,askNew){
     if(!ok) return {ok:false,msg:'Impossible de définir le code (déjà défini ? réessayez).'};
     ecode=nc;
   }
-  return ok?{ok:true,code:ecode}:{ok:false,msg:'Nom ou code incorrect.'};
+  return ok?{ok:true,code:ecode}:{ok:false,msg:msg||(sae?'Code incorrect (mot de passe de votre compte Carnet SAE).':'Nom ou code incorrect.')};
 }
 async function encLogin(){
   const err=$('#e-err'); err.classList.remove('show');

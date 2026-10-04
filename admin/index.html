@@ -227,7 +227,7 @@
           <button class="pfilter" data-f="achat" onclick="setPFilter('achat')"><span class="badge achat">Achat éléments standards</span></button>
           <button class="pfilter" data-f="achatm" onclick="setPFilter('achatm')"><span class="badge achatm">Achat matières</span></button>
         </div>
-        <div class="sub">Une ligne par personne. Chaque personne a <b>un seul code</b>, partagé entre ses rôles <b>encadrant</b> et <b>opérateur</b> : elle le choisit elle-même à sa 1ʳᵉ connexion (code par défaut <b>000000</b>, au moins 4 caractères libres). L'admin ne saisit pas le code — il peut seulement le <b>réinitialiser</b> (retour à 000000 pour les deux rôles). Les colonnes « Code encadrant » et « Code opérateur » indiquent l'état du code pour chaque rôle. Le rôle <span class="badge achat">Achat éléments standards</span> désigne un gestionnaire des commandes d'éléments standards (encadrant ou opérateur) ; un opérateur « Achat éléments standards » avec WhatsApp reçoit les notifications. Le rôle <span class="badge achatm">Achat matières</span> désigne un gestionnaire de l'appli Utilisation de matières (liste proposée à l'entrée de son espace gestionnaire). Clique les pastilles <span class="badge op">Opérateur</span> / <span class="badge achat">Achat éléments standards</span> / <span class="badge achatm">Achat matières</span> pour activer/retirer un rôle. Une personne peut cumuler les rôles.</div>
+        <div class="sub">Une ligne par personne. Hors compte Carnet SAE, chaque personne a <b>un seul code Atelier</b>, partagé entre ses rôles <b>encadrant</b> et <b>opérateur</b> : elle le choisit elle-même à sa 1ʳᵉ connexion (code par défaut <b>000000</b>, au moins 4 caractères libres). L'admin ne saisit pas le code — il peut seulement le <b>réinitialiser</b> (retour à 000000 pour les deux rôles). La colonne « Code encadrant » affiche « 🔗 Compte Carnet SAE » pour les encadrants qui ont un compte dans Carnet SAE GMP : <b>ils se connectent avec leur mot de passe Carnet SAE</b> (vérifié là-bas, non modifiable ici) ; les autres encadrants (sans compte Carnet SAE) gardent un code personnel Atelier. La colonne « Code opérateur » indique l'état du code Atelier du rôle opérateur. Le rôle <span class="badge achat">Achat éléments standards</span> désigne un gestionnaire des commandes d'éléments standards (encadrant ou opérateur) ; un opérateur « Achat éléments standards » avec WhatsApp reçoit les notifications. Le rôle <span class="badge achatm">Achat matières</span> désigne un gestionnaire de l'appli Utilisation de matières (liste proposée à l'entrée de son espace gestionnaire). Clique les pastilles <span class="badge op">Opérateur</span> / <span class="badge achat">Achat éléments standards</span> / <span class="badge achatm">Achat matières</span> pour activer/retirer un rôle. Une personne peut cumuler les rôles.</div>
       </div>
       <div class="tablewrap">
         <table class="people">
@@ -261,7 +261,7 @@
       <div id="maintSection"><div class="muted">Chargement…</div></div>
     </div>
 
-    <div class="site-version">v5.1.1</div>
+    <div class="site-version">v5.2.0</div>
   </div>
 </div>
 
@@ -474,8 +474,10 @@ function personRow(p,isNew){
   // Code unique partagé : même statut pour les deux colonnes ; le bouton Réinitialiser
   // apparaît une seule fois (colonne encadrant si encadrant, sinon colonne opérateur).
   const hasCode=!!p.hasCode;
-  const encCell=isEnc?codeStatusCell(hasCode,true,name):"<span class='muted'>—</span>";
-  const opCell=isOp?codeStatusCell(hasCode,!isEnc,name):"<span class='muted'>—</span>";
+  // Encadrant avec compte Carnet SAE : son mot de passe est celui de Carnet SAE (non gérable ici) ; le code Atelier ne sert plus qu'au rôle opérateur.
+  const saeEnc=isEnc && enc.sae===true;
+  const encCell=isEnc?(saeEnc?"<div class='enc-status ok' title='Se connecte avec le mot de passe de son compte Carnet SAE GMP'>🔗 Compte Carnet SAE</div>":codeStatusCell(hasCode,true,name)):"<span class='muted'>—</span>";
+  const opCell=isOp?codeStatusCell(hasCode,!isEnc||saeEnc,name):"<span class='muted'>—</span>";
   return "<tr data-name=\""+esc(name)+"\">"+
     "<td>"+nameCell+"</td>"+
     "<td><div class='roles'>"+encBadge+opPill+achatPill+achatmPill+"</div></td>"+

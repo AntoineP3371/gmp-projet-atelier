@@ -13,7 +13,8 @@
 // Entrées :
 //   { kind:'operateur', name, code }              -> { ok, mustChange?, notAuthorized? }
 //   { kind:'operateur', name, code, setup:true }  -> { ok, already?, error? }
-//   { kind:'encadrant', name, code }              -> { ok, mustChange?, notAuthorized? }
+//   { kind:'encadrant', name, code }              -> { ok, mustChange?, notAuthorized?, sae?, saeDown?, msg? }
+//      (encadrant : mot de passe du compte Carnet SAE GMP s'il en a un, sinon code personnel Atelier)
 //   { kind:'encadrant', name, code, setup:true }  -> { ok, already?, error? }
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -34,6 +35,33 @@ const norm = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD
 const DEFAULT = '000000'   // code par défaut tant que la personne n'a pas défini le sien
 const MIN_LEN = 4          // longueur minimale d'un code choisi
 
+// ── Code ENCADRANT = mot de passe du compte « Carnet SAE GMP » (collection sae_users) ──
+// Carnet SAE ne stocke aucun code en clair (SHA-256 du code comme mot de passe, haché par PocketBase) : on ne peut donc pas
+// le « récupérer », seulement le faire VÉRIFIER par Carnet SAE (auth-with-password). Un encadrant qui n'a pas de compte là-bas
+// (ajouté à la main) garde son code personnel Atelier (table encadrant_codes).
+//   'ok' | 'bad' (mauvais code) | 'mustchange' (code provisoire : à remplacer d'abord dans Carnet SAE)
+//   'noaccount' (pas de compte Carnet SAE) | 'down' (Carnet SAE injoignable → refus, jamais d'ouverture par défaut)
+const SAE_URL = 'https://api_evalprojet.gmpbordeaux.fr'
+const saeNorm = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
+const saeLogin = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')   // = normName() de Carnet SAE
+async function saeEncadrant(nom: string, code: string): Promise<'ok' | 'bad' | 'mustchange' | 'noaccount' | 'down'> {
+  try {
+    const rn = await fetch(SAE_URL + '/enc/names', { headers: { Accept: 'application/json' } })
+    if (!rn.ok) return 'down'
+    const names = await rn.json()
+    const n = (Array.isArray(names) ? names : []).find((x: any) => saeNorm(x) === saeNorm(nom))
+    if (!n) return 'noaccount'
+    if (!code) return 'bad'
+    const ra = await fetch(SAE_URL + '/api/collections/sae_users/auth-with-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identity: saeLogin(n), password: await sha256hex(code) }),
+    })
+    if (ra.ok) { const j = await ra.json().catch(() => ({})); return j?.record?.must_change ? 'mustchange' : 'ok' }
+    return ra.status >= 500 ? 'down' : 'bad'
+  } catch (_) { return 'down' }
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   try {
@@ -44,6 +72,16 @@ Deno.serve(async (req) => {
     const codeStr = (code ?? '').toString().trim()
     if (!key) return json({ ok: false, error: 'no-name' }, 400)
     if (kind !== 'operateur' && kind !== 'encadrant') return json({ ok: false, error: 'bad-kind' }, 400)
+
+    // ENCADRANT : si la personne a un compte Carnet SAE GMP, c'est SON mot de passe Carnet SAE qui fait foi (vérifié là-bas).
+    // Sans compte Carnet SAE, on retombe sur le code personnel Atelier (ci-dessous).
+    if (kind === 'encadrant') {
+      const r = await saeEncadrant(nom, codeStr)
+      if (r === 'ok') return json({ ok: true, sae: true })
+      if (r === 'bad') return json({ ok: false, sae: true })
+      if (r === 'mustchange') return json({ ok: false, sae: true, msg: 'Votre code Carnet SAE est encore provisoire : connectez-vous une première fois à Carnet SAE pour choisir votre code personnel, puis revenez ici.' })
+      if (r === 'down') return json({ ok: false, saeDown: true, msg: 'Carnet SAE est injoignable : impossible de vérifier votre code. Réessayez dans un moment.' })
+    }
 
     // Code personnel (haché) de la personne, par nom normalisé.
     const { data } = await sb.from('encadrant_codes').select('code_hash').eq('nom', key).maybeSingle()

@@ -86,6 +86,32 @@ async function refusProjet(projet: string, pw: unknown): Promise<Response | null
   return null
 }
 
+// ── Code ENCADRANT = mot de passe du compte « Carnet SAE GMP » (collection sae_users) ──
+// Carnet SAE ne stocke aucun code en clair (SHA-256 du code comme mot de passe, haché par PocketBase) : on ne peut donc pas
+// le « récupérer », seulement le faire VÉRIFIER par Carnet SAE (auth-with-password). Un encadrant qui n'a pas de compte là-bas
+// (ajouté à la main) garde son code personnel Atelier (table encadrant_codes).
+//   'ok' | 'bad' (mauvais code) | 'mustchange' (code provisoire : à remplacer d'abord dans Carnet SAE)
+//   'noaccount' (pas de compte Carnet SAE) | 'down' (Carnet SAE injoignable → refus, jamais d'ouverture par défaut)
+const saeNorm = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
+const saeLogin = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')   // = normName() de Carnet SAE
+async function saeEncadrant(nom: string, code: string): Promise<'ok' | 'bad' | 'mustchange' | 'noaccount' | 'down'> {
+  try {
+    const rn = await fetch(SAE_URL + '/enc/names', { headers: { Accept: 'application/json' } })
+    if (!rn.ok) return 'down'
+    const names = await rn.json()
+    const n = (Array.isArray(names) ? names : []).find((x: any) => saeNorm(x) === saeNorm(nom))
+    if (!n) return 'noaccount'
+    if (!code) return 'bad'
+    const ra = await fetch(SAE_URL + '/api/collections/sae_users/auth-with-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identity: saeLogin(n), password: await sha256hex(code) }),
+    })
+    if (ra.ok) { const j = await ra.json().catch(() => ({})); return j?.record?.must_change ? 'mustchange' : 'ok' }
+    return ra.status >= 500 ? 'down' : 'bad'
+  } catch (_) { return 'down' }
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   try {
@@ -116,6 +142,13 @@ Deno.serve(async (req) => {
       const { data: apw } = await sb.from('parametres').select('valeur').eq('cle', 'admin_pw_hash').maybeSingle()
       const expected = ((apw?.valeur) || Deno.env.get('ADMIN_PW_HASH') || '').trim()
       return { isAdmin: isSuper || (!!expected && h === expected), isSuper }
+    }
+
+    const encOk = async (nom?: string, code?: string) => {
+      const r = await saeEncadrant(String(nom ?? ''), String(code ?? '').trim())
+      if (r === 'ok') return true
+      if (r === 'noaccount') return codeOk(nom, code)   // pas de compte Carnet SAE : code personnel Atelier
+      return false
     }
 
     // ───────────── vidage de tables (super admin) ─────────────
@@ -206,7 +239,7 @@ Deno.serve(async (req) => {
       if (c.opName && c.opCode && only(GEST_KEYS) && await opOk(c.opName, c.opCode)) {
         if (patch.statut && !GEST_STATUTS.includes(patch.statut)) return json({ ok: false, error: 'bad-statut' }, 400)
         allowed = true
-      } else if (c.encNom && c.encCode && only(ENC_KEYS) && await codeOk(c.encNom, c.encCode)) {
+      } else if (c.encNom && c.encCode && only(ENC_KEYS) && await encOk(c.encNom, c.encCode)) {
         if (ENC_LOCKED.includes(cur.statut)) return json({ ok: false, error: 'locked' }, 409)
         if (patch.statut && !ENC_STATUTS.includes(patch.statut)) return json({ ok: false, error: 'bad-statut' }, 400)
         // L'encadrant doit encadrer le projet (s'il a des encadrants renseignés).

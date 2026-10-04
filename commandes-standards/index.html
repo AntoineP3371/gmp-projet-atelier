@@ -235,14 +235,14 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
   <section id="view-nouvelle" class="view active">
     <div class="card" id="nouvelleGate">
       <h2>Identifiez-vous</h2>
-      <div class="sub">La création d'une demande est réservée aux encadrants. À votre 1ʳᵉ connexion, vous définirez votre code personnel à 6 caractères.</div>
+      <div class="sub">La création d'une demande est réservée aux encadrants. Saisissez le mot de passe de votre compte Carnet SAE GMP (sans compte Carnet SAE : votre code personnel Atelier, à définir à la 1ʳᵉ connexion).</div>
       <div class="grid2">
         <label class="f">Encadrant
           <select id="d-encadrant" onchange="onEncadrantChange()"></select></label>
         <label class="f" id="d-encadrant-autre-wrap" style="display:none">Nom de l'encadrant
           <input id="d-encadrant-autre" placeholder="Nom Prénom"></label>
-        <label class="f">Votre code encadrant
-          <input id="d-pin" type="password" maxlength="20" placeholder="au moins 4 caractères" autocomplete="off" onkeydown="if(event.key==='Enter')encLogin()"></label>
+        <label class="f">Votre mot de passe
+          <input id="d-pin" type="password" maxlength="64" placeholder="mot de passe Carnet SAE / code personnel" autocomplete="off" onkeydown="if(event.key==='Enter')encLogin()"></label>
       </div>
       <button class="btn primary" style="margin-top:12px" onclick="encLogin()">Entrer</button>
       <div class="err" id="d-login-err"></div>
@@ -385,7 +385,7 @@ table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-al
 
 <!-- (Gestionnaires + Vidage retirés : centralisés dans « Administration globale → Maintenance » du portail) -->
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.1.1</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.2.0</div>
 
 <!-- Modales -->
 <div class="overlay" id="ovConfirm"><div class="modal">
@@ -726,8 +726,8 @@ async function encLogin(){
   if(!nom){ return fail(err,'Choisissez votre nom.'); }
   if(pin.length<4){ return fail(err,'Le code doit comporter au moins 4 caractères.'); }
   let ecode=pin;
-  let ok=false, mustChange=false, notAuth=false;
-  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:pin}}); ok=!error && !!(data&&data.ok); mustChange=!error && !!(data&&data.mustChange); notAuth=!error && !!(data&&data.notAuthorized); }catch(e){ ok=false; }
+  let ok=false, mustChange=false, notAuth=false, msg='', sae=false;
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind:'encadrant',name:nom,code:pin}}); ok=!error && !!(data&&data.ok); mustChange=!error && !!(data&&data.mustChange); notAuth=!error && !!(data&&data.notAuthorized); msg=(!error&&data&&data.msg)||''; sae=!error && !!(data&&data.sae); }catch(e){ ok=false; }
   if(notAuth){ return fail(err,'Encadrant inconnu. Demandez à l’administrateur de vous ajouter à un projet.'); }
   if(!ok && mustChange){
     // Connexion avec le code par défaut 000000 → choisir SON code (6 chiffres, différent de 000000).
@@ -739,7 +739,7 @@ async function encLogin(){
     if(!ok){ return fail(err,'Impossible de définir le code (déjà défini ? réessayez).'); }
     ecode=nc;
   }
-  if(!ok){ return fail(err,'Code personnel incorrect.'); }
+  if(!ok){ return fail(err,msg||(sae?'Code incorrect (mot de passe de votre compte Carnet SAE).':'Code personnel incorrect.')); }
   _encOk=true; _encNom=nom; _encCode=ecode;
   $('#nouvelleGate').style.display='none';
   $('#nouvellePanel').style.display='block';
