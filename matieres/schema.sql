@@ -93,6 +93,13 @@ create table if not exists public.mat_budgets (
   maj_at     timestamptz not null default now()
 );
 
+-- ---------- Gestionnaires des achats matière (rôle « Achat matières », géré dans l'admin globale) ----------
+-- Personnes proposées à l'entrée de l'espace gestionnaire de l'appli. Table vide = tous les opérateurs.
+create table if not exists public.mat_gestionnaires (
+  nom      text primary key,
+  cree_at  timestamptz not null default now()
+);
+
 -- ---------- Paramètres généraux ------------------------------------------
 --   trait_scie    : épaisseur perdue à chaque coupe (mm) — reste de brut toujours considéré perdu
 --                   (plus de notion de « reste réutilisable », simplifié depuis l'admin)
@@ -240,6 +247,7 @@ alter table public.mat_dates enable row level security;
 alter table public.mat_budgets enable row level security;
 alter table public.mat_parametres enable row level security;
 alter table public.mat_demandes enable row level security;
+alter table public.mat_gestionnaires enable row level security;
 
 drop policy if exists mat_matieres_all on public.mat_matieres;
 drop policy if exists mat_matieres_sel on public.mat_matieres;
@@ -268,6 +276,9 @@ create policy mat_budgets_sel on public.mat_budgets for select using (true);
 drop policy if exists mat_parametres_all on public.mat_parametres;
 drop policy if exists mat_parametres_sel on public.mat_parametres;
 create policy mat_parametres_sel on public.mat_parametres for select using (true);
+drop policy if exists mat_gestionnaires_all on public.mat_gestionnaires;
+drop policy if exists mat_gestionnaires_sel on public.mat_gestionnaires;
+create policy mat_gestionnaires_sel on public.mat_gestionnaires for select using (true);
 drop policy if exists mat_demandes_all on public.mat_demandes;
 drop policy if exists mat_demandes_sel on public.mat_demandes;
 create policy mat_demandes_sel on public.mat_demandes for select using (true);

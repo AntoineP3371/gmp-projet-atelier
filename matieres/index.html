@@ -432,7 +432,7 @@ table.data input,table.data select{padding:5px 7px;font-size:.84rem}
     </div>
   </section>
 
-  <div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.1.0</div>
+  <div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.1.1</div>
 </div>
 
 <!-- ══════════ FENÊTRES ══════════ -->
@@ -938,7 +938,7 @@ async function loadEtudiants(){
 }
 async function loadPersonnes(){
   try{ const {data}=await sb.from('operateurs_public').select('name').order('name'); OPERATEURS=(data||[]).map(o=>o.name).filter(Boolean); }catch(e){ OPERATEURS=[]; }
-  try{ const {data}=await sb.from('com_gestionnaires').select('nom').order('nom'); GESTIONNAIRES=(data||[]).map(g=>g.nom).filter(Boolean); }catch(e){ GESTIONNAIRES=[]; }
+  try{ const {data}=await sb.from('mat_gestionnaires').select('nom').order('nom'); GESTIONNAIRES=(data||[]).map(g=>g.nom).filter(Boolean); }catch(e){ GESTIONNAIRES=[]; }
 }
 const encadrantsForProjet = p => { const s=new Set(); ETUDIANTS.filter(e=>e.projet===p).forEach(e=>e.enc.forEach(x=>s.add(x))); return [...s]; };
 const projetsForEncadrant = n => [...new Set(ETUDIANTS.filter(e=>e.enc.includes(n)).map(e=>e.projet).filter(Boolean))].sort(byFr);
@@ -1705,19 +1705,27 @@ function renderFourFam(){
 function renderFournisseursList(){
   $('#fourList').innerHTML=FOURNISSEURS.length?`<div class="tablewrap"><table class="data">
     <tr><th>Fournisseur</th><th>Actif</th><th>Mise à jour</th><th></th></tr>
-    ${FOURNISSEURS.map((f,i)=>`<tr><td><b>${esc(f.nom)}</b></td>
-      <td style="text-align:center"><input id="fo-a-${i}" type="checkbox" ${f.actif!==false?'checked':''} onchange="toggleFournisseurActif(${i},this.checked)" style="width:auto"></td>
+    ${FOURNISSEURS.map((f,i)=>`<tr><td><input id="fo-n-${i}" value="${esc(f.nom)}" style="min-width:160px"></td>
+      <td style="text-align:center"><input id="fo-a-${i}" type="checkbox" ${f.actif!==false?'checked':''} style="width:auto"></td>
       <td class="mini">${esc(majTxt(f.maj_at))}</td>
-      <td><button class="btn sm danger" onclick="delFournisseur(${i})">Suppr.</button></td></tr>`).join('')}
+      <td><div class="row-actions"><button class="btn sm" onclick="saveFournisseur(${i})">Enregistrer</button><button class="btn sm danger" onclick="delFournisseur(${i})">Suppr.</button></div></td></tr>`).join('')}
   </table></div>`:'<div class="hint">Aucun fournisseur.</div>';
+}
+// Enregistre le nom (renommage propagé aux associations) et l'état actif. Les demandes déjà déposées gardent l'ancien nom.
+async function saveFournisseur(i){
+  const f=FOURNISSEURS[i], nom=$('#fo-n-'+i).value.trim(), actif=$('#fo-a-'+i).checked, now=new Date().toISOString();
+  if(!nom) return toast('Nom requis');
+  if(nom!==f.nom){
+    if(FOURNISSEURS.some(x=>x.nom!==f.nom&&x.nom.toLowerCase()===nom.toLowerCase())) return toast('Ce fournisseur existe déjà');
+    if(!await adminSave(wdb.from('mat_fournisseurs').update({nom,actif,maj_at:now}).eq('nom',f.nom))) return;
+    if(!await adminSave(wdb.from('mat_four_familles').update({fournisseur:nom}).eq('fournisseur',f.nom))) return;
+    toast('Fournisseur renommé : « '+f.nom+' » → « '+nom+' »');
+  } else if(!await adminSave(wdb.from('mat_fournisseurs').update({actif,maj_at:now}).eq('nom',f.nom),'Fournisseur enregistré')) return;
+  renderFourFam();
 }
 async function addFournisseur(){
   const nom=$('#nfo-nom').value.trim(); if(!nom) return toast('Nom requis');
   if(await adminSave(wdb.from('mat_fournisseurs').upsert([{nom,actif:true,maj_at:new Date().toISOString()}]),'Fournisseur ajouté')){ $('#nfo-nom').value=''; renderFourFam(); }
-}
-async function toggleFournisseurActif(i,val){
-  const f=FOURNISSEURS[i];
-  if(await adminSave(wdb.from('mat_fournisseurs').update({actif:val,maj_at:new Date().toISOString()}).eq('nom',f.nom))) renderFourFam();
 }
 async function delFournisseur(i){
   const f=FOURNISSEURS[i];
@@ -1728,19 +1736,28 @@ async function delFournisseur(i){
 function renderFamillesList(){
   $('#famList').innerHTML=FAMILLES.length?`<div class="tablewrap"><table class="data">
     <tr><th>Famille</th><th>Actif</th><th>Mise à jour</th><th></th></tr>
-    ${FAMILLES.map((f,i)=>`<tr><td><b>${esc(f.nom)}</b></td>
-      <td style="text-align:center"><input id="fa-a-${i}" type="checkbox" ${f.actif!==false?'checked':''} onchange="toggleFamilleActif(${i},this.checked)" style="width:auto"></td>
+    ${FAMILLES.map((f,i)=>`<tr><td><input id="fa-n-${i}" value="${esc(f.nom)}" style="min-width:160px"></td>
+      <td style="text-align:center"><input id="fa-a-${i}" type="checkbox" ${f.actif!==false?'checked':''} style="width:auto"></td>
       <td class="mini">${esc(majTxt(f.maj_at))}</td>
-      <td><button class="btn sm danger" onclick="delFamille(${i})">Suppr.</button></td></tr>`).join('')}
+      <td><div class="row-actions"><button class="btn sm" onclick="saveFamille(${i})">Enregistrer</button><button class="btn sm danger" onclick="delFamille(${i})">Suppr.</button></div></td></tr>`).join('')}
   </table></div>`:'<div class="hint">Aucune famille.</div>';
+}
+// Enregistre le nom (renommage propagé aux formes et aux associations) et l'état actif. Les demandes déjà déposées gardent l'ancien nom.
+async function saveFamille(i){
+  const f=FAMILLES[i], nom=$('#fa-n-'+i).value.trim(), actif=$('#fa-a-'+i).checked, now=new Date().toISOString();
+  if(!nom) return toast('Nom requis');
+  if(nom!==f.nom){
+    if(FAMILLES.some(x=>x.nom!==f.nom&&x.nom.toLowerCase()===nom.toLowerCase())) return toast('Cette famille existe déjà');
+    if(!await adminSave(wdb.from('mat_familles').update({nom,actif,maj_at:now}).eq('nom',f.nom))) return;
+    if(!await adminSave(wdb.from('mat_formes').update({famille:nom}).eq('famille',f.nom))) return;
+    if(!await adminSave(wdb.from('mat_four_familles').update({famille:nom}).eq('famille',f.nom))) return;
+    toast('Famille renommée : « '+f.nom+' » → « '+nom+' »');
+  } else if(!await adminSave(wdb.from('mat_familles').update({actif,maj_at:now}).eq('nom',f.nom),'Famille enregistrée')) return;
+  renderFourFam();
 }
 async function addFamille(){
   const nom=$('#nfa-nom').value.trim(); if(!nom) return toast('Nom requis');
   if(await adminSave(wdb.from('mat_familles').upsert([{nom,actif:true,maj_at:new Date().toISOString()}]),'Famille ajoutée')){ $('#nfa-nom').value=''; renderFourFam(); }
-}
-async function toggleFamilleActif(i,val){
-  const f=FAMILLES[i];
-  if(await adminSave(wdb.from('mat_familles').update({actif:val,maj_at:new Date().toISOString()}).eq('nom',f.nom))) renderFourFam();
 }
 async function delFamille(i){
   const f=FAMILLES[i];
@@ -1756,9 +1773,17 @@ function renderFourFamList(){
   const rows=FOUR_FAMILLES.slice().sort((a,b)=>byFr(a.matiere,b.matiere)||byFr(a.fournisseur,b.fournisseur)||byFr(a.famille,b.famille));
   $('#fourFamList').innerHTML=rows.length?`<div class="tablewrap"><table class="data">
     <tr><th>Matière</th><th>Fournisseur</th><th>Famille</th><th></th></tr>
-    ${rows.map(r=>`<tr><td>${esc(r.matiere)}</td><td>${esc(r.fournisseur)}</td><td>${esc(r.famille)}</td>
-      <td><button class="btn sm danger" onclick="delFourFamille(${r.id})">Suppr.</button></td></tr>`).join('')}
+    ${rows.map(r=>`<tr><td>${selOf('ffa-m-'+r.id,MATIERES.map(m=>m.nom),r.matiere)}</td><td>${selOf('ffa-f-'+r.id,FOURNISSEURS.map(f=>f.nom),r.fournisseur)}</td><td>${selOf('ffa-a-'+r.id,FAMILLES.map(f=>f.nom),r.famille)}</td>
+      <td><div class="row-actions"><button class="btn sm" onclick="saveFourFamille(${r.id})">Enregistrer</button><button class="btn sm danger" onclick="delFourFamille(${r.id})">Suppr.</button></div></td></tr>`).join('')}
   </table></div>`:'<div class="hint">Aucune association : sans elle, l’étudiant verra toutes les formes, sans fournisseur déduit.</div>';
+}
+// <select> dont l'option courante existe toujours, même si elle a disparu de la liste.
+function selOf(id,list,cur){ const l=list.includes(cur)?list:[cur,...list]; return `<select id="${id}">${l.map(x=>`<option value="${esc(x)}" ${x===cur?'selected':''}>${esc(x)}</option>`).join('')}</select>`; }
+async function saveFourFamille(id){
+  const err=$('#nff-err'); err.classList.remove('show');
+  const matiere=$('#ffa-m-'+id).value, fournisseur=$('#ffa-f-'+id).value, famille=$('#ffa-a-'+id).value;
+  if(FOUR_FAMILLES.some(r=>r.id!==id&&r.matiere===matiere&&r.fournisseur===fournisseur&&r.famille===famille)) return fail(err,'Cette association existe déjà.');
+  if(await adminSave(wdb.from('mat_four_familles').update({matiere,fournisseur,famille,maj_at:new Date().toISOString()}).eq('id',id),'Association enregistrée')) renderFourFamList();
 }
 async function addFourFamille(){
   const err=$('#nff-err'); err.classList.remove('show');

@@ -42,8 +42,9 @@ super admin **super**.
    commander pour chaque date, et un bouton **📋 Copier pour le devis** qui met dans le presse-papier un texte
    prêt à coller dans un e-mail, groupé par fournisseur), par statut, par matière, par projet. Actions :
    Commandée / Matière prête / Remise / Éditer (origine, date de commande, **coût final**, commentaire) ;
-   export CSV et Excel. Liste des gestionnaires = `com_gestionnaires` (rôle « Achat » déjà géré dans
-   l'administration globale), à défaut tous les opérateurs.
+   export CSV et Excel. Liste des gestionnaires = table `mat_gestionnaires` (rôle **« Achat matières »**, à cocher
+   dans l'administration globale → Personnes ; distinct du rôle « Achat éléments standards » des commandes de visserie),
+   à défaut tous les opérateurs tant que personne n'est coché.
 5. **Admin** (mot de passe admin, `admin-op`) — sept outils, chaque donnée porte sa **date de mise à jour**,
    chaque fenêtre a un bouton fermer (✕) en haut :
    🧱 **Matières & prix au kilo** (densité, prix **HT ou TTC au choix**, actif) · 🏭 **Fournisseurs & familles**

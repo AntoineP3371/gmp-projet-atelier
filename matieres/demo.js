@@ -72,7 +72,7 @@
       {nom:'ROBERT', prenom:'Tom',  projet:'Banc d’essai vélo',      encadrant1:'DURAND Claire',  encadrant2:'', encadrant3:'', formation:'BUT 2 App', parcours:'SNRV'}
     ],
     operateurs_public: [{name:'LAFON Marc'}, {name:'PIETRI Antoine'}],
-    com_gestionnaires: [{nom:'LAFON Marc'}]
+    mat_gestionnaires: [{nom:'LAFON Marc'}]
   };
 
   let seq = 100;

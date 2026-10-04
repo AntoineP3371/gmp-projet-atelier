@@ -4,7 +4,7 @@
 //
 // Une seule action générique { action:'db', table, op, rows|patch, eq, creds } + { action:'wipe' } :
 //   • tables du catalogue (matières, formes, bruts, fournisseurs, familles, associations, dates,
-//     budgets, paramètres) : mot de passe ADMIN (creds.adminPw) ;
+//     budgets, paramètres, gestionnaires) : mot de passe ADMIN (creds.adminPw) ;
 //   • mat_demandes — insert : étudiant identifié par le MOT DE PASSE DE PROJET de Carnet SAE (creds.projetPw ;
 //     projet inconnu ou sans mot de passe là-bas = ouvert), colonnes filtrées, statut forcé « en_attente », n° recalculé ;
 //   • mat_demandes — update : opérateur (creds.opName/opCode) pour le suivi, encadrant du projet
@@ -30,12 +30,12 @@ async function sha256hex(s: string): Promise<string> {
 
 const CATALOGUE = [
   'mat_matieres', 'mat_fournisseurs', 'mat_familles', 'mat_formes', 'mat_four_familles',
-  'mat_bruts', 'mat_dates', 'mat_budgets', 'mat_parametres',
+  'mat_bruts', 'mat_dates', 'mat_budgets', 'mat_parametres', 'mat_gestionnaires',
 ]
 const WIPE_PK: Record<string, string> = {
   mat_demandes: 'id', mat_bruts: 'id', mat_dates: 'id', mat_budgets: 'parcours',
   mat_matieres: 'nom', mat_fournisseurs: 'nom', mat_familles: 'nom', mat_formes: 'nom',
-  mat_four_familles: 'id', mat_parametres: 'cle',
+  mat_four_familles: 'id', mat_parametres: 'cle', mat_gestionnaires: 'nom',
 }
 const DEM_INSERT_COLS = [
   'projet', 'parcours', 'formation', 'etudiant_nom', 'etudiant_prenom', 'matiere', 'famille', 'fournisseur',

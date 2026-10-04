@@ -35,5 +35,11 @@ drop policy if exists mat_demandes_all on public.mat_demandes;
 drop policy if exists mat_demandes_sel on public.mat_demandes;
 create policy mat_demandes_sel on public.mat_demandes for select using (true);
 
+-- Gestionnaires des achats matière (rôle « Achat matières »)
+alter table public.mat_gestionnaires enable row level security;
+drop policy if exists mat_gestionnaires_all on public.mat_gestionnaires;
+drop policy if exists mat_gestionnaires_sel on public.mat_gestionnaires;
+create policy mat_gestionnaires_sel on public.mat_gestionnaires for select using (true);
+
 -- Vérification :
 --   select tablename, policyname, cmd from pg_policies where tablename like 'mat_%';
