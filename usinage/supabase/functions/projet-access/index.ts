@@ -29,24 +29,25 @@ const NO_PW = /aucun mot de passe/i
 const normTxt = (s: unknown) => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ')
 
 type Acces = 'open' | 'ok' | 'bad' | 'down'
-async function accesProjet(projet: string, pw: string): Promise<Acces> {
+async function accesDetail(projet: string, pw: string): Promise<{ a: Acces; why: string }> {
   try {
     const rl = await fetch(SAE_URL + '/etu/list', { headers: { Accept: 'application/json' } })
-    if (!rl.ok) return 'down'
+    if (!rl.ok) return { a: 'down', why: 'list-' + rl.status }
     const list = await rl.json()
     const p = (Array.isArray(list) ? list : []).find((x: any) => normTxt(x.nom) === normTxt(projet))
-    if (!p) return 'open'
+    if (!p) return { a: 'open', why: 'not-in-list' }
     const ru = await fetch(SAE_URL + '/etu/unlock', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: p.token, password: pw || '-' }),
     })
-    if (ru.ok) { try { await ru.body?.cancel() } catch (_) { /* inutile : on ne lit pas les notes */ } return pw ? 'ok' : 'bad' }
+    if (ru.ok) { try { await ru.body?.cancel() } catch (_) { /* inutile : on ne lit pas les notes */ } return { a: pw ? 'ok' : 'bad', why: 'unlock-ok' } }
     const j = await ru.json().catch(() => ({}))
-    if (ru.status === 403) return NO_PW.test(String(j.error ?? '')) ? 'open' : 'bad'
-    if (ru.status === 404) return 'open'   // projet archivé / masqué côté Carnet SAE
-    return 'down'
-  } catch (_) { return 'down' }
+    if (ru.status === 403) return NO_PW.test(String(j.error ?? '')) ? { a: 'open', why: 'no-password-set' } : { a: 'bad', why: 'password-set' }
+    if (ru.status === 404) return { a: 'open', why: 'unlock-404' }   // projet archivé / masqué côté Carnet SAE
+    return { a: 'down', why: 'unlock-' + ru.status }
+  } catch (_) { return { a: 'down', why: 'network' } }
 }
+const accesProjet = async (projet: string, pw: string): Promise<Acces> => (await accesDetail(projet, pw)).a
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -56,9 +57,9 @@ Deno.serve(async (req) => {
     if (!projet) return json({ ok: false, error: 'bad-input' })
 
     if (b.action === 'status') {
-      const a = await accesProjet(projet, '')
-      if (a === 'down') return json({ ok: false, error: 'sae-down' })
-      return json({ ok: true, protected: a !== 'open' })
+      const { a, why } = await accesDetail(projet, '')
+      if (a === 'down') return json({ ok: false, error: 'sae-down', why })
+      return json({ ok: true, protected: a !== 'open', why })   // why : motif technique (aucune donnée sensible)
     }
     if (b.action === 'verify') {
       const a = await accesProjet(projet, String(b.password ?? ''))
