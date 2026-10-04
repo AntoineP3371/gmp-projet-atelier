@@ -92,6 +92,16 @@
   .field-err{font-size:.75rem;color:var(--danger);display:none;margin-top:1px}
   .field-err.show{display:block}
   .hint{font-size:.75rem;color:var(--muted);margin-top:3px}
+  /* Identification étudiant par projet (cartes groupées par parcours, comme l'appli Utilisation Matières) */
+  .proj-wrap{display:flex;flex-direction:column;gap:16px}
+  .proj-group-title{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
+  .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+  .proj-card{border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--surface);cursor:pointer;font-size:.92rem;font-weight:700;transition:border-color .15s,background .15s,transform .1s}
+  .proj-card:hover{border-color:var(--primary);background:var(--primary-light)}
+  .proj-card:active{transform:scale(.98)}
+  .proj-card-autre{border-style:dashed}
+  .proj-card small{display:block;font-size:.76rem;font-weight:400;color:var(--muted);margin-top:3px}
+  .id-chosen{font-size:.9rem;margin-bottom:12px}
 
   /* Zone de dépôt */
   .dropzone{border:2px dashed var(--border);border-radius:var(--radius);padding:26px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:var(--bg)}
@@ -469,29 +479,37 @@
   <section id="view-nouvelle" class="view active">
     <div class="card">
       <h2>Déposer une demande d'impression</h2>
-      <div class="sub">Renseignez vos informations, déposez votre fichier STEP, puis choisissez une machine.</div>
+      <div class="sub">Identifiez-vous par votre projet, déposez votre fichier STEP, puis choisissez une machine.</div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label>Projet <span class="req">*</span></label>
-          <select id="fprojet" onchange="onProjetChange()"></select>
-          <input type="text" id="fprojet-autre" style="display:none;margin-top:6px" placeholder="Nom du projet…" autocomplete="off">
-          <span class="field-err" id="e-projet">Obligatoire</span>
-        </div>
-        <div class="form-group">
-          <label>Étudiant <span class="req">*</span></label>
-          <select id="fetudiant" onchange="onEtudiantChange()"><option value="">— Choisir d'abord un projet —</option></select>
-          <div id="fetudiant-autre" style="display:none;gap:8px;margin-top:6px">
-            <input type="text" id="fnom" placeholder="Nom…" autocomplete="off">
-            <input type="text" id="fprenom" placeholder="Prénom…" autocomplete="off">
+      <div id="nGate">
+        <div class="sub" style="margin-bottom:10px">Choisissez votre projet.</div>
+        <div id="nProjetCards" class="proj-wrap"></div>
+      </div>
+      <select id="fprojet" style="display:none" onchange="onProjetChange()"></select>
+      <div id="nIdPanel" style="display:none">
+        <div class="id-chosen" id="nProjetChosen"></div>
+        <div class="form-row">
+          <div class="form-group" id="fprojet-autre-wrap" style="display:none">
+            <label>Nom du projet <span class="req">*</span></label>
+            <input type="text" id="fprojet-autre" placeholder="Nom du projet…" autocomplete="off">
+            <span class="field-err" id="e-projet">Obligatoire</span>
           </div>
-          <span class="field-err" id="e-etudiant">Obligatoire</span>
+          <div class="form-group">
+            <label>Étudiant <span class="req">*</span></label>
+            <select id="fetudiant" onchange="onEtudiantChange()"><option value="">— Choisir d'abord un projet —</option></select>
+            <div id="fetudiant-autre" style="display:none;gap:8px;margin-top:6px">
+              <input type="text" id="fnom" placeholder="Nom…" autocomplete="off">
+              <input type="text" id="fprenom" placeholder="Prénom…" autocomplete="off">
+            </div>
+            <span class="field-err" id="e-etudiant">Obligatoire</span>
+          </div>
         </div>
+        <button class="btn btn-ghost" type="button" onclick="changerProjet()">↩ Changer de projet</button>
+        <div id="projetProgress"></div>
       </div>
 
-      <div id="projetProgress"></div>
-
-      <label style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Fichier STEP <span class="req">*</span></label>
+      <div id="nouvelleRest" style="display:none">
+      <label style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;display:block;margin-top:16px">Fichier STEP <span class="req">*</span></label>
       <div class="dropzone" id="dropzone" onclick="document.getElementById('ffile').click()">
         <div class="dz-icon">📁</div>
         <div class="dz-main">Glissez votre fichier ici ou cliquez pour parcourir</div>
@@ -543,6 +561,7 @@
       <div style="margin-top:18px;display:flex;justify-content:flex-end">
         <button class="btn btn-ok" id="btnSubmit" onclick="submitDemande()">📤 Envoyer la demande</button>
       </div>
+      </div><!-- /nouvelleRest -->
     </div>
   </section>
 
@@ -550,11 +569,18 @@
   <section id="view-suivi" class="view">
     <div class="card">
       <h2>Suivi de ma demande</h2>
-      <div class="sub">Choisissez votre projet puis votre nom pour retrouver l'état de vos impressions.</div>
-      <div class="form-row">
-        <div class="form-group"><label>Projet</label><select id="sprojet" onchange="onSuiviProjet()"></select></div>
-        <div class="form-group"><label>Étudiant</label><select id="setudiant"><option value="">— Choisir d'abord un projet —</option></select></div>
-        <div class="form-group" style="max-width:160px;justify-content:flex-end"><button class="btn btn-ok" onclick="rechercherSuivi()">🔎 Rechercher</button></div>
+      <div id="sGate">
+        <div class="sub">Choisissez votre projet pour retrouver l'état de vos impressions.</div>
+        <div id="sProjetCards" class="proj-wrap"></div>
+      </div>
+      <select id="sprojet" style="display:none" onchange="onSuiviProjet()"></select>
+      <div id="sIdPanel" style="display:none">
+        <div class="id-chosen" id="sProjetChosen"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Étudiant (facultatif — sinon tout le projet)</label><select id="setudiant"><option value="">— Tout le projet —</option></select></div>
+          <div class="form-group" style="max-width:160px;justify-content:flex-end"><button class="btn btn-ok" onclick="rechercherSuivi()">🔎 Rechercher</button></div>
+        </div>
+        <button class="btn btn-ghost" type="button" onclick="changerProjetSuivi()">↩ Changer de projet</button>
       </div>
       <div id="suiviResults"></div>
     </div>
@@ -597,7 +623,7 @@
 
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v4.8.1</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.0.0</div>
 
 <!-- ============ MODALE : saisie de code ============ -->
 <div class="overlay" id="ovCode">
@@ -1003,7 +1029,7 @@ function parseMachines(){
 }
 async function loadEtudiants(){
   const {data,error} = await sb.from('etudiants').select('*').order('projet').order('nom');
-  etudiants = (!error && data) ? data.map(r=>({nom:r.nom||'',prenom:r.prenom||'',projet:r.projet||'',formation:r.formation||'',enc1:r.encadrant1||'',enc2:r.encadrant2||'',enc3:r.encadrant3||''})) : [];
+  etudiants = (!error && data) ? data.map(r=>({nom:r.nom||'',prenom:r.prenom||'',projet:r.projet||'',formation:r.formation||'',parcours:r.parcours||'',enc1:r.encadrant1||'',enc2:r.encadrant2||'',enc3:r.encadrant3||''})) : [];
   _projetsEtu = [...new Set(etudiants.map(e=>e.projet).filter(Boolean))];
   rebuildProjets();
   const encs=[]; projetEncadrants={};
@@ -1024,21 +1050,56 @@ async function loadOperateurs(){
   // Impression 3D : ne garder que les opérateurs habilités à intervenir sur l'impression 3D.
   operateurs = all.filter(o=>o.impression_3d);
 }
+function parcoursForProjet(p){ const e=etudiants.find(x=>x.projet===p&&x.parcours); return e?e.parcours:''; }
+// Identification par projet : cartes groupées par parcours (comme l'appli Utilisation Matières).
+// ctx 'n' = nouvelle demande (avec « Autre projet… »), 's' = suivi.
+function renderProjetCards(boxId, ctx, withAutre){
+  const box=document.getElementById(boxId); if(!box) return;
+  const groups={};
+  projets.forEach(p=>{ const k=parcoursForProjet(p)||'Autres projets'; (groups[k]=groups[k]||[]).push(p); });
+  let h=Object.keys(groups).sort((a,b)=>a.localeCompare(b,'fr')).map(k=>
+    "<div><div class='proj-group-title'>"+esc(k)+"</div><div class='proj-grid'>"+
+    groups[k].sort((a,b)=>a.localeCompare(b,'fr')).map(p=>"<div class='proj-card' data-p='"+esc(p)+"' onclick=\"pickProjetCard(this,'"+ctx+"')\">"+esc(p)+"</div>").join('')+
+    "</div></div>").join('');
+  if(withAutre) h+="<div><div class='proj-grid'><div class='proj-card proj-card-autre' data-p='__autre__' onclick=\"pickProjetCard(this,'"+ctx+"')\">+ Autre projet…<small>Nouveau projet, pas encore dans la liste</small></div></div></div>";
+  box.innerHTML=h||"<div class='empty'>Aucun projet pour le moment.</div>";
+}
+function pickProjetCard(el, ctx){
+  const p=el.dataset.p;
+  if(ctx==='s'){ document.getElementById('sprojet').value=p; onSuiviProjet(); rechercherSuivi(); return; }
+  document.getElementById('fprojet').value=p; onProjetChange();
+}
+function changerProjet(){ document.getElementById('fprojet').value=''; onProjetChange(); }
+function changerProjetSuivi(){
+  document.getElementById('sprojet').value=''; onSuiviProjet();
+  document.getElementById('suiviResults').innerHTML=''; lastSigSuivi=null;
+}
+// Tant qu'aucun projet n'est choisi, seule la passerelle (cartes) est visible.
+function applyNouvelleGate(){
+  const v=document.getElementById('fprojet').value;
+  document.getElementById('nGate').style.display = v ? 'none' : 'block';
+  document.getElementById('nIdPanel').style.display = v ? 'block' : 'none';
+  document.getElementById('nouvelleRest').style.display = v ? 'block' : 'none';
+  document.getElementById('nProjetChosen').innerHTML = v==='__autre__' ? 'Nouveau projet' : (v ? 'Projet : <b>'+esc(v)+'</b>' : '');
+}
 function buildStudentLists(){
   const sel=document.getElementById('fprojet');
   const prev=sel.value;
   sel.innerHTML = "<option value=''>— Choisir un projet —</option>" +
     projets.map(p=>"<option value='"+esc(p)+"'>"+esc(p)+"</option>").join('') +
     "<option value='__autre__'>Autre projet…</option>";
+  renderProjetCards('nProjetCards','n',true);
   // Rafraîchissement discret : si l'étudiant avait déjà choisi un projet, on ne lui fait pas tout reperdre
   if(prev && [...sel.options].some(o=>o.value===prev)){ sel.value=prev; buildEtudiantOptions(prev); }
   else buildEtudiantOptions('');
+  applyNouvelleGate();
 }
 function onProjetChange(){
   const sel=document.getElementById('fprojet');
-  document.getElementById('fprojet-autre').style.display = sel.value==='__autre__' ? 'block' : 'none';
+  document.getElementById('fprojet-autre-wrap').style.display = sel.value==='__autre__' ? 'flex' : 'none';
   buildEtudiantOptions(sel.value);
   updateProjetProgress();
+  applyNouvelleGate();
 }
 async function updateProjetProgress(){
   const projet=getProjetValue();
@@ -2273,6 +2334,7 @@ function buildSuiviLists(){
   const sp=document.getElementById('sprojet');
   const prev=sp.value;
   sp.innerHTML="<option value=''>— Choisir un projet —</option>"+projets.map(p=>"<option value='"+esc(p)+"'>"+esc(p)+"</option>").join('');
+  renderProjetCards('sProjetCards','s',false);
   if(prev && [...sp.options].some(o=>o.value===prev)){ sp.value=prev; onSuiviProjet(); }
   else onSuiviProjet();
 }
@@ -2280,9 +2342,12 @@ function onSuiviProjet(){
   const projet=document.getElementById('sprojet').value;
   const es=document.getElementById('setudiant');
   const prev=es.value;
-  if(!projet){ es.innerHTML="<option value=''>— Choisir d'abord un projet —</option>"; return; }
+  document.getElementById('sGate').style.display = projet ? 'none' : 'block';
+  document.getElementById('sIdPanel').style.display = projet ? 'block' : 'none';
+  document.getElementById('sProjetChosen').innerHTML = projet ? 'Projet : <b>'+esc(projet)+'</b>' : '';
+  if(!projet){ es.innerHTML="<option value=''>— Tout le projet —</option>"; return; }
   const list=etudiantsProjet(projet);
-  es.innerHTML="<option value=''>— Choisir votre nom —</option>"+
+  es.innerHTML="<option value=''>— Tout le projet —</option>"+
     list.map(e=>"<option value='"+esc(e.nom+'|'+e.prenom)+"'>"+esc(e.prenom+' '+e.nom)+"</option>").join('');
   if(prev && [...es.options].some(o=>o.value===prev)) es.value=prev;
 }

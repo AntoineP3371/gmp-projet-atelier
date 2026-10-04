@@ -251,7 +251,7 @@
       <div id="maintSection"><div class="muted">Chargement…</div></div>
     </div>
 
-    <div class="site-version">v4.8.1</div>
+    <div class="site-version">v5.0.0</div>
   </div>
 </div>
 
@@ -361,7 +361,7 @@ function renderMaint(){
     "</div>"+
     "<div class='row' style='margin-top:10px'><button class='btn del' onclick='clearBlocks()'>🚫 Effacer tous les créneaux bloqués</button></div>"+
     "<hr style='border:none;border-top:1px solid var(--border);margin:18px 0'>"+
-    "<div style='font-weight:700;margin-bottom:6px'>🗑 Vider une table (Commandes)</div>"+
+    "<div style='font-weight:700;margin-bottom:6px'>🗑 Vider une table (Commandes, Matières)</div>"+
     "<div id='wipeList' class='muted'>…</div>";
   renderWipe();
 }
@@ -387,7 +387,8 @@ async function clearBlocks(){
   if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
   toast('🗑 '+(r.data.blocked||0)+' créneau(x) bloqué(s) effacé(s)');
 }
-const WIPE_TABLES=[{t:'commandes',label:'Demandes / lignes de commande'},{t:'com_fournisseurs',label:'Fournisseurs'},{t:'com_budgets',label:'Budgets par parcours'},{t:'com_gestionnaires',label:'Gestionnaires'}];
+const WIPE_TABLES=[{t:'commandes',label:'Demandes / lignes de commande'},{t:'com_fournisseurs',label:'Fournisseurs'},{t:'com_budgets',label:'Budgets par parcours'},{t:'com_gestionnaires',label:'Gestionnaires'},
+  {t:'mat_demandes',label:'Matières — demandes',fn:'matiere-op'},{t:'mat_bruts',label:'Matières — bruts proposés',fn:'matiere-op'},{t:'mat_dates',label:'Matières — dates de commande',fn:'matiere-op'},{t:'mat_budgets',label:'Matières — budgets par parcours',fn:'matiere-op'}];
 async function renderWipe(){
   const rows=await Promise.all(WIPE_TABLES.map(async d=>{
     let n='?'; try{ const {count}=await sb.from(d.t).select('*',{count:'exact',head:true}); n=(count!=null)?count:'?'; }catch(e){ n='—'; }
@@ -398,7 +399,8 @@ async function renderWipe(){
 }
 async function wipeTable(t,label){
   if(prompt('Taper VIDER pour supprimer TOUT le contenu de « '+label+' » ('+t+') :')!=='VIDER')return;
-  const r=await sb.functions.invoke('commande-op',{body:{action:'wipe',adminPw:PW,table:t}});
+  const d=WIPE_TABLES.find(x=>x.t===t)||{};
+  const r=await sb.functions.invoke(d.fn||'commande-op',{body:{action:'wipe',adminPw:PW,creds:{adminPw:PW},table:t}});
   if(r.error||!r.data||!r.data.ok){toast('❌ Échec');return;}
   toast('🗑 Table « '+label+' » vidée'); renderWipe();
 }

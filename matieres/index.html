@@ -1,0 +1,1852 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>(function(){try{var t=localStorage.getItem('theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>Utilisation Matières</title>
+<meta name="theme-color" content="#c2620a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23c2620a'/%3E%3Cpath d='M16 14h32v8H36v20h12v8H16v-8h12V22H16z' fill='white'/%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>if(/[?&]demo\b/.test(location.search))document.write('<script src="demo.js"><\/script>');</script>
+<style>
+:root{
+  --bg:#f6f1ea; --surface:#ffffff; --surface-2:#faf6f0; --border:#e6d9c8;
+  --primary:#c2620a; --primary-dark:#8f4606; --primary-light:#fbead6; --on-primary:#ffffff;
+  --text:#2a1e12; --muted:#7a6650;
+  --danger:#c2352c; --danger-light:#fbe7e5;
+  --amber:#a86a00; --amber-light:#fdf0dc;
+  --blue:#1560a8; --blue-light:#e3eefb;
+  --violet:#6d4ae0; --violet-light:#ece7fb;
+  --green:#1f7a3d; --green-light:#e2f3e6;
+  --admin:#7c3aed; --admin-light:#ede9fe; --admin-dark:#5b21b6;
+  --radius:14px; --shadow:0 6px 26px rgba(60,35,10,.10);
+}
+:root[data-theme="dark"]{
+  --bg:#1a140d; --surface:#251c12; --surface-2:#20180f; --border:#4a3a26;
+  --primary:#d9782a; --primary-dark:#f0a562; --primary-light:#3a2712; --on-primary:#1a0f05;
+  --text:#f3ebe0; --muted:#b09c84;
+  --danger:#f0857c; --danger-light:#3a201e;
+  --amber:#e0a960; --amber-light:#38290f;
+  --blue:#7db4ec; --blue-light:#182838;
+  --violet:#b49af0; --violet-light:#241d38;
+  --green:#7fce93; --green-light:#16301c;
+  --admin:#a791f0; --admin-light:#241d3a; --admin-dark:#cbbaf8;
+  --shadow:0 6px 26px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:
+  linear-gradient(rgba(194,98,10,.045) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(194,98,10,.045) 1px,transparent 1px),
+  radial-gradient(1100px 480px at 50% -8%, var(--primary-light) 0%, var(--bg) 60%);
+  background-size:34px 34px,34px 34px,auto;
+  color:var(--text);min-height:100vh;padding:64px 16px 48px;font-size:15px;line-height:1.5}
+a{color:var(--primary-dark)}
+.wrap{max-width:1080px;margin:0 auto}
+h1{font-size:1.5rem;font-weight:800;letter-spacing:-.01em}
+h2{font-size:1.15rem;font-weight:800;margin-bottom:4px}
+h3{font-size:.98rem;font-weight:700}
+.sub{color:var(--muted);font-size:.85rem;margin-bottom:18px}
+.home-btn{position:fixed;top:12px;left:12px;z-index:60;display:inline-flex;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 13px;
+  font-size:.85rem;font-weight:600;color:var(--text);text-decoration:none;
+  box-shadow:0 2px 12px rgba(60,35,10,.1);transition:background .15s,border-color .15s}
+.home-btn:hover{background:var(--primary-light);border-color:var(--primary)}
+.theme-toggle{position:fixed;top:12px;right:12px;z-index:70;width:38px;height:38px;border-radius:9px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:1.05rem;cursor:pointer;
+  box-shadow:0 2px 12px rgba(60,35,10,.1);display:inline-flex;align-items:center;justify-content:center;transition:border-color .15s}
+.theme-toggle:hover{border-color:var(--primary)}
+.test-flag{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:59;background:var(--amber-light);color:var(--amber);
+  border:1px solid var(--amber);border-radius:20px;padding:2px 12px;font-size:.72rem;font-weight:800;letter-spacing:.05em;white-space:nowrap}
+.logo-bar{display:flex;justify-content:center;align-items:center;padding:4px 0 18px}
+.logo-bar img{max-height:70px;max-width:100%;width:auto;height:auto;object-fit:contain;mix-blend-mode:multiply}
+:root[data-theme="dark"] .logo-bar img{mix-blend-mode:screen;filter:invert(1) hue-rotate(180deg)}
+.topbar{display:flex;align-items:center;gap:14px 22px;flex-wrap:wrap;margin-bottom:16px}
+.brand{display:flex;align-items:center;gap:14px;margin:0}
+.brand .dot{flex-shrink:0;line-height:1;color:var(--primary);display:flex;align-items:center}
+.brand .dot svg{width:44px;height:44px;display:block}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 0 auto}
+@media(max-width:760px){nav{width:100%;margin-left:0}nav .nav-btn{flex:1;justify-content:center}}
+.nav-btn{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 15px;
+  font-size:.875rem;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;display:inline-flex;gap:6px;align-items:center;
+  transition:background .15s,border-color .15s,transform .1s}
+.nav-btn:hover{background:var(--primary-light);border-color:var(--primary)}
+.nav-btn:active{transform:scale(.97)}
+.nav-btn.active{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.nav-btn.tint{background:var(--primary-light);color:var(--primary-dark);border-color:var(--primary)}
+.nav-btn.tint:hover,.nav-btn.tint.active{background:var(--primary);color:var(--on-primary)}
+.nav-btn.admin{background:var(--admin-light);color:var(--admin-dark);border-color:var(--admin)}
+.nav-btn.admin:hover,.nav-btn.admin.active{background:var(--admin);color:#fff;border-color:var(--admin)}
+.admin-banner{display:none;flex-direction:column;gap:8px;background:var(--admin-light);border:1.5px solid var(--admin);border-radius:14px;padding:10px 16px;margin:0 0 16px;color:var(--admin-dark)}
+.admin-banner.visible{display:flex}
+.admin-banner-top{display:flex;align-items:center;gap:8px;font-size:.875rem;font-weight:600;flex-wrap:wrap}
+.admin-badge{background:var(--admin);color:#fff;border-radius:5px;padding:2px 8px;font-size:.72rem;font-weight:700;letter-spacing:.05em}
+.admin-banner-label{flex:1;font-size:.85rem;min-width:120px}
+.logout-btn{background:none;border:1.5px solid var(--admin);color:var(--admin-dark);border-radius:6px;padding:4px 12px;font-size:.8rem;font-weight:600;cursor:pointer}
+.logout-btn:hover{background:var(--admin);color:#fff}
+.admin-tools{display:flex;flex-wrap:wrap;gap:6px}
+.btn-manage{background:var(--admin);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:.8rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.btn-manage:hover{background:var(--admin-dark)}
+@media(max-width:760px){.admin-tools{display:grid;grid-template-columns:1fr 1fr}.btn-manage{justify-content:center;min-height:40px}}
+.view{display:none}
+.view.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.82rem;font-weight:600;color:var(--muted)}
+input,select,textarea{font-family:inherit;font-size:.92rem;color:var(--text);background:var(--surface);
+  border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--primary)}
+textarea{resize:vertical;min-height:56px}
+select.locked,select:disabled,input:disabled{background:var(--surface-2);color:var(--muted);opacity:1;cursor:not-allowed;border-style:dashed;appearance:none;-webkit-appearance:none}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:9px;font-size:.875rem;
+  font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;
+  transition:background .15s,border-color .15s,transform .1s}
+.btn:hover{background:var(--primary-light);border-color:var(--primary)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.btn.primary:hover{background:var(--primary-dark);border-color:var(--primary-dark);color:var(--on-primary)}
+.btn.ghost{background:var(--primary-light);color:var(--primary-dark);border-color:var(--primary);width:100%;justify-content:center}
+.btn.ghost:hover{background:var(--primary);color:var(--on-primary)}
+.btn.sm{padding:5px 10px;font-size:.8rem;border-radius:7px}
+.btn.sm.active{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.btn.danger{background:var(--danger-light);color:var(--danger);border-color:#fca5a5}
+.btn.danger:hover{background:var(--danger);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap}
+.mini{font-size:.8rem;color:var(--muted)}
+.hint{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:.84rem;color:var(--muted);margin-bottom:14px}
+.warn-box{background:var(--amber-light);border:1px solid var(--amber);color:var(--amber);border-radius:10px;padding:10px 12px;font-size:.84rem;margin:10px 0}
+.err{color:var(--danger);font-size:.82rem;margin-top:6px;display:none}
+.err.show{display:block}
+details.help{margin:6px 0 14px;font-size:.85rem}
+details.help summary{cursor:pointer;font-weight:600;color:var(--primary-dark)}
+details.help ul{margin:8px 0 0 20px;color:var(--muted)}
+details.help li{margin:3px 0}
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+.stat .k{font-size:.8rem;color:var(--muted)}
+.stat .v{font-size:1.5rem;font-weight:800;margin-top:2px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.filters select,.filters input{width:auto;min-width:130px;font-size:.85rem;padding:6px 9px}
+.toolbar-right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+table.data{width:100%;border-collapse:collapse;font-size:.85rem}
+table.data th{text-align:left;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border);background:var(--surface)}
+table.data td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+table.data input,table.data select{padding:5px 7px;font-size:.84rem}
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+.ctx{color:var(--muted);font-size:.78rem;margin-top:3px}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.74rem;font-weight:800;white-space:nowrap}
+.st-dem{background:var(--amber-light);color:var(--amber)}
+.st-info{background:#fef3c7;color:#92400e}
+:root[data-theme="dark"] .st-info{background:#3a3010;color:#facc15}
+.st-val{background:var(--blue-light);color:var(--blue)}
+.st-cmd{background:var(--violet-light);color:var(--violet)}
+.st-rec{background:var(--green-light);color:var(--green)}
+.st-rem{background:var(--primary-light);color:var(--primary-dark)}
+.st-ref,.st-ann{background:var(--danger-light);color:var(--danger)}
+.group-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface-2);
+  border-radius:10px;margin:14px 0 8px;font-weight:800;flex-wrap:wrap;gap:8px}
+.group-head .tot{font-weight:600;color:var(--muted)}
+.tocmd{font-size:.82rem;color:var(--muted);margin:-2px 0 8px 4px}
+.budget{margin:10px 0}
+.budget .bar{height:10px;border-radius:6px;background:var(--border);overflow:hidden;margin-top:4px}
+.budget .bar > span{display:block;height:100%;background:var(--primary)}
+.budget.over .bar > span{background:var(--danger)}
+/* Estimation */
+.est{border:1.5px solid var(--primary);border-radius:14px;background:var(--surface-2);padding:16px;margin-top:14px}
+.est h3{margin-bottom:4px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:10px 12px}
+.kpi .k{font-size:.76rem;color:var(--muted)}
+.kpi .v{font-size:1.25rem;font-weight:800}
+.kpi .s{font-size:.75rem;color:var(--muted)}
+.kpi.debit{border-color:var(--primary);background:var(--primary-light)}
+.portion{height:16px;border-radius:8px;background:var(--border);overflow:hidden;display:flex;margin-top:6px}
+.portion .u{background:var(--primary)}
+.portion .p{background:var(--danger)}
+.portion .r{background:var(--green)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.76rem;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+/* Encadrant */
+.dcard{border:1.5px solid var(--border);border-left:5px solid var(--amber);border-radius:12px;padding:14px;margin-bottom:14px;background:var(--surface)}
+.dcard.s-validee{border-left-color:var(--blue)}
+.dcard.s-commandee{border-left-color:var(--violet)}
+.dcard.s-recue,.dcard.s-remise{border-left-color:var(--green)}
+.dcard.s-refusee,.dcard.s-annulee{border-left-color:var(--danger)}
+.dcard.s-attente_info{border-left-color:#ca8a04}
+.dtitle{font-weight:800;margin-bottom:4px}
+.dmeta{font-size:.84rem;color:var(--muted);line-height:1.6}
+.dpiece{font-size:1.2rem;font-weight:700;color:var(--text);line-height:1.35;margin:4px 0 6px}
+.dpiece b{color:var(--primary-dark);font-weight:800}
+.choice{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;margin:6px 0;cursor:pointer;background:var(--surface);font-size:.9rem;font-weight:600}
+.choice:has(input:checked){border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark)}
+.choice input{width:auto;margin-top:4px;accent-color:var(--primary)}
+.choice small{display:block;font-weight:400;color:var(--muted)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(20,12,4,.55);z-index:100;align-items:center;justify-content:center;padding:16px}
+.overlay.open{display:flex}
+.modal{position:relative;background:var(--surface);border-radius:16px;padding:22px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,0,0,.35)}
+.modal.wide{max-width:980px}
+.modal h2{margin-bottom:12px;padding-right:30px}
+.modal-x{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--muted);font-size:1rem;line-height:1;cursor:pointer;display:inline-flex;
+  align-items:center;justify-content:center;transition:border-color .15s,color .15s}
+.modal-x:hover{border-color:var(--danger);color:var(--danger)}
+.modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#2a1e12;color:#fff;padding:11px 20px;
+  border-radius:9px;font-size:.88rem;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+.chk-list{display:flex;flex-wrap:wrap;gap:6px 14px}
+.chk-list label{display:inline-flex;align-items:center;gap:6px;font-size:.88rem;font-weight:600;color:var(--text);cursor:pointer}
+.chk-list input{width:auto;accent-color:var(--primary)}
+.dim-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+/* Identification étudiant par projet (cartes groupées par parcours, comme Carnet SAE) */
+.proj-wrap{display:flex;flex-direction:column;gap:16px}
+.proj-group-title{font-size:.76rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.proj-card{border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--surface);cursor:pointer;
+  transition:border-color .15s,background .15s,transform .1s}
+.proj-card:hover{border-color:var(--primary);background:var(--primary-light)}
+.proj-card:active{transform:scale(.98)}
+.proj-card.active{border-color:var(--primary);background:var(--primary-light);box-shadow:0 0 0 2px var(--primary) inset}
+.proj-card h3{font-size:.92rem;font-weight:700}
+.proj-card p{font-size:.78rem;color:var(--muted);margin-top:3px}
+.proj-card-autre{border-style:dashed}
+.btn.xs{padding:3px 9px;font-size:.74rem;border-radius:6px}
+@media(max-width:640px){body{padding-top:60px}.toolbar-right{margin-left:0;width:100%}.logo-bar img{max-height:46px}.test-flag{display:none}}
+</style>
+</head>
+<body>
+<a href="../" id="homeBtn" class="home-btn" title="Retour au portail Atelier GMP">🏠 Accueil</a>
+<span class="test-flag" id="testFlag" style="display:none"></span>
+<button id="themeToggle" class="theme-toggle" title="Thème clair / sombre" aria-label="Basculer le thème clair ou sombre" onclick="toggleTheme()">🌙</button>
+
+<div class="wrap">
+  <div class="logo-bar"><img src="logo-gmp.png" alt="GMP — IUT de Bordeaux"></div>
+  <div class="topbar">
+  <div class="brand">
+    <div class="dot">
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="Matières (profilé en I)">
+        <path d="M14 12h36v9H37v22h13v9H14v-9h13V21H14z"/>
+        <path d="M5 32h54" stroke-dasharray="3 5"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Utilisation Matières</h1>
+      <div class="sub" style="margin:0">Demandes de matière brute pour l’atelier : estimation du prix, validation encadrant, commande</div>
+    </div>
+  </div>
+  <nav>
+    <button class="nav-btn active" data-view="nouvelle" onclick="showView('nouvelle')">➕ Nouvelle demande</button>
+    <button class="nav-btn" data-view="suivi" onclick="showView('suivi')">🔎 Suivi</button>
+    <button class="nav-btn tint" data-view="encadrant" onclick="showView('encadrant')">👨‍🏫 Espace encadrant</button>
+    <button class="nav-btn tint" data-view="gestionnaire" onclick="showView('gestionnaire')">🏭 Espace gestionnaire</button>
+    <button class="nav-btn admin" id="btnAdmin" onclick="adminToggle()">⚙️ Admin</button>
+  </nav>
+  </div>
+
+  <div class="admin-banner" id="adminBanner">
+    <div class="admin-banner-top">
+      <span class="admin-badge">⚙ ADMIN</span>
+      <span class="admin-banner-label" id="adminRoleTag">Mode administrateur actif</span>
+      <button class="logout-btn" onclick="adminLogout()">↩ Déconnecter</button>
+    </div>
+    <div class="admin-tools">
+      <button class="btn-manage" onclick="openAdmin('ovMatieres',renderMatieres)">🧱 Matières &amp; prix</button>
+      <button class="btn-manage" onclick="openAdmin('ovFourFam',renderFourFam)">🏭 Fournisseurs &amp; familles</button>
+      <button class="btn-manage" onclick="openAdmin('ovFormes',renderFormes)">🔷 Formes</button>
+      <button class="btn-manage" onclick="openAdmin('ovBruts',renderBruts)">📏 Bruts proposés</button>
+      <button class="btn-manage" onclick="openAdmin('ovDates',renderDates)">📅 Dates de commande</button>
+      <button class="btn-manage" onclick="openAdmin('ovBudgets',renderBudgets)">💶 Budgets matière</button>
+      <button class="btn-manage" onclick="openAdmin('ovParams',renderParams)">🔧 Paramètres</button>
+    </div>
+  </div>
+
+  <!-- ══════════ NOUVELLE DEMANDE (étudiant) ══════════ -->
+  <section id="view-nouvelle" class="view active">
+    <div class="card">
+      <h2>Qui êtes-vous ?</h2>
+      <div id="n-gate">
+        <div class="sub">Choisissez votre projet.</div>
+        <div id="n-projet-cards" class="proj-wrap"></div>
+      </div>
+      <select id="n-projet" style="display:none"></select>
+      <div id="n-idpanel" style="display:none">
+        <div class="sub" id="n-projet-chosen" style="margin:0 0 14px"></div>
+        <div class="grid2">
+          <label class="f" id="n-projet-autre-wrap" style="display:none">Nom du projet
+            <input id="n-projet-autre" placeholder="ex. Porte A380" autocomplete="off" oninput="recalc()"></label>
+          <label class="f" id="n-etu-wrap">Étudiant
+            <select id="n-etu" onchange="onEtu()"></select></label>
+          <label class="f" id="n-nom-wrap" style="display:none">Nom
+            <input id="n-nom" autocomplete="off" placeholder="DUPONT"></label>
+          <label class="f" id="n-prenom-wrap" style="display:none">Prénom
+            <input id="n-prenom" autocomplete="off" placeholder="Jean"></label>
+          <label class="f">Parcours
+            <select id="n-parcours" onchange="recalc()"></select></label>
+          <label class="f">Formation
+            <select id="n-formation"></select></label>
+        </div>
+        <div class="mini" id="n-ctx-note" style="margin-top:6px"></div>
+        <button class="btn sm" style="margin-top:12px" onclick="changerProjet()">↩ Changer de projet</button>
+      </div>
+    </div>
+
+    <div class="card" id="n-matierecard" style="display:none">
+      <h2>Matière souhaitée</h2>
+      <div class="sub">Indiquez la matière puis la famille (telle que proposée par l’atelier) : la forme, la section et la longueur du morceau viennent ensuite. Le fournisseur n’est pas à choisir — il est déduit automatiquement.</div>
+      <div class="grid2">
+        <label class="f">Matière <select id="n-matiere" onchange="onMatiereChange()"></select></label>
+        <label class="f">Famille <select id="n-famille" onchange="onFamilleChange()"></select></label>
+        <label class="f">Forme <select id="n-forme" onchange="onMatiereForme()"></select></label>
+        <label class="f">Section (dimensions) <select id="n-section" onchange="onSection()"></select></label>
+        <label class="f"><span id="n-long-lbl">Longueur du morceau (mm)</span><input id="n-long" type="number" min="1" step="any" placeholder="ex. 80" oninput="recalc()" disabled></label>
+        <label class="f" id="n-larg-wrap" style="display:none">Largeur découpée (mm)<input id="n-larg" type="number" min="1" step="any" placeholder="ex. 200" oninput="recalc()"></label>
+      </div>
+      <div class="mini" id="n-fournisseur-info" style="margin-top:6px"></div>
+      <div id="n-dims" class="dim-row" style="margin-top:12px"></div>
+      <label class="f" style="margin-top:12px">À quoi servira cette pièce ? (facultatif)
+        <textarea id="n-notes" placeholder="ex. axes de roue du robot, à tourner ensuite…"></textarea></label>
+
+      <details class="help">
+        <summary>Comment l’estimation est-elle calculée ?</summary>
+        <ul>
+          <li><b>Poids</b> = section × longueur × densité de la matière.</li>
+          <li><b>Prix de la matière</b> = poids × prix au kilo fixé par l’administrateur. C’est ce montant qui est compté dans le budget.</li>
+          <li>Le morceau est débité dans le <b>plus petit brut standard</b> assez long. La barre montre la <b>portion du brut utilisée</b>.</li>
+          <li>La <b>matière perdue</b> = traits de scie + reste de brut trop court pour être réutilisé. Elle est donnée à titre d’information.</li>
+          <li>Une dimension « <b>Autre</b> » (hors liste) est acceptée : l’encadrant et l’atelier confirmeront le brut à utiliser.</li>
+          <li>Pour une <b>tôle</b>, l’estimation est simplifiée : elle se base sur la surface découpée, sans plan de découpe précis.</li>
+        </ul>
+      </details>
+
+      <div id="estBox"></div>
+      <div id="budgetHint"></div>
+      <div id="dateHint" class="mini" style="margin-top:8px"></div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:16px">
+        <button class="btn primary" onclick="submitDemande()">Envoyer la demande</button>
+      </div>
+      <div class="err" id="n-err"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ SUIVI ══════════ -->
+  <section id="view-suivi" class="view">
+    <div class="card">
+      <h2>Suivi des demandes</h2>
+      <div class="filters">
+        <input id="s-search" placeholder="Rechercher un projet, un étudiant, une matière…" oninput="renderSuivi()" style="min-width:240px">
+        <select id="s-projet" onchange="renderSuivi()"><option value="">Tous les projets</option></select>
+        <select id="s-statut" onchange="renderSuivi()"><option value="">Tous les statuts</option></select>
+        <select id="s-matiere" onchange="renderSuivi()"><option value="">Toutes les matières</option></select>
+      </div>
+      <details class="help">
+        <summary>Aide : que veut dire chaque statut ?</summary>
+        <div id="statutHelp"></div>
+      </details>
+      <div id="suiviBudgets"></div>
+      <div id="suiviList"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ ENCADRANT ══════════ -->
+  <section id="view-encadrant" class="view">
+    <div class="card" id="encGate">
+      <h2>Espace encadrant</h2>
+      <div class="sub">Vérifiez et validez les demandes de matière de vos projets. Identifiez-vous avec votre nom et votre code personnel.</div>
+      <div class="grid2">
+        <label class="f">Encadrant <select id="e-nom"></select></label>
+        <label class="f">Votre code
+          <input id="e-code" type="password" maxlength="20" placeholder="au moins 4 caractères" autocomplete="off" onkeydown="if(event.key==='Enter')encLogin()"></label>
+      </div>
+      <button class="btn primary" style="margin-top:12px" onclick="encLogin()">Entrer</button>
+      <div class="err" id="e-err"></div>
+    </div>
+    <div id="encPanel" style="display:none">
+      <div class="card">
+        <div class="filters" style="margin-bottom:6px">
+          <span class="mini" id="encWho"></span>
+          <div class="toolbar-right">
+            <select id="e-statut" onchange="renderEnc()">
+              <option value="todo">À traiter</option>
+              <option value="all">Toutes mes demandes</option>
+            </select>
+            <button class="btn sm" onclick="encLogout()">Changer d’encadrant</button>
+          </div>
+        </div>
+        <div id="encList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ GESTIONNAIRE ══════════ -->
+  <section id="view-gestionnaire" class="view">
+    <div class="card" id="gestGate">
+      <h2>Espace gestionnaire</h2>
+      <div class="sub">Réservé au responsable de l’atelier / des achats : demandes validées à préparer ou à commander.</div>
+      <div class="grid2">
+        <label class="f">Votre nom <select id="g-nom"></select></label>
+        <label class="f">Code opérateur <input id="g-code" type="password" maxlength="20" placeholder="au moins 4 caractères" onkeydown="if(event.key==='Enter')gestLogin()"></label>
+      </div>
+      <button class="btn primary" style="margin-top:12px" onclick="gestLogin()">Entrer</button>
+      <div class="err" id="g-err"></div>
+    </div>
+    <div id="gestPanel" style="display:none">
+      <div class="stat-cards" id="gestStats"></div>
+      <div class="card">
+        <div class="filters">
+          <input id="f-search" placeholder="Rechercher…" oninput="renderGest()" style="min-width:180px">
+          <select id="f-statut" onchange="renderGest()"><option value="">Statut : tous</option></select>
+          <select id="f-decision" onchange="renderGest()">
+            <option value="">Origine : toutes</option>
+            <option value="stock">En stock (réservée)</option>
+            <option value="commande">À commander</option>
+          </select>
+          <select id="f-projet" onchange="renderGest()"><option value="">Projet : tous</option></select>
+          <select id="f-matiere" onchange="renderGest()"><option value="">Matière : toutes</option></select>
+          <select id="f-fournisseur" onchange="renderGest()"><option value="">Fournisseur : tous</option></select>
+          <select id="f-forme" onchange="renderGest()"><option value="">Forme : toutes</option></select>
+          <select id="f-brut" onchange="renderGest()"><option value="">Brut : tous</option></select>
+          <div class="toolbar-right">
+            <button class="btn sm active" data-gv="commande" onclick="setGestView('commande')">Par date de commande</button>
+            <button class="btn sm" data-gv="statut" onclick="setGestView('statut')">Par statut</button>
+            <button class="btn sm" data-gv="fournisseur" onclick="setGestView('fournisseur')">Par fournisseur</button>
+            <button class="btn sm" data-gv="matiere" onclick="setGestView('matiere')">Par matière</button>
+            <button class="btn sm" data-gv="projet" onclick="setGestView('projet')">Par projet</button>
+            <button class="btn sm" onclick="exportCSV()">Export CSV</button>
+            <button class="btn sm" onclick="exportXLSX()">Export Excel</button>
+          </div>
+        </div>
+        <div id="gestList"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.0.0</div>
+</div>
+
+<!-- ══════════ FENÊTRES ══════════ -->
+<div class="overlay" id="ovAdminLogin"><div class="modal" style="max-width:420px;text-align:center">
+  <button class="modal-x" onclick="closeOverlay('ovAdminLogin')" aria-label="Fermer">✕</button>
+  <h2>🔐 Administration</h2>
+  <div class="sub" style="margin:0 0 14px">Entrez le mot de passe administrateur</div>
+  <input id="al-pw" type="password" placeholder="mot de passe" onkeydown="if(event.key==='Enter')adminLogin()" style="width:100%;text-align:left">
+  <div class="err" id="al-err"></div>
+  <div class="actions" style="justify-content:center">
+    <button class="btn" onclick="closeOverlay('ovAdminLogin')">Annuler</button>
+    <button class="btn" style="background:var(--admin);color:#fff;border:none" onclick="adminLogin()">Valider</button>
+  </div>
+</div></div>
+
+<div class="overlay" id="ovMatieres"><div class="modal wide">
+  <button class="modal-x" onclick="closeOverlay('ovMatieres')" aria-label="Fermer">✕</button>
+  <h2>🧱 Matières &amp; prix au kilo</h2>
+  <div class="sub">Densité en kg/dm³ (acier 7,85 · alu 2,70). Le prix peut être saisi HT ou TTC ; il est toujours <b>affiché et utilisé en TTC</b> (taux de TVA réglable dans Admin → Paramètres). Chaque ligne porte sa date de mise à jour.</div>
+  <div id="matList"></div>
+  <div class="grid3" style="margin-top:12px">
+    <input id="nm-nom" placeholder="Nouvelle matière (ex. Bronze)">
+    <input id="nm-dens" type="number" step="any" placeholder="Densité kg/dm³">
+    <input id="nm-prix" type="number" step="any" placeholder="Prix €/kg">
+    <select id="nm-mode"><option value="ttc">Prix saisi TTC</option><option value="ht">Prix saisi HT</option></select>
+    <button class="btn" onclick="addMatiere()">Ajouter</button>
+  </div>
+  <div class="actions"><button class="btn" onclick="closeOverlay('ovMatieres')">Fermer</button></div>
+</div></div>
+
+<div class="overlay" id="ovFourFam"><div class="modal wide">
+  <button class="modal-x" onclick="closeOverlay('ovFourFam')" aria-label="Fermer">✕</button>
+  <h2>🏭 Fournisseurs &amp; familles</h2>
+  <div class="sub">D’après l’organigramme de l’atelier : chaque matière est livrée par un ou plusieurs fournisseurs, chacun proposant certaines familles (Tôles / Barres / Profilés). <b>L’étudiant ne choisit jamais le fournisseur</b> : il est déduit automatiquement de la matière et de la famille choisies.</div>
+
+  <h3 style="margin:14px 0 6px">Fournisseurs</h3>
+  <div id="fourList"></div>
+  <div class="grid3" style="margin-top:8px">
+    <input id="nfo-nom" placeholder="Nouveau fournisseur (ex. Almet)">
+    <button class="btn" onclick="addFournisseur()">Ajouter</button>
+  </div>
+
+  <h3 style="margin:18px 0 6px">Familles</h3>
+  <div id="famList"></div>
+  <div class="grid3" style="margin-top:8px">
+    <input id="nfa-nom" placeholder="Nouvelle famille (ex. Tôles)">
+    <button class="btn" onclick="addFamille()">Ajouter</button>
+  </div>
+
+  <h3 style="margin:18px 0 6px">Associations matière → fournisseur → famille</h3>
+  <div class="sub">Pour une matière donnée, quel fournisseur propose quelle famille.</div>
+  <div id="fourFamList"></div>
+  <div class="grid3" style="margin-top:8px">
+    <select id="nff-matiere"></select>
+    <select id="nff-fournisseur"></select>
+    <select id="nff-famille"></select>
+  </div>
+  <button class="btn primary" style="margin-top:8px" onclick="addFourFamille()">Ajouter l’association</button>
+  <div class="err" id="nff-err"></div>
+
+  <div class="actions"><button class="btn" onclick="closeOverlay('ovFourFam')">Fermer</button></div>
+</div></div>
+
+<div class="overlay" id="ovFormes"><div class="modal wide">
+  <button class="modal-x" onclick="closeOverlay('ovFormes')" aria-label="Fermer">✕</button>
+  <h2>🔷 Formes</h2>
+  <div class="sub">Le <b>type géométrique</b> indique à l’appli comment calculer la section (donc le poids). La <b>famille</b> (Tôles/Barres/Profilés) sert à filtrer les formes proposées à l’étudiant une fois la matière choisie. Vous pouvez créer plusieurs formes du même type (ex. « IPE » et « HEA » de type I).</div>
+  <div id="formeList"></div>
+  <div class="grid3" style="margin-top:12px">
+    <input id="nf-nom" placeholder="Nouvelle forme (ex. Profilé IPE)">
+    <select id="nf-type"></select>
+    <select id="nf-famille"></select>
+    <button class="btn" onclick="addForme()">Ajouter</button>
+  </div>
+  <div class="actions"><button class="btn" onclick="closeOverlay('ovFormes')">Fermer</button></div>
+</div></div>
+
+<div class="overlay" id="ovBruts"><div class="modal wide">
+  <button class="modal-x" onclick="closeOverlay('ovBruts')" aria-label="Fermer">✕</button>
+  <h2>📏 Bruts proposés</h2>
+  <div class="sub">Un brut = une <b>section</b> + une <b>longueur standard</b>, pour une matière. C’est la liste des dimensions proposées à l’étudiant.</div>
+  <div class="card" style="background:var(--surface-2);box-shadow:none;padding:14px">
+    <h3 style="margin-bottom:8px">Ajouter des bruts</h3>
+    <div class="grid2">
+      <label class="f">Forme <select id="nb-forme" onchange="renderBrutDims()"></select></label>
+      <label class="f">Longueur(s) standard (mm) <input id="nb-long" placeholder="ex. 3000 ; 6000"></label>
+    </div>
+    <div id="nb-dims" class="dim-row" style="margin-top:10px"></div>
+    <div class="mini" style="margin-top:4px">Pour gagner du temps, la <b>première</b> dimension et les <b>longueurs</b> acceptent plusieurs valeurs séparées par « ; » (ex. Ø <b>10 ; 12 ; 16 ; 20</b>) : un brut est créé pour chaque valeur.</div>
+    <div class="grid2" style="margin-top:10px">
+      <label class="f">Masse linéique kg/m (facultatif — sinon calculée) <input id="nb-mlin" type="number" step="any"></label>
+    </div>
+    <div style="margin-top:10px"><div class="mini" style="margin-bottom:4px">Disponible en :</div><div class="chk-list" id="nb-mats"></div></div>
+    <button class="btn primary" style="margin-top:12px" onclick="addBruts()">Ajouter</button>
+    <div class="err" id="nb-err"></div>
+  </div>
+  <div class="filters" style="margin-top:14px">
+    <select id="bf-matiere" onchange="renderBrutList()"><option value="">Toutes les matières</option></select>
+    <select id="bf-forme" onchange="renderBrutList()"><option value="">Toutes les formes</option></select>
+  </div>
+  <div id="brutList"></div>
+  <div class="actions"><button class="btn" onclick="closeOverlay('ovBruts')">Fermer</button></div>
+</div></div>
+
+<div class="overlay" id="ovDates"><div class="modal">
+  <button class="modal-x" onclick="closeOverlay('ovDates')" aria-label="Fermer">✕</button>
+  <h2>📅 Dates de commande</h2>
+  <div class="sub">Dates auxquelles l’atelier passe les commandes de matière. Les demandes « à commander » sont rattachées à la prochaine date.</div>
+  <div id="dateList"></div>
+  <div class="grid3" style="margin-top:12px">
+    <input id="nd-date" type="date">
+    <input id="nd-note" placeholder="Note (facultatif)">
+    <button class="btn" onclick="addDate()">Ajouter</button>
+  </div>
+  <div class="actions"><button class="btn" onclick="closeOverlay('ovDates')">Fermer</button></div>
+</div></div>
+
+<div class="overlay" id="ovBudgets"><div class="modal">
+  <button class="modal-x" onclick="closeOverlay('ovBudgets')" aria-label="Fermer">✕</button>
+  <h2>💶 Budgets matière par parcours</h2>
+  <div class="sub">Limite en € pour l’année universitaire (vide = pas de limite). Indépendant du budget des composants standards.</div>
+  <div id="budgetList"></div>
+  <div class="grid3" style="margin-top:12px">
+    <input id="nb2-parcours" placeholder="Parcours (ex. II)">
+    <input id="nb2-limite" type="number" step="1" placeholder="Limite €">
+    <button class="btn" onclick="saveBudget()">Enregistrer</button>
+  </div>
+  <div class="actions"><button class="btn" onclick="closeOverlay('ovBudgets')">Fermer</button></div>
+</div></div>
+
+<div class="overlay" id="ovParams"><div class="modal">
+  <button class="modal-x" onclick="closeOverlay('ovParams')" aria-label="Fermer">✕</button>
+  <h2>🔧 Paramètres</h2>
+  <div class="sub">Réglages du calcul de la matière perdue, format standard d’une tôle, et TVA pour l’affichage des prix TTC.</div>
+  <div class="grid2">
+    <label class="f">Trait de scie (mm par coupe)<input id="p-trait" type="number" step="any"></label>
+    <label class="f">Taux de TVA (%)<input id="p-tva" type="number" step="any"></label>
+    <label class="f">Longueur standard d’une tôle (mm)<input id="p-tole-l" type="number" step="any"></label>
+    <label class="f">Largeur standard d’une tôle (mm)<input id="p-tole-w" type="number" step="any"></label>
+  </div>
+  <div class="mini" style="margin-top:8px" id="p-maj"></div>
+  <div class="actions">
+    <button class="btn" onclick="closeOverlay('ovParams')">Fermer</button>
+    <button class="btn primary" onclick="saveParams()">Enregistrer</button>
+  </div>
+</div></div>
+
+<div class="overlay" id="ovEdit"><div class="modal">
+  <button class="modal-x" onclick="closeOverlay('ovEdit')" aria-label="Fermer">✕</button>
+  <h2>Modifier la demande</h2>
+  <div class="mini" id="ed-titre" style="margin-bottom:10px"></div>
+  <div class="grid2">
+    <label class="f">Origine de la matière
+      <select id="ed-decision">
+        <option value="stock">En stock — réservée à l’atelier</option>
+        <option value="commande">À commander</option>
+      </select></label>
+    <label class="f">Date de commande <select id="ed-date"></select></label>
+    <label class="f">Coût final €<input id="ed-cout" type="number" step="0.01"></label>
+  </div>
+  <label class="f" style="margin-top:10px">Commentaire gestionnaire<textarea id="ed-com"></textarea></label>
+  <div class="actions">
+    <button class="btn danger" onclick="editSetStatut('annulee')">Annuler la demande</button>
+    <button class="btn" onclick="editSetStatut('refusee')">Refuser</button>
+    <button class="btn" onclick="closeOverlay('ovEdit')">Fermer</button>
+    <button class="btn primary" onclick="saveEdit()">Enregistrer</button>
+  </div>
+  <div class="err" id="ed-err"></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL  = 'https://ggmlfbxppgeivfvlxxrj.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnbWxmYnhwcGdlaXZmdmx4eHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNDY5NTIsImV4cCI6MjA5NzkyMjk1Mn0.HvPE2ewB8gFgVzj-xAb1YBxFfn8hTEwOwQLDfF1vgT0';
+const DEMO = /[?&]demo\b/.test(location.search);
+const sb = DEMO ? window.makeDemoClient() : supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+if(DEMO){ const f=document.getElementById('testFlag'); f.textContent='MODE DÉMO — données fictives, rien n’est enregistré'; f.style.display=''; }
+
+/* Toutes les écritures passent par l'Edge Function matiere-op (droits vérifiés côté serveur) ; la clé
+   publique n'a plus que la lecture. En mode démo, on écrit directement dans la fausse base en mémoire. */
+let _adminPw='', _encCode='', _gestCode='';
+const creds = () => ({ adminPw:_adminPw, encNom:_encNom, encCode:_encCode, opName:_gestNom, opCode:_gestCode });
+function makeWriter(){
+  return { from(table){
+    const st={op:null,rows:null,patch:null,eq:{}};
+    const b={
+      insert(r){ st.op='insert'; st.rows=Array.isArray(r)?r:[r]; return b; },
+      upsert(r){ st.op='upsert'; st.rows=Array.isArray(r)?r:[r]; return b; },
+      update(p){ st.op='update'; st.patch=p; return b; },
+      delete(){ st.op='delete'; return b; },
+      eq(k,v){ st.eq[k]=v; return b; },
+      then(res,rej){ return call().then(res,rej); }
+    };
+    async function call(){
+      try{
+        const {data,error}=await sb.functions.invoke('matiere-op',{body:{action:'db',table,op:st.op,rows:st.rows,patch:st.patch,eq:st.eq,creds:creds()}});
+        if(error) return {error:{message:error.message||String(error)}};
+        if(!data||data.ok===false) return {error:{message:'Refusé : '+((data&&data.error)||'non autorisé')}};
+        return {data:null,error:null};
+      }catch(e){ return {error:{message:String(e)}}; }
+    }
+    return b;
+  } };
+}
+const wdb = DEMO ? sb : makeWriter();
+
+/* ────────────────────────── Formes géométriques connues ────────────────────────── */
+// dims : [clé, libellé] ; area(d) = section en mm² ; tag(d) = libellé court
+const FORME_TYPES = {
+  plat:      {label:'Pavé / plat (largeur × épaisseur)', dims:[['l','Largeur'],['e','Épaisseur']],
+              area:d=>d.l*d.e, tag:d=>d.l+'×'+d.e},
+  rond:      {label:'Cylindre plein (Ø)', dims:[['d','Diamètre Ø']],
+              area:d=>Math.PI*d.d*d.d/4, tag:d=>'Ø'+d.d},
+  carre:     {label:'Carré plein (côté)', dims:[['c','Côté']],
+              area:d=>d.c*d.c, tag:d=>d.c+'×'+d.c},
+  tube_rond: {label:'Tube rond (Ø ext. × épaisseur)', dims:[['d','Ø extérieur'],['e','Épaisseur']],
+              area:d=>(d.e*2<d.d)?Math.PI*d.e*(d.d-d.e):0, tag:d=>'Ø'+d.d+'×'+d.e},
+  tube_carre:{label:'Tube carré / rectangulaire', dims:[['a','Côté a'],['b','Côté b'],['e','Épaisseur']],
+              area:d=>(d.e*2<Math.min(d.a,d.b))?d.a*d.b-(d.a-2*d.e)*(d.b-2*d.e):0, tag:d=>d.a+'×'+d.b+'×'+d.e},
+  tube_carre_eq:{label:'Tube carré (côté extérieur unique)', dims:[['a','Côté extérieur'],['e','Épaisseur']],
+              area:d=>(d.e*2<d.a)?d.a*d.a-(d.a-2*d.e)*(d.a-2*d.e):0, tag:d=>d.a+'×'+d.a+'×'+d.e},
+  L:         {label:'Profilé en L (cornière)', dims:[['a','Aile a'],['b','Aile b'],['e','Épaisseur']],
+              area:d=>(d.e<Math.min(d.a,d.b))?d.e*(d.a+d.b-d.e):0, tag:d=>d.a+'×'+d.b+'×'+d.e},
+  T:         {label:'Profilé en T', dims:[['a','Largeur semelle'],['h','Hauteur totale'],['e','Épaisseur']],
+              area:d=>(d.e<d.h&&d.e<d.a)?d.a*d.e+(d.h-d.e)*d.e:0, tag:d=>d.a+'×'+d.h+'×'+d.e},
+  U:         {label:'Profilé en U', dims:[['h','Hauteur'],['b','Largeur ailes'],['e','Épaisseur']],
+              area:d=>(d.e*2<d.h&&d.e<d.b)?d.e*(d.h+2*d.b-2*d.e):0, tag:d=>d.h+'×'+d.b+'×'+d.e},
+  I:         {label:'Profilé en I / H', dims:[['h','Hauteur h'],['b','Largeur semelle b'],['tw','Épaisseur âme'],['tf','Épaisseur semelle']],
+              area:d=>(d.tf*2<d.h&&d.tw<d.b)?2*d.b*d.tf+(d.h-2*d.tf)*d.tw:0, tag:d=>d.h+'×'+d.b+' (âme '+d.tw+' / semelle '+d.tf+')'},
+  tole:      {label:'Tôle (plaque)', dims:[['e','Épaisseur']],
+              area:d=>d.e, tag:d=>'Ép. '+d.e+' mm'}
+};
+
+const FORMATIONS = ['BUT 1 Init','BUT 1 App','BUT 2 Init','BUT 2 App','BUT 3 Init','BUT 3 App'];
+const PARCOURS_BASE = ['II','CPD','SNRV'];
+const STATUTS = {
+  en_attente:  {label:'En attente de l’encadrant', cls:'st-dem'},
+  attente_info:{label:'En attente d’information',  cls:'st-info'},
+  validee:     {label:'Validée',                   cls:'st-val'},
+  commandee:   {label:'Commandée',                 cls:'st-cmd'},
+  recue:       {label:'Matière prête',             cls:'st-rec'},
+  remise:      {label:'Remise',                    cls:'st-rem'},
+  refusee:     {label:'Refusée',                   cls:'st-ref'},
+  annulee:     {label:'Annulée',                   cls:'st-ann'}
+};
+const STATUT_ORDER = ['en_attente','attente_info','validee','commandee','recue','remise','refusee','annulee'];
+const STATUT_HELP = {
+  en_attente:'La demande est enregistrée ; l’encadrant du projet doit la vérifier.',
+  attente_info:'L’encadrant a besoin de précisions : allez le voir pour compléter votre demande.',
+  validee:'Validée par l’encadrant : soit la matière est en stock et réservée à l’atelier, soit elle sera commandée à la prochaine date de commande.',
+  commandee:'L’atelier a passé la commande de matière auprès du fournisseur.',
+  recue:'La matière est disponible à l’atelier (reçue ou sortie du stock) et prête à être débitée / remise.',
+  remise:'Le morceau de matière a été remis. Dossier terminé.',
+  refusee:'La demande n’a pas été retenue (voir le commentaire).',
+  annulee:'La demande a été annulée.'
+};
+const ACTIVE = ['en_attente','attente_info','validee','commandee','recue','remise'];   // comptent dans le budget
+const GEST_STATUTS = ['validee','commandee','recue','remise'];
+
+/* ────────────────────────── État ────────────────────────── */
+let DEMANDES=[], MATIERES=[], FORMES=[], BRUTS=[], DATES=[], BUDGETS={}, PARAMS={};
+let FOURNISSEURS=[], FAMILLES=[], FOUR_FAMILLES=[];
+let ETUDIANTS=[], PROJETS=[], ENCADRANTS=[], GESTIONNAIRES=[], OPERATEURS=[];
+let _ets=[], _est=null;
+let _encOk=false,_encNom='', _gestOk=false,_gestNom='', _adminOk=false,_adminRole='';
+let _gestView='commande', _editId=null;
+
+/* ────────────────────────── Utilitaires ────────────────────────── */
+const $ = s => document.querySelector(s);
+const esc = s => (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const eur = n => (n==null||n===''||isNaN(n)) ? '—' : Number(n).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
+const nb = (n,d=1) => (n==null||isNaN(n)) ? '—' : Number(n).toLocaleString('fr-FR',{maximumFractionDigits:d});
+const fmtKg = k => (k==null||isNaN(k)) ? '—' : (k<1 ? nb(k*1000,0)+' g' : nb(k,2)+' kg');
+const num = v => { const n=parseFloat(String(v==null?'':v).replace(',','.')); return isFinite(n)?n:null; };
+const opt = (v,l) => `<option value="${esc(v)}">${esc(l!=null?l:v)}</option>`;
+const byFr = (a,b) => String(a).localeCompare(String(b),'fr');
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2800); }
+function fail(el,msg){ el.textContent=msg; el.classList.add('show'); return false; }
+function toggleTheme(){ const r=document.documentElement; const n=r.getAttribute('data-theme')==='dark'?'light':'dark'; r.setAttribute('data-theme',n); try{localStorage.setItem('theme',n);}catch(e){} $('#themeToggle').textContent=n==='dark'?'☀️':'🌙'; }
+$('#themeToggle').textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙';
+function openOverlay(id){ $('#'+id).classList.add('open'); }
+function closeOverlay(id){ $('#'+id).classList.remove('open'); }
+function yearStart(){ const d=new Date(); const y=d.getMonth()>=8?d.getFullYear():d.getFullYear()-1; return new Date(y,8,1); }
+function fmtDate(s){ if(!s) return ''; return new Date(s).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}); }
+function fmtDateTime(s){ if(!s) return ''; const d=new Date(s); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'})+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+function fmtDay(iso){ if(!iso) return ''; const [y,m,d]=String(iso).slice(0,10).split('-'); return d+'/'+m+'/'+y; }
+function fmtDayLong(iso){ if(!iso) return ''; const [y,m,d]=String(iso).slice(0,10).split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
+function todayIso(){ const d=new Date(),p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function majTxt(s){ return s ? 'mis à jour le '+new Date(s).toLocaleDateString('fr-FR') : ''; }
+function nextOrderDate(){ const t=todayIso(); const d=DATES.filter(x=>String(x.date_commande).slice(0,10)>=t).sort((a,b)=>String(a.date_commande).localeCompare(String(b.date_commande)))[0]; return d?String(d.date_commande).slice(0,10):null; }
+function pill(d){
+  const st=STATUTS[d.statut]||{label:d.statut,cls:'st-dem'};
+  let l=st.label;
+  if(d.statut==='validee') l = d.decision==='commande' ? 'Validée — à commander' : 'Validée — en stock, réservée';
+  return `<span class="pill ${st.cls}">${esc(l)}</span>`;
+}
+function histPush(h,entry){ return [...(Array.isArray(h)?h:[]), entry]; }
+
+/* ────────────────────────── Catalogue : helpers ────────────────────────── */
+const formeOf = nom => FORMES.find(f=>f.nom===nom);
+function dimsKey(type,dims){ return FORME_TYPES[type].dims.map(([k])=>dims[k]).join('x'); }
+function dimsLabel(type,dims){ const FT=FORME_TYPES[type]; return (FT&&dims)?FT.tag(dims):''; }
+function sectionsFor(matiere,formeNom){
+  const fm=formeOf(formeNom); if(!fm||!FORME_TYPES[fm.type]) return [];
+  const map=new Map();
+  BRUTS.filter(b=>b.actif!==false&&b.matiere===matiere&&b.forme===formeNom).forEach(b=>{
+    const k=dimsKey(fm.type,b.dims||{});
+    if(!map.has(k)) map.set(k,{key:k,dims:b.dims||{},area:FORME_TYPES[fm.type].area(b.dims||{}),rows:[]});
+    map.get(k).rows.push(b);
+  });
+  return [...map.values()].map(s=>{ s.rows.sort((a,b)=>a.longueur-b.longueur); return s; }).sort((a,b)=>a.area-b.area);
+}
+const traitScie = () => { const v=num(PARAMS.trait_scie); return v==null?3:v; };
+const chuteMinDef = () => { const v=num(PARAMS.chute_min); return v==null?100:v; };
+const toleLongueur = () => { const v=num(PARAMS.tole_longueur); return v==null?2000:v; };
+const toleLargeur = () => { const v=num(PARAMS.tole_largeur); return v==null?1000:v; };
+const tvaTaux = () => { const v=num(PARAMS.tva_taux); return v==null?20:v; };
+// Prix au kilo toujours résolu en TTC pour le calcul et l'affichage, quel que soit le mode de saisie admin.
+function prixTTC(mat){
+  if(mat.prix_kg==null||mat.prix_kg==='') return null;
+  const p=+mat.prix_kg;
+  return mat.prix_mode==='ht' ? Math.round(p*(1+tvaTaux()/100)*100)/100 : p;
+}
+
+/* ────────────────────────── Matière → fournisseur → famille (organigramme atelier) ────────────────────────── */
+// Familles disponibles pour une matière, d'après les associations saisies par l'admin
+// (mat_four_familles), fournisseurs et familles actifs uniquement.
+function famillesForMatiere(matiere){
+  const actFour=new Set(FOURNISSEURS.filter(f=>f.actif!==false).map(f=>f.nom));
+  const actFam=new Set(FAMILLES.filter(f=>f.actif!==false).map(f=>f.nom));
+  const set=new Set();
+  FOUR_FAMILLES.forEach(r=>{ if(r.matiere===matiere && actFour.has(r.fournisseur) && actFam.has(r.famille)) set.add(r.famille); });
+  return [...set].sort(byFr);
+}
+// Fournisseur déduit pour (matière, famille) — jamais choisi par l'étudiant.
+// S'il existe plusieurs fournisseurs pour la même combinaison, le premier (ordre alphabétique) est retenu.
+function fournisseurFor(matiere,famille){
+  const rows=FOUR_FAMILLES.filter(r=>r.matiere===matiere&&r.famille===famille).map(r=>r.fournisseur).sort(byFr);
+  return rows[0]||'';
+}
+
+/* ────────────────────────── Calcul de l'estimation ────────────────────────── */
+// inp : {matiere, forme, dims, options (bruts de cette section), longueur}  — une pièce par demande.
+function computeEstimate(inp){
+  const mat=MATIERES.find(m=>m.nom===inp.matiere), fm=formeOf(inp.forme);
+  if(!mat||!fm) return {err:'Choisissez la matière et la forme.'};
+  const FT=FORME_TYPES[fm.type]; if(!FT) return {err:'Type de forme inconnu.'};
+  if(fm.type==='tole') return computeEstimateTole(inp,mat,fm,FT);
+  const L=inp.longueur;
+  const dims=inp.dims||{};
+  for(const [k] of FT.dims){ if(!(dims[k]>0)) return {err:'Complétez les dimensions de la section.'}; }
+  const area=FT.area(dims);
+  if(!(area>0)) return {err:'Dimensions incohérentes (épaisseur trop grande ?).'};
+  if(!(L>0)) return {err:'Indiquez la longueur du morceau.'};
+  const options=(inp.options||[]).slice().sort((a,b)=>a.longueur-b.longueur);
+  const ml = options.find(o=>o.masse_lin>0);
+  const masseLin = ml ? +ml.masse_lin : area*mat.densite/1000;          // kg/m
+  const prixKg = prixTTC(mat);
+  const poids = masseLin*L/1000;
+  const r2 = x => Math.round(x*100)/100;
+  const E = {mat,fm,type:fm.type,dims,dimsLib:FT.tag(dims),area,masseLin,prixKg,longueur:L,
+             poids,cout: prixKg==null?null:r2(poids*prixKg), catalogue:options.length>0};
+  if(!E.catalogue) return E;
+  const kerf=traitScie();
+  const useLen=L, kerfLen=kerf;
+  let chosen=options.find(o=>o.longueur>=useLen), n=1;
+  if(!chosen){ chosen=options[options.length-1]; n=Math.ceil((useLen+kerfLen)/chosen.longueur); }
+  const Lb=chosen.longueur, total=n*Lb;
+  const rest=Math.max(0,total-useLen-kerfLen);
+  const reutilisable = rest>=chuteMinDef();
+  const perdu = kerfLen + (reutilisable?0:rest);
+  Object.assign(E,{brut:chosen,brutLong:Lb,brutQte:n,total,rest,reutilisable,perdu,kerfLen,useLen,
+    part:useLen/total, partPerdu:perdu/total, partReste:reutilisable?rest/total:0,
+    coutPerte: prixKg==null?null:r2(masseLin*perdu/1000*prixKg),
+    brutDesc: `${mat.nom} · ${fm.nom} ${FT.tag(dims)} · ${nb(Lb,0)} mm`});
+  return E;
+}
+// Tôle : découpe 2D dans une plaque standard (format réglé en Admin → Paramètres, 1000×2000 par défaut).
+// Estimation volontairement simplifiée (pas de plan de découpe/nesting) : la portion utilisée et la
+// chute sont calculées par rapport à la surface, pas à une disposition réelle des pièces sur la tôle.
+function computeEstimateTole(inp,mat,fm,FT){
+  const dims=inp.dims||{};
+  if(!(dims.e>0)) return {err:'Indiquez l’épaisseur de la tôle.'};
+  const Lp=inp.longueur, lp=inp.largeur;
+  if(!(Lp>0)||!(lp>0)) return {err:'Indiquez la longueur et la largeur du morceau à découper.'};
+  const prixKg=prixTTC(mat);
+  const poids=Lp*lp*dims.e*mat.densite/1e6;    // kg
+  const r2=x=>Math.round(x*100)/100;
+  const E={mat,fm,type:'tole',tole:true,dims,dimsLib:FT.tag(dims),longueur:Lp,largeur:lp,prixKg,
+            poids,cout:prixKg==null?null:r2(poids*prixKg),catalogue:(inp.options||[]).length>0};
+  if(!E.catalogue) return E;
+  const SL=toleLongueur(), SW=toleLargeur();
+  const pieceArea=Lp*lp, sheetArea=SL*SW;
+  const nSheets=Math.max(1,Math.ceil(pieceArea/sheetArea));
+  const total=nSheets*sheetArea, perteArea=Math.max(0,total-pieceArea);
+  Object.assign(E,{brutLong:SL,brutLarg:SW,brutQte:nSheets,total,
+    part:pieceArea/total, partPerdu:perteArea/total,
+    coutPerte: prixKg==null?null:r2(perteArea*dims.e/1e6*mat.densite*prixKg),
+    brutDesc:`${mat.nom} · Tôle ${nb(dims.e,1)} mm · ${nb(SL,0)}×${nb(SW,0)} mm`});
+  return E;
+}
+
+/* ────────────────────────── Chargement ────────────────────────── */
+async function fetchTable(t, col, asc=true){
+  let q=sb.from(t).select('*'); if(col) q=q.order(col,{ascending:asc});
+  const {data,error}=await q;
+  if(error){ console.warn(t,error); return null; }
+  return data||[];
+}
+async function loadAll(){
+  await Promise.all([loadDemandes(), loadCatalogue(), loadEtudiants(), loadPersonnes()]);
+  buildAll();
+}
+async function loadDemandes(){
+  const d=await fetchTable('mat_demandes','created_at',false);
+  if(d===null){ toast('Base non initialisée ? Voir README (schema.sql).'); DEMANDES=[]; return; }
+  DEMANDES=d; refreshCurrentView();
+}
+async function loadCatalogue(){
+  const [m,f,b,d,bu,pa,fo,fa,ff]=await Promise.all([
+    fetchTable('mat_matieres','nom'), fetchTable('mat_formes','nom'), fetchTable('mat_bruts','id'),
+    fetchTable('mat_dates','date_commande'), fetchTable('mat_budgets'), fetchTable('mat_parametres'),
+    fetchTable('mat_fournisseurs','nom'), fetchTable('mat_familles','nom'), fetchTable('mat_four_familles','id')]);
+  MATIERES=m||[]; FORMES=f||[]; BRUTS=b||[]; DATES=d||[];
+  FOURNISSEURS=fo||[]; FAMILLES=fa||[]; FOUR_FAMILLES=ff||[];
+  BUDGETS={}; (bu||[]).forEach(x=>{ BUDGETS[x.parcours]=x.limite; });
+  PARAMS={}; (pa||[]).forEach(x=>{ PARAMS[x.cle]=x.valeur; });
+}
+function formCanon(f){
+  f=(f||'').trim(); if(!f) return '';
+  if(/^BUT/i.test(f)) return f;
+  const m=f.match(/([123])\s*([IA])/i);
+  if(m) return 'BUT '+m[1]+(m[2].toUpperCase()==='I'?' Init':' App');
+  return f;
+}
+async function loadEtudiants(){
+  try{
+    let {data,error}=await sb.from('etudiants').select('nom,prenom,projet,encadrant1,encadrant2,encadrant3,formation,parcours').order('projet');
+    if(error){ ({data}=await sb.from('etudiants').select('nom,prenom,projet,encadrant1,encadrant2,encadrant3,formation').order('projet')); }
+    ETUDIANTS=(data||[]).map(r=>({
+      nom:(r.nom||'').trim(), prenom:(r.prenom||'').trim(), projet:(r.projet||'').trim(),
+      enc:[r.encadrant1,r.encadrant2,r.encadrant3].map(x=>(x||'').trim()).filter(Boolean),
+      formation:formCanon(r.formation), parcours:(r.parcours||'').trim()
+    }));
+  }catch(e){ ETUDIANTS=[]; }
+  PROJETS=[...new Set(ETUDIANTS.map(e=>e.projet).filter(Boolean))].sort(byFr);
+  ENCADRANTS=[...new Set([].concat(...ETUDIANTS.map(e=>e.enc)))].filter(Boolean).sort(byFr);
+}
+async function loadPersonnes(){
+  try{ const {data}=await sb.from('operateurs_public').select('name').order('name'); OPERATEURS=(data||[]).map(o=>o.name).filter(Boolean); }catch(e){ OPERATEURS=[]; }
+  try{ const {data}=await sb.from('com_gestionnaires').select('nom').order('nom'); GESTIONNAIRES=(data||[]).map(g=>g.nom).filter(Boolean); }catch(e){ GESTIONNAIRES=[]; }
+}
+const encadrantsForProjet = p => { const s=new Set(); ETUDIANTS.filter(e=>e.projet===p).forEach(e=>e.enc.forEach(x=>s.add(x))); return [...s]; };
+const projetsForEncadrant = n => [...new Set(ETUDIANTS.filter(e=>e.enc.includes(n)).map(e=>e.projet).filter(Boolean))].sort(byFr);
+const formationForProjet = p => { const f=ETUDIANTS.find(e=>e.projet===p&&e.formation); return f?f.formation:''; };
+const parcoursForProjet = p => { const f=ETUDIANTS.find(e=>e.projet===p&&e.parcours); return f?f.parcours:''; };
+function etudiantsProjet(p){
+  const map=new Map();
+  const add=e=>{ const k=(e.nom+'|'+e.prenom).toLowerCase(); if(k!=='|'&&!map.has(k)) map.set(k,{nom:e.nom,prenom:e.prenom}); };
+  ETUDIANTS.filter(e=>e.projet===p).forEach(add);
+  DEMANDES.filter(d=>d.projet===p).forEach(d=>add({nom:d.etudiant_nom||'',prenom:d.etudiant_prenom||''}));
+  return [...map.values()].sort((a,b)=>byFr(a.nom+a.prenom,b.nom+b.prenom));
+}
+function parcoursList(){ return [...new Set([...PARCOURS_BASE,...Object.keys(BUDGETS),...DEMANDES.map(d=>d.parcours),...ETUDIANTS.map(e=>e.parcours)])].filter(Boolean).sort(); }
+function formationsList(){ return [...new Set([...FORMATIONS,...ETUDIANTS.map(e=>e.formation),...DEMANDES.map(d=>d.formation)])].filter(Boolean); }
+
+function refreshCurrentView(){
+  const v=document.querySelector('.view.active')?.id||'';
+  if(v==='view-suivi') renderSuivi();
+  if(v==='view-encadrant' && _encOk){ const a=document.activeElement; if(!(a&&$('#encList').contains(a))) renderEnc(); }
+  if(v==='view-gestionnaire' && _gestOk) renderGest();
+  if(v==='view-nouvelle') recalc();
+}
+function showView(v){
+  document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  $('#view-'+v).classList.add('active');
+  if(v==='suivi') renderSuivi();
+  if(v==='encadrant' && _encOk) renderEnc();
+  if(v==='gestionnaire' && _gestOk) renderGest();
+  if(v==='nouvelle') recalc();
+}
+
+/* ────────────────────────── Construction des listes ────────────────────────── */
+function buildAll(){
+  buildNouvelle();
+  const pOpts=PROJETS.concat(DEMANDES.map(d=>d.projet)).filter((x,i,a)=>x&&a.indexOf(x)===i).sort(byFr).map(p=>opt(p)).join('');
+  const sOpts=STATUT_ORDER.map(k=>opt(k,STATUTS[k].label)).join('');
+  const mOpts=[...new Set([...MATIERES.map(m=>m.nom),...DEMANDES.map(d=>d.matiere)])].filter(Boolean).sort(byFr).map(m=>opt(m)).join('');
+  const keep=id=>$(id).value;
+  const kp=[keep('#s-projet'),keep('#s-statut'),keep('#s-matiere'),keep('#f-projet'),keep('#f-matiere'),keep('#f-statut'),keep('#f-forme'),keep('#f-brut'),keep('#f-fournisseur')];
+  $('#s-projet').innerHTML='<option value="">Tous les projets</option>'+pOpts;
+  $('#s-statut').innerHTML='<option value="">Tous les statuts</option>'+sOpts;
+  $('#s-matiere').innerHTML='<option value="">Toutes les matières</option>'+mOpts;
+  $('#f-projet').innerHTML='<option value="">Projet : tous</option>'+pOpts;
+  $('#f-matiere').innerHTML='<option value="">Matière : toutes</option>'+mOpts;
+  $('#f-statut').innerHTML='<option value="">Statut : tous</option>'+GEST_STATUTS.map(k=>opt(k,STATUTS[k].label)).join('');
+  const fuOpts=[...new Set([...FOURNISSEURS.map(f=>f.nom),...DEMANDES.map(d=>d.fournisseur)])].filter(Boolean).sort(byFr).map(f=>opt(f)).join('');
+  $('#f-fournisseur').innerHTML='<option value="">Fournisseur : tous</option>'+fuOpts;
+  const foOpts=[...new Set(DEMANDES.map(d=>d.forme))].filter(Boolean).sort(byFr).map(f=>opt(f)).join('');
+  $('#f-forme').innerHTML='<option value="">Forme : toutes</option>'+foOpts;
+  const brOpts=[...new Set(DEMANDES.map(d=>d.brut_desc))].filter(Boolean).sort(byFr).map(b=>opt(b)).join('');
+  $('#f-brut').innerHTML='<option value="">Brut : tous</option>'+brOpts;
+  ['#s-projet','#s-statut','#s-matiere','#f-projet','#f-matiere','#f-statut','#f-forme','#f-brut','#f-fournisseur'].forEach((id,i)=>{ if(kp[i]&&[...$(id).options].some(o=>o.value===kp[i])) $(id).value=kp[i]; });
+  $('#e-nom').innerHTML = ENCADRANTS.length ? "<option value=''>— Choisir votre nom —</option>"+ENCADRANTS.map(e=>opt(e)).join('') : "<option value=''>— Aucun encadrant : voir l’administrateur —</option>";
+  const gsrc=GESTIONNAIRES.length?GESTIONNAIRES:OPERATEURS;
+  $('#g-nom').innerHTML = gsrc.length ? gsrc.map(n=>opt(n)).join('') : opt('',' ');
+  $('#statutHelp').innerHTML=STATUT_ORDER.map(k=>`<div style="display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border)"><span class="pill ${STATUTS[k].cls}">${STATUTS[k].label}</span><span class="mini">${esc(STATUT_HELP[k])}</span></div>`).join('');
+}
+
+/* ────────────────────────── NOUVELLE DEMANDE ────────────────────────── */
+function buildNouvelle(){
+  const keepM=$('#n-matiere').value;
+  renderProjetCards();
+  const mats=MATIERES.filter(m=>m.actif!==false);
+  $('#n-matiere').innerHTML=mats.map(m=>opt(m.nom)).join('');
+  if(keepM&&mats.some(m=>m.nom===keepM)) $('#n-matiere').value=keepM;
+  // Si un projet était déjà choisi (recharge du catalogue), on garde l'état ; sinon le gate reste affiché.
+  onProjet();
+  onMatiereChange();
+}
+// Cartes de projets groupées par parcours (identification étudiant, comme Carnet SAE).
+function renderProjetCards(){
+  const box=$('#n-projet-cards'); if(!box) return;
+  const groups={};
+  PROJETS.forEach(p=>{ const par=parcoursForProjet(p)||'Autres projets'; (groups[par]=groups[par]||[]).push(p); });
+  const keys=Object.keys(groups).sort(byFr);
+  let h=keys.map(k=>`<div class="proj-group"><div class="proj-group-title">${esc(k)}</div><div class="proj-grid">`+
+    groups[k].slice().sort(byFr).map(p=>`<div class="proj-card" data-p="${esc(p)}"><h3>${esc(p)}</h3></div>`).join('')+
+    '</div></div>').join('');
+  h+=`<div class="proj-group"><div class="proj-grid"><div class="proj-card proj-card-autre" data-p="__autre"><h3>+ Autre projet…</h3><p>Nouveau projet, pas encore dans la liste</p></div></div></div>`;
+  box.innerHTML=h;
+  const cur=$('#n-projet').value;
+  if(cur) box.querySelectorAll('.proj-card').forEach(c=>c.classList.toggle('active',c.dataset.p===cur));
+}
+// Délégation de clic sur les cartes (posée une seule fois : le conteneur existe dès le chargement de la page).
+$('#n-projet-cards').addEventListener('click', e=>{ const c=e.target.closest('.proj-card'); if(c) pickProjet(c.dataset.p); });
+function pickProjet(p){
+  $('#n-projet').innerHTML = PROJETS.map(x=>opt(x)).join('')+opt('__autre','Autre projet…');
+  $('#n-projet').value=p;
+  document.querySelectorAll('#n-projet-cards .proj-card').forEach(c=>c.classList.toggle('active',c.dataset.p===p));
+  onProjet();
+}
+function changerProjet(){
+  $('#n-projet').value='';
+  document.querySelectorAll('#n-projet-cards .proj-card').forEach(c=>c.classList.remove('active'));
+  onProjet();
+}
+// Matière choisie → familles disponibles pour cette matière (organigramme atelier).
+// Sans association connue (matière nouvelle, « Ça dépend ») : repli sur toutes les formes actives.
+function onMatiereChange(){
+  const m=$('#n-matiere').value;
+  const fams=famillesForMatiere(m);
+  const keep=$('#n-famille').value;
+  $('#n-famille').innerHTML = fams.length ? fams.map(f=>opt(f)).join('') : opt('','— toutes les formes —');
+  if(fams.length && keep && fams.includes(keep)) $('#n-famille').value=keep;
+  onFamilleChange();
+}
+// Famille choisie → formes de cette famille, et fournisseur déduit (jamais choisi par l’étudiant).
+// Tant qu'aucune forme n'est choisie, Section/Longueur/Largeur restent grisés (pas encore utilisables).
+function onFamilleChange(){
+  const m=$('#n-matiere').value, fam=$('#n-famille').value;
+  const forms = fam ? FORMES.filter(f=>f.actif!==false&&f.famille===fam) : FORMES.filter(f=>f.actif!==false);
+  const keep=$('#n-forme').value;
+  $('#n-forme').innerHTML = opt('','— Choisir une forme —')+forms.map(f=>opt(f.nom)).join('');
+  $('#n-forme').disabled = !forms.length;
+  if(keep&&forms.some(f=>f.nom===keep)) $('#n-forme').value=keep;
+  const fourn = fam?fournisseurFor(m,fam):'';
+  $('#n-fournisseur-info').innerHTML = fam
+    ? (fourn ? '🏭 Fournisseur (déduit) : <b>'+esc(fourn)+'</b>' : '🏭 Fournisseur non défini pour cette combinaison — l’atelier confirmera.')
+    : (famillesForMatiere(m).length ? '' : '🏭 Fournisseur à déterminer pour cette matière — l’atelier confirmera.');
+  onMatiereForme();
+}
+function lockCtx(locked){ ['#n-parcours','#n-formation'].forEach(s=>{ const el=$(s); el.disabled=locked; el.classList.toggle('locked',locked); }); }
+function setSel(sel,val){
+  if(!val) return;
+  if(![...$(sel).options].some(o=>o.value===val)) $(sel).insertAdjacentHTML('afterbegin',opt(val));
+  $(sel).value=val;
+}
+// v='' → gate (cartes) ; v='__autre' → nouveau projet (saisie libre) ; sinon projet connu.
+function onProjet(){
+  const v=$('#n-projet').value, autre=v==='__autre';
+  $('#n-gate').style.display = v ? 'none' : 'block';
+  $('#n-idpanel').style.display = v ? 'block' : 'none';
+  $('#n-matierecard').style.display = v ? 'block' : 'none';
+  if(!v){ recalc(); return; }
+  $('#n-projet-chosen').innerHTML = autre ? 'Nouveau projet' : 'Projet : <b>'+esc(v)+'</b>';
+  $('#n-projet-autre-wrap').style.display=autre?'flex':'none';
+  $('#n-parcours').innerHTML=parcoursList().map(p=>opt(p)).join('');
+  $('#n-formation').innerHTML=formationsList().map(f=>opt(f)).join('');
+  if(autre){
+    _ets=[];
+    $('#n-etu-wrap').style.display='none';
+    $('#n-nom-wrap').style.display='flex'; $('#n-prenom-wrap').style.display='flex';
+    lockCtx(false);
+    $('#n-parcours').innerHTML=opt('','—')+parcoursList().map(p=>opt(p)).join('');
+    $('#n-formation').innerHTML=opt('','—')+formationsList().map(f=>opt(f)).join('');
+    $('#n-ctx-note').textContent = 'Nouveau projet : renseignez son nom, votre nom et prénom, le parcours et la formation.';
+  } else {
+    _ets=etudiantsProjet(v);
+    $('#n-etu-wrap').style.display='flex';
+    $('#n-etu').innerHTML=_ets.map((e,i)=>opt(i,(e.prenom+' '+e.nom).trim())).join('')+opt('__autre','Autre personne…');
+    if(!_ets.length) $('#n-etu').value='__autre';
+    const p=parcoursForProjet(v), f=formationForProjet(v);
+    setSel('#n-parcours',p); setSel('#n-formation',f);
+    lockCtx(!!(p&&f));
+    $('#n-ctx-note').textContent = (p&&f) ? 'Parcours et formation repris de la fiche projet.' : 'Parcours ou formation non renseignés pour ce projet : choisissez-les.';
+    onEtu();
+  }
+  recalc();
+}
+function onEtu(){
+  const other=$('#n-etu').value==='__autre' && $('#n-projet').value!=='__autre' && $('#n-projet').value!=='';
+  $('#n-nom-wrap').style.display=other?'flex':($('#n-projet').value==='__autre'?'flex':'none');
+  $('#n-prenom-wrap').style.display=$('#n-nom-wrap').style.display;
+}
+function onMatiereForme(){
+  const m=$('#n-matiere').value, f=$('#n-forme').value;
+  if(!f){ $('#n-section').innerHTML=opt('','— Choisir une forme d’abord —'); $('#n-section').disabled=true; $('#n-dims').innerHTML=''; setUsable(false); recalc(); return; }
+  const secs=sectionsFor(m,f), fm=formeOf(f);
+  const keep=$('#n-section').value;
+  $('#n-section').innerHTML = opt('','— Choisir une section —')
+    + secs.map(s=>opt(s.key,dimsLabel(fm.type,s.dims)+(s.rows.length>1?' — longueurs : '+s.rows.map(r=>nb(r.longueur,0)).join(' / '):' — '+nb(s.rows[0].longueur,0)+' mm'))).join('')
+    + opt('__autre','Autre dimension…');
+  $('#n-section').disabled=false;
+  if(keep&&[...$('#n-section').options].some(o=>o.value===keep)) $('#n-section').value=keep;
+  toggleToleUI();
+  onSection();
+}
+// Affiche le champ Largeur et adapte le libellé Longueur pour une tôle (découpe 2D).
+function toggleToleUI(){
+  const fm=formeOf($('#n-forme').value);
+  const isTole=!!(fm&&fm.type==='tole');
+  $('#n-larg-wrap').style.display=isTole?'flex':'none';
+  $('#n-long-lbl').textContent=isTole?'Longueur découpée (mm)':'Longueur du morceau (mm)';
+}
+// Grise (désactive) Longueur/Largeur tant que la section n'est pas choisie : rien à saisir avant ça.
+function setUsable(usable){ $('#n-long').disabled=!usable; $('#n-larg').disabled=!usable; }
+function onSection(){
+  const f=formeOf($('#n-forme').value), sec=$('#n-section').value;
+  const box=$('#n-dims');
+  if(f&&sec==='__autre'&&FORME_TYPES[f.type]){
+    const keep={}; box.querySelectorAll('input').forEach(i=>keep[i.dataset.k]=i.value);
+    box.innerHTML=FORME_TYPES[f.type].dims.map(([k,l])=>`<label class="f">${esc(l)} (mm)<input data-k="${k}" type="number" min="0" step="any" value="${esc(keep[k]||'')}" oninput="recalc()"></label>`).join('');
+  } else box.innerHTML='';
+  setUsable(!!sec);
+  recalc();
+}
+function readInputs(){
+  const matiere=$('#n-matiere').value, forme=$('#n-forme').value, sec=$('#n-section').value;
+  const fm=formeOf(forme); let dims={}, options=[];
+  if(fm&&FORME_TYPES[fm.type]){
+    const secs=sectionsFor(matiere,forme);
+    if(sec&&sec!=='__autre'){ const s=secs.find(x=>x.key===sec); if(s){ dims=s.dims; options=s.rows; } }
+    else if(sec==='__autre'){
+      FORME_TYPES[fm.type].dims.forEach(([k])=>{ const i=$('#n-dims input[data-k="'+k+'"]'); dims[k]=i?(num(i.value)||0):0; });
+      const s=secs.find(x=>x.key===dimsKey(fm.type,dims));   // dimension tapée = dimension du catalogue ?
+      if(s) options=s.rows;
+    }
+  }
+  const isTole=!!(fm&&fm.type==='tole');
+  return {matiere,forme,fm,sec,dims,options,longueur:num($('#n-long').value),
+    largeur:isTole?num($('#n-larg').value):null};
+}
+function parcoursCourant(){ return $('#n-parcours').value; }
+function consumed(parcours){
+  const ys=yearStart();
+  return DEMANDES.filter(d=>d.parcours===parcours&&ACTIVE.includes(d.statut)&&new Date(d.created_at)>=ys).reduce((s,d)=>s+(Number(d.cout_matiere)||0),0);
+}
+function budgetBar(parcours, extra=0){
+  const lim=BUDGETS[parcours];
+  if(lim==null||lim==='') return '';
+  const used=consumed(parcours)+extra, pct=Math.min(100,lim>0?used/lim*100:0), over=used>lim;
+  return `<div class="budget ${over?'over':''}">
+    <div class="mini"><b>Budget matière ${esc(parcours)}</b> : ${eur(used)} / ${eur(lim)} ${over?'— <b>dépassement de '+eur(used-lim)+'</b>':'— reste '+eur(lim-used)}${extra?' <span class="mini">(cette demande incluse)</span>':''}</div>
+    <div class="bar"><span style="width:${pct}%"></span></div></div>`;
+}
+function recalc(){
+  if(!$('#view-nouvelle')) return;
+  const I=readInputs();
+  const box=$('#estBox');
+  if(!MATIERES.length||!FORMES.length){ box.innerHTML='<div class="hint">Le catalogue est vide : l’administrateur doit d’abord renseigner les matières et les formes (Admin).</div>'; _est=null; $('#budgetHint').innerHTML=''; return; }
+  if(!(I.longueur>0)){ box.innerHTML=''; _est=null; $('#budgetHint').innerHTML=''; return; }
+  const E=computeEstimate(I); _est=E;
+  if(E.err){ box.innerHTML=`<div class="hint">${esc(E.err)}</div>`; $('#budgetHint').innerHTML=''; return; }
+  box.innerHTML=renderEstimate(E);
+  const p=parcoursCourant();
+  $('#budgetHint').innerHTML = p ? budgetBar(p, E.cout||0) : '';
+  const nd=nextOrderDate();
+  $('#dateHint').innerHTML = nd ? '📅 Prochaine commande de matière : <b>'+esc(fmtDayLong(nd))+'</b>. Si votre demande est validée « à commander », elle partira à cette date.' : '📅 Aucune date de commande n’est encore fixée par l’administrateur.';
+}
+function renderEstimate(E){
+  if(E.tole) return renderEstimateTole(E);
+  const pu=E.prixKg;
+  let h=`<div class="est"><h3>Estimation</h3>
+    <div class="mini">${esc(E.fm.nom)} ${esc(E.dimsLib)}, longueur ${nb(E.longueur,0)} mm — ${esc(E.mat.nom)}${pu!=null?` · ${eur(pu)}/kg TTC`:''}${E.mat.maj_at?` <span class="mini">(prix ${esc(majTxt(E.mat.maj_at))})</span>`:''}</div>`;
+  if(pu==null) h+=`<div class="warn-box">Le prix au kilo de cette matière n’est pas encore renseigné : le prix ne peut pas être calculé.</div>`;
+  h+=`<div class="kpis">
+    <div class="kpi"><div class="k">Poids</div><div class="v">${fmtKg(E.poids)}</div><div class="s">${nb(E.masseLin,2)} kg/m</div></div>
+    <div class="kpi debit"><div class="k">Prix de la matière utilisée</div><div class="v">${eur(E.cout)}</div><div class="s">compté dans votre budget</div></div>`;
+  if(E.catalogue){
+    h+=`<div class="kpi"><div class="k">Portion du brut utilisée</div><div class="v">${nb(E.part*100,1)} %</div><div class="s">${E.brutQte>1?E.brutQte+' × ':''}brut de ${nb(E.brutLong,0)} mm</div></div>
+    <div class="kpi"><div class="k">Matière perdue</div><div class="v">${eur(E.coutPerte)}</div><div class="s">${nb(E.perdu,0)} mm perdus (information)</div></div>`;
+  }
+  h+=`</div>`;
+  if(E.catalogue){
+    h+=`<div class="portion" title="Brut de ${nb(E.total,0)} mm">
+        <span class="u" style="width:${E.part*100}%"></span><span class="p" style="width:${E.partPerdu*100}%"></span><span class="r" style="width:${E.partReste*100}%"></span></div>
+      <div class="legend"><span><i style="background:var(--primary)"></i>Utilisé (${nb(E.useLen,0)} mm)</span>
+        <span><i style="background:var(--danger)"></i>Perdu (${nb(E.perdu,0)} mm : traits de scie${E.reutilisable?'':' + chute trop courte'})</span>
+        ${E.reutilisable?`<span><i style="background:var(--green)"></i>Reste réutilisable (${nb(E.rest,0)} mm, reste en stock)</span>`:''}</div>
+      <div class="mini" style="margin-top:8px">Brut retenu : <b>${esc(E.brutDesc)}</b>${E.brutQte>1?` × ${E.brutQte}`:''}</div>`;
+  } else {
+    h+=`<div class="warn-box">⚠️ Dimension <b>hors liste</b> : le brut à utiliser sera confirmé par l’encadrant et l’atelier. La portion de brut et la matière perdue ne sont pas estimées.</div>`;
+  }
+  return h+`</div>`;
+}
+function renderEstimateTole(E){
+  const pu=E.prixKg;
+  let h=`<div class="est"><h3>Estimation</h3>
+    <div class="mini">Découpe ${nb(E.longueur,0)}×${nb(E.largeur,0)} mm — ${esc(E.mat.nom)} · Tôle ${esc(E.dimsLib)}${pu!=null?` · ${eur(pu)}/kg TTC`:''}${E.mat.maj_at?` <span class="mini">(prix ${esc(majTxt(E.mat.maj_at))})</span>`:''}</div>`;
+  if(pu==null) h+=`<div class="warn-box">Le prix au kilo de cette matière n’est pas encore renseigné : le prix ne peut pas être calculé.</div>`;
+  h+=`<div class="kpis">
+    <div class="kpi"><div class="k">Poids</div><div class="v">${fmtKg(E.poids)}</div></div>
+    <div class="kpi debit"><div class="k">Prix de la matière utilisée</div><div class="v">${eur(E.cout)}</div><div class="s">compté dans votre budget</div></div>`;
+  if(E.catalogue){
+    h+=`<div class="kpi"><div class="k">Portion de la/les plaque(s)</div><div class="v">${nb(E.part*100,1)} %</div><div class="s">${E.brutQte>1?E.brutQte+' × ':''}plaque ${nb(E.brutLong,0)}×${nb(E.brutLarg,0)} mm</div></div>
+    <div class="kpi"><div class="k">Matière perdue (approx.)</div><div class="v">${eur(E.coutPerte)}</div><div class="s">estimation par surface, information</div></div>`;
+  }
+  h+=`</div>`;
+  if(E.catalogue){
+    h+=`<div class="portion" title="${E.brutQte} plaque(s) ${nb(E.total/1e6,2)} m²">
+        <span class="u" style="width:${E.part*100}%"></span><span class="p" style="width:${E.partPerdu*100}%"></span></div>
+      <div class="legend"><span><i style="background:var(--primary)"></i>Utilisé</span>
+        <span><i style="background:var(--danger)"></i>Chute (estimation par surface — pas de plan de découpe précis)</span></div>
+      <div class="mini" style="margin-top:8px">Format : <b>${esc(E.brutDesc)}</b>${E.brutQte>1?` × ${E.brutQte}`:''}</div>`;
+  } else {
+    h+=`<div class="warn-box">⚠️ Épaisseur <b>hors liste</b> : le brut à utiliser sera confirmé par l’encadrant et l’atelier.</div>`;
+  }
+  return h+`</div>`;
+}
+async function submitDemande(){
+  const err=$('#n-err'); err.classList.remove('show');
+  const p=$('#n-projet').value;
+  if(!p) return fail(err,'Choisissez votre projet.');
+  const autreProj=p==='__autre';
+  const projet=autreProj?$('#n-projet-autre').value.trim():p;
+  if(!projet) return fail(err,'Indiquez le nom du projet.');
+  let nom='', prenom='';
+  if(!autreProj && $('#n-etu').value!=='__autre'){ const e=_ets[+$('#n-etu').value]; if(e){ nom=e.nom; prenom=e.prenom; } }
+  else { nom=$('#n-nom').value.trim(); prenom=$('#n-prenom').value.trim(); }
+  if(!nom&&!prenom) return fail(err,'Indiquez votre nom et votre prénom.');
+  const parcours=$('#n-parcours').value, formation=$('#n-formation').value;
+  if(!parcours||!formation) return fail(err,'Indiquez le parcours et la formation.');
+  const I=readInputs(); const E=computeEstimate(I);
+  if(E.err) return fail(err,E.err);
+  const numero=1+DEMANDES.filter(d=>(d.projet||'').toLowerCase()===projet.toLowerCase()).reduce((m,d)=>Math.max(m,d.numero||0),0);
+  const now=new Date().toISOString();
+  const par=((prenom+' '+nom).trim());
+  const famille=$('#n-famille').value||'';
+  const fournisseur=famille?fournisseurFor(E.mat.nom,famille):'';
+  let brutDesc = E.catalogue
+    ? E.brutDesc
+    : (E.tole?`Hors liste — ${E.mat.nom} · Tôle ${E.dimsLib}`:`Hors liste — ${E.mat.nom} · ${E.fm.nom} ${E.dimsLib}`);
+  if(fournisseur) brutDesc += ' · fournisseur '+fournisseur;
+  const row={
+    numero, projet, parcours, formation, etudiant_nom:nom, etudiant_prenom:prenom,
+    matiere:E.mat.nom, famille, fournisseur, forme:E.fm.nom, forme_type:E.type, dims:E.dims, dims_libelle:E.dimsLib,
+    longueur:E.longueur, largeur:E.tole?E.largeur:null, quantite:1, hors_catalogue:!E.catalogue, notes:$('#n-notes').value.trim(),
+    densite:E.mat.densite, prix_kg:E.prixKg, masse_lin:E.tole?null:+E.masseLin.toFixed(4), poids_kg:+E.poids.toFixed(4), cout_matiere:E.cout,
+    brut_desc:brutDesc,
+    brut_longueur:E.catalogue?E.brutLong:null, brut_qte:E.catalogue?E.brutQte:1,
+    part_brut:E.catalogue?+E.part.toFixed(4):null, perdu_mm:(E.catalogue&&!E.tole)?+E.perdu.toFixed(1):null,
+    cout_perte:E.catalogue?E.coutPerte:null, reste_mm:(E.catalogue&&!E.tole)?+E.rest.toFixed(1):null,
+    statut:'en_attente', statut_at:now, historique:[{t:now,statut:'en_attente',par}]
+  };
+  const {error}=await wdb.from('mat_demandes').insert([row]);
+  if(error){ console.warn(error); return fail(err,'Enregistrement impossible : '+(error.message||error)); }
+  $('#n-long').value=''; $('#n-larg').value=''; $('#n-notes').value='';
+  await loadDemandes();
+  recalc();
+  toast('Demande envoyée ✅ — elle apparaît dans le Suivi');
+  showView('suivi');
+}
+
+/* ────────────────────────── SUIVI ────────────────────────── */
+function descPiece(d){
+  const n=d.quantite>1?d.quantite+' × ':'';
+  if(d.forme_type==='tole') return n+esc(d.forme)+' '+nb(d.longueur,0)+'×'+nb(d.largeur,0)+' mm ('+esc(d.dims_libelle||'')+')';
+  return n+esc(d.forme)+' '+esc(d.dims_libelle||'')+' — '+nb(d.longueur,0)+' mm';
+}
+function stepsHtml(d){
+  const p=[];
+  p.push(fmtDate(d.created_at)+' demandée');
+  if(d.encadrant_nom&&d.encadrant_at&&['validee','commandee','recue','remise','refusee','attente_info'].includes(d.statut)) p.push(fmtDate(d.encadrant_at)+' '+(d.statut==='refusee'?'refusée':d.statut==='attente_info'?'mise en attente':'validée')+' par '+esc(d.encadrant_nom));
+  if(d.decision==='commande'&&d.date_commande) p.push('commande prévue le '+fmtDay(d.date_commande));
+  if(d.commandee_at) p.push(fmtDate(d.commandee_at)+' commandée');
+  if(d.recue_at) p.push(fmtDate(d.recue_at)+' matière prête');
+  if(d.remise_at) p.push(fmtDate(d.remise_at)+' remise');
+  return p.join(' → ');
+}
+function renderSuivi(){
+  const q=($('#s-search').value||'').toLowerCase().trim();
+  const fp=$('#s-projet').value, fs=$('#s-statut').value, fm=$('#s-matiere').value;
+  const rows=DEMANDES.filter(d=>{
+    if(fp&&d.projet!==fp) return false;
+    if(fs&&d.statut!==fs) return false;
+    if(fm&&d.matiere!==fm) return false;
+    if(q){ const hay=(d.projet+' '+d.etudiant_nom+' '+d.etudiant_prenom+' '+d.matiere+' '+d.forme+' '+d.dims_libelle).toLowerCase(); if(!hay.includes(q)) return false; }
+    return true;
+  });
+  $('#suiviBudgets').innerHTML=[...new Set(rows.map(r=>r.parcours).filter(Boolean))].sort().map(p=>budgetBar(p)).join('');
+  const groups={}; rows.forEach(r=>{ (groups[r.projet||'(sans projet)']=groups[r.projet||'(sans projet)']||[]).push(r); });
+  const keys=Object.keys(groups).sort(byFr);
+  if(!keys.length){ $('#suiviList').innerHTML='<div class="hint">Aucune demande.</div>'; return; }
+  $('#suiviList').innerHTML=keys.map(k=>{
+    const g=groups[k], meta=g[0];
+    const tot=g.filter(d=>ACTIVE.includes(d.statut)).reduce((s,d)=>s+(Number(d.cout_matiere)||0),0);
+    const encs=encadrantsForProjet(k);
+    return `<div class="group-head"><span>📁 ${esc(k)} <span class="mini">— ${esc(meta.parcours||'')} · ${esc(meta.formation||'')}${encs.length?' · '+esc(encs.join(', ')):''}</span></span>
+      <span class="tot">${g.length} demande(s) · matière ${eur(tot)}</span></div>
+      <div class="tablewrap"><table class="data">
+      <tr><th>N°</th><th>Pièce</th><th>Poids</th><th>Matière</th><th>Statut</th><th>Étapes</th><th></th></tr>
+      ${g.slice().sort((a,b)=>(a.numero||0)-(b.numero||0)).map(rowSuivi).join('')}
+      </table></div>`;
+  }).join('');
+}
+function rowSuivi(d){
+  const canCancel=['en_attente','attente_info'].includes(d.statut);
+  return `<tr>
+    <td>${d.numero||''}</td>
+    <td><b>${esc(d.matiere)}</b><div>${descPiece(d)}</div>
+      <div class="ctx">👤 ${esc((d.etudiant_prenom+' '+d.etudiant_nom).trim())}</div>
+      ${d.hors_catalogue?'<div class="ctx">⚠️ dimension hors liste</div>':''}
+      ${d.notes?`<div class="ctx">✏️ ${esc(d.notes)}</div>`:''}
+      ${d.precision_etudiant?`<div class="ctx">💬 ${esc(d.precision_etudiant).replace(/\n/g,'<br>')}</div>`:''}
+      ${d.encadrant_commentaire?`<div class="ctx">👨‍🏫 <b>${esc(d.encadrant_nom||'Encadrant')}</b> : ${esc(d.encadrant_commentaire)}</div>`:''}
+      ${d.gest_commentaire?`<div class="ctx">🏭 ${esc(d.gest_commentaire)}</div>`:''}</td>
+    <td>${fmtKg(d.poids_kg)}</td>
+    <td>${eur(d.cout_matiere)}${d.cout_perte!=null?`<div class="ctx">perte ${eur(d.cout_perte)}</div>`:''}${d.part_brut!=null?`<div class="ctx">${nb(d.part_brut*100,1)} % du brut</div>`:''}</td>
+    <td>${pill(d)}</td>
+    <td class="mini">${stepsHtml(d)}</td>
+    <td><div class="row-actions">
+      ${canCancel?`<button class="btn sm danger" onclick="cancelDemande(${d.id})">Annuler</button>`:''}</div></td>
+  </tr>`;
+}
+async function cancelDemande(id){
+  const d=DEMANDES.find(x=>x.id===id); if(!d) return;
+  if(!confirm('Annuler cette demande de matière ?')) return;
+  const now=new Date().toISOString();
+  const {error}=await wdb.from('mat_demandes').update({statut:'annulee',statut_at:now,historique:histPush(d.historique,{t:now,statut:'annulee',par:'étudiant'})}).eq('id',id);
+  if(error) return toast('Erreur : '+error.message);
+  await loadDemandes(); toast('Demande annulée');
+}
+
+/* ────────────────────────── ENCADRANT ────────────────────────── */
+async function verifyCode(kind,nom,code,askNew){
+  let ok=false, mustChange=false, notAuth=false, ecode=code;
+  try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind,name:nom,code}}); ok=!error&&!!(data&&data.ok); mustChange=!error&&!!(data&&data.mustChange); notAuth=!error&&!!(data&&data.notAuthorized); }catch(e){}
+  if(notAuth) return {ok:false,msg:kind==='encadrant'?'Encadrant inconnu. Demandez à l’administrateur de vous ajouter à un projet.':'Opérateur inconnu — voir l’administrateur.'};
+  if(!ok&&mustChange){
+    let nc=prompt('Première connexion : choisissez votre code personnel (au moins 4 caractères, différent de 000000) :');
+    if(nc===null) return {ok:false,msg:'Connexion annulée.'};
+    nc=nc.trim();
+    if(nc.length<4||nc==='000000') return {ok:false,msg:'Code invalide : au moins 4 caractères, différent de 000000.'};
+    try{ const {data,error}=await sb.functions.invoke('verify-code',{body:{kind,name:nom,code:nc,setup:true}}); ok=!error&&!!(data&&data.ok); }catch(e){ ok=false; }
+    if(!ok) return {ok:false,msg:'Impossible de définir le code (déjà défini ? réessayez).'};
+    ecode=nc;
+  }
+  return ok?{ok:true,code:ecode}:{ok:false,msg:'Nom ou code incorrect.'};
+}
+async function encLogin(){
+  const err=$('#e-err'); err.classList.remove('show');
+  const nom=$('#e-nom').value, code=$('#e-code').value.trim();
+  if(!nom) return fail(err,'Choisissez votre nom.');
+  if(code.length<4) return fail(err,'Le code comporte au moins 4 caractères.');
+  const r=await verifyCode('encadrant',nom,code);
+  if(!r.ok) return fail(err,r.msg);
+  _encOk=true; _encNom=nom; _encCode=r.code; $('#e-code').value='';
+  $('#encGate').style.display='none'; $('#encPanel').style.display='block';
+  const mine=projetsForEncadrant(nom);
+  $('#encWho').innerHTML=`Connecté : <b>${esc(nom)}</b> — ${mine.length?mine.length+' projet(s) encadré(s)':'aucun projet à votre nom'}`;
+  renderEnc();
+}
+function encLogout(){ _encOk=false; _encNom=''; _encCode=''; $('#encPanel').style.display='none'; $('#encGate').style.display='block'; }
+function encCurrentChoice(d){ return d.statut==='validee'?d.decision:d.statut==='attente_info'?'info':d.statut==='refusee'?'refus':''; }
+function renderEnc(){
+  if(!_encOk) return;
+  const mine=projetsForEncadrant(_encNom);
+  let rows=DEMANDES.filter(d=>mine.includes(d.projet));
+  if($('#e-statut').value==='todo') rows=rows.filter(d=>['en_attente','attente_info'].includes(d.statut));
+  rows.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  if(!rows.length){ $('#encList').innerHTML='<div class="hint">'+(mine.length?'Aucune demande à traiter 🎉':'Aucun projet n’est rattaché à votre nom dans la liste des étudiants.')+'</div>'; return; }
+  const nd=nextOrderDate();
+  $('#encList').innerHTML=rows.map(d=>{
+    const locked=['commandee','recue','remise','annulee'].includes(d.statut);
+    const cur=encCurrentChoice(d);
+    const ch=(v,label,sub)=>`<label class="choice"><input type="radio" name="dec-${d.id}" value="${v}" ${cur===v?'checked':''}><span>${label}${sub?`<small>${sub}</small>`:''}</span></label>`;
+    return `<div class="dcard s-${d.statut}">
+      <div class="dtitle">Demande n°${d.numero||'?'} — ${esc((d.etudiant_prenom+' '+d.etudiant_nom).trim())} — projet ${esc(d.projet)} ${pill(d)}</div>
+      <div class="dmeta">
+        <div class="dpiece"><b>${esc(d.matiere)}</b> · ${descPiece(d)}</div>${d.hors_catalogue?'<b>⚠️ dimension hors liste : à confirmer</b><br>':''}
+        Poids ${fmtKg(d.poids_kg)} · matière <b>${eur(d.cout_matiere)}</b>${d.cout_perte!=null?` · perte ${eur(d.cout_perte)} · ${nb(d.part_brut*100,1)} % du brut`:''}<br>
+        ${d.brut_desc?'Brut : '+esc(d.brut_desc)+(d.brut_qte>1?' × '+d.brut_qte:'')+'<br>':''}
+        ${esc(d.parcours)} · ${esc(d.formation)} · déposée le ${esc(fmtDateTime(d.created_at))}
+        ${d.notes?`<br>✏️ <b>Usage :</b> ${esc(d.notes)}`:''}
+        ${d.precision_etudiant?`<br>💬 <b>Précisions :</b> ${esc(d.precision_etudiant).replace(/\n/g,'<br>')}`:''}
+        ${budgetBar(d.parcours)}
+      </div>
+      ${locked?`<div class="hint" style="margin-top:8px">Cette demande est en cours de traitement par l’atelier (${esc(STATUTS[d.statut].label.toLowerCase())}) : elle ne peut plus être modifiée ici.</div>`:`
+      ${ch('stock','Matière disponible et réservée à l’atelier','La matière est en stock : l’atelier la met de côté.')}
+      ${ch('commande','Matière à commander',nd?'Elle sera rattachée à la commande du '+esc(fmtDay(nd))+'.':'Aucune date de commande fixée pour le moment.')}
+      ${ch('info','Mettre en attente — manque d’information','Précisez ce qui manque dans le commentaire.')}
+      ${ch('refus','Refuser la demande','')}
+      <label class="f" style="margin-top:8px">Commentaire pour l’étudiant<textarea id="ec-${d.id}" rows="2" placeholder="Commentaire (obligatoire pour une mise en attente)…">${esc(d.encadrant_commentaire||'')}</textarea></label>
+      <div class="row-actions" style="margin-top:8px"><button class="btn primary" onclick="saveDecision(${d.id})">Enregistrer ma décision</button></div>`}
+    </div>`;
+  }).join('');
+}
+async function saveDecision(id){
+  const d=DEMANDES.find(x=>x.id===id); if(!d) return;
+  const sel=document.querySelector(`input[name="dec-${id}"]:checked`);
+  if(!sel) return toast('Cochez une décision.');
+  const com=($('#ec-'+id).value||'').trim();
+  const v=sel.value;
+  if(v==='info'&&!com) return toast('Indiquez ce qui manque dans le commentaire.');
+  const now=new Date().toISOString();
+  const patch={encadrant_nom:_encNom, encadrant_at:now, encadrant_commentaire:com, encadrant_commentaire_at:com?now:null, statut_at:now};
+  if(v==='stock'||v==='commande'){
+    patch.statut='validee'; patch.decision=v;
+    patch.date_commande = v==='commande' ? (d.date_commande||nextOrderDate()) : null;
+  } else if(v==='info'){ patch.statut='attente_info'; patch.decision=null; patch.date_commande=null; }
+  else { patch.statut='refusee'; patch.decision=null; patch.date_commande=null; }
+  patch.historique=histPush(d.historique,{t:now,statut:patch.statut,par:_encNom});
+  const {error}=await wdb.from('mat_demandes').update(patch).eq('id',id);
+  if(error) return toast('Erreur : '+error.message);
+  await loadDemandes(); renderEnc();
+  toast(v==='stock'?'✔️ Validée — matière en stock, réservée':v==='commande'?'✔️ Validée — à commander':v==='info'?'⏸ Mise en attente d’information':'✖ Demande refusée');
+}
+
+/* ────────────────────────── GESTIONNAIRE ────────────────────────── */
+async function gestLogin(){
+  const err=$('#g-err'); err.classList.remove('show');
+  const nom=$('#g-nom').value, code=$('#g-code').value.trim();
+  if(!nom) return fail(err,'Choisissez votre nom.');
+  if(!code) return fail(err,'Saisissez votre code.');
+  const r=await verifyCode('operateur',nom,code);
+  if(!r.ok) return fail(err,r.msg);
+  _gestOk=true; _gestNom=nom; _gestCode=r.code; $('#g-code').value='';
+  $('#gestGate').style.display='none'; $('#gestPanel').style.display='block';
+  renderGest();
+}
+function gestFiltered(){
+  const q=($('#f-search').value||'').toLowerCase().trim();
+  const fs=$('#f-statut').value, fd=$('#f-decision').value, fp=$('#f-projet').value, fm=$('#f-matiere').value;
+  const ffo=$('#f-forme').value, fb=$('#f-brut').value, ffu=$('#f-fournisseur').value;
+  return DEMANDES.filter(d=>{
+    if(!GEST_STATUTS.includes(d.statut)) return false;
+    if(fs&&d.statut!==fs) return false;
+    if(fd&&d.decision!==fd) return false;
+    if(fp&&d.projet!==fp) return false;
+    if(fm&&d.matiere!==fm) return false;
+    if(ffo&&d.forme!==ffo) return false;
+    if(fb&&d.brut_desc!==fb) return false;
+    if(ffu&&d.fournisseur!==ffu) return false;
+    if(q){ const hay=(d.projet+' '+d.etudiant_nom+' '+d.etudiant_prenom+' '+d.matiere+' '+d.forme+' '+d.dims_libelle+' '+d.encadrant_nom).toLowerCase(); if(!hay.includes(q)) return false; }
+    return true;
+  });
+}
+function renderGest(){
+  if(!_gestOk) return;
+  const ys=yearStart();
+  const aCmd=DEMANDES.filter(d=>d.statut==='validee'&&d.decision==='commande').length;
+  const aPrep=DEMANDES.filter(d=>d.statut==='validee'&&d.decision==='stock').length;
+  const enCmd=DEMANDES.filter(d=>d.statut==='commandee').length;
+  const prete=DEMANDES.filter(d=>d.statut==='recue').length;
+  const att=DEMANDES.filter(d=>['en_attente','attente_info'].includes(d.statut)).length;
+  const dep=DEMANDES.filter(d=>GEST_STATUTS.includes(d.statut)&&new Date(d.created_at)>=ys).reduce((s,d)=>s+(Number(d.cout_matiere)||0),0);
+  $('#gestStats').innerHTML=[['À commander',aCmd],['En stock à préparer',aPrep],['Commandées',enCmd],['Prêtes à remettre',prete],['Chez les encadrants',att],['Matière depuis le 1ᵉʳ sept.',eur(dep)]]
+    .map(([k,v])=>`<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  const rows=gestFiltered();
+  if(!rows.length){ $('#gestList').innerHTML='<div class="hint">Aucune demande validée pour le moment.</div>'; return; }
+  if(_gestView==='statut') $('#gestList').innerHTML=renderByStatut(rows);
+  else if(_gestView==='fournisseur') $('#gestList').innerHTML=renderGrouped(rows,d=>d.fournisseur,'🏭');
+  else if(_gestView==='matiere') $('#gestList').innerHTML=renderGrouped(rows,d=>d.matiere,'🧱');
+  else if(_gestView==='projet') $('#gestList').innerHTML=renderGrouped(rows,d=>d.projet,'📁');
+  else $('#gestList').innerHTML=renderByCommande(rows);
+}
+function sumGroup(g){ return {kg:g.reduce((s,d)=>s+(Number(d.poids_kg)||0),0), eur:g.reduce((s,d)=>s+(Number(d.cout_matiere)||0),0)}; }
+function sortDate(g){ return g.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)); }
+function renderByStatut(rows){
+  const by={}; rows.forEach(d=>{ (by[d.statut]=by[d.statut]||[]).push(d); });
+  return GEST_STATUTS.filter(k=>by[k]).map(k=>{
+    const g=sortDate(by[k]), s=sumGroup(g);
+    return `<div class="group-head"><span><span class="pill ${STATUTS[k].cls}">${STATUTS[k].label}</span> <span class="mini">— ${g.length} demande(s)</span></span><span class="tot">${fmtKg(s.kg)} · ${eur(s.eur)}</span></div>${gestTable(g)}`;
+  }).join('');
+}
+function renderGrouped(rows,keyFn,icon){
+  const by={}; rows.forEach(d=>{ const k=(keyFn(d)||'').trim()||'(non renseigné)'; (by[k]=by[k]||[]).push(d); });
+  return Object.keys(by).sort(byFr).map(k=>{
+    const g=sortDate(by[k]), s=sumGroup(g);
+    return `<div class="group-head"><span>${icon} ${esc(k)} <span class="mini">— ${g.length} demande(s)</span></span><span class="tot">${fmtKg(s.kg)} · ${eur(s.eur)}</span></div>${gestTable(g)}`;
+  }).join('');
+}
+// Regroupement par date de commande : les commandes d'abord (par date), puis les demandes « en stock ».
+function renderByCommande(rows){
+  const cmd=rows.filter(d=>d.decision==='commande'), stock=rows.filter(d=>d.decision!=='commande');
+  const by={}; cmd.forEach(d=>{ const k=d.date_commande?String(d.date_commande).slice(0,10):'~'; (by[k]=by[k]||[]).push(d); });
+  let h=Object.keys(by).sort().map(k=>{
+    const g=sortDate(by[k]), s=sumGroup(g);
+    const agg={}; g.forEach(d=>{ const key=d.brut_desc||'(brut à préciser)'; agg[key]=(agg[key]||0)+(d.hors_catalogue?1:(d.brut_qte||1)); });
+    const list=Object.entries(agg).map(([desc,n])=>`<b>${n}</b> × ${esc(desc)}`).join(' · ');
+    return `<div class="group-head"><span>📅 ${k==='~'?'Date de commande à fixer':'Commande du '+esc(fmtDayLong(k))} <span class="mini">— ${g.length} demande(s)</span></span>
+      <span class="tot">${fmtKg(s.kg)} · ${eur(s.eur)} · <button class="btn xs" onclick="copyDevis('${k}')">📋 Copier pour le devis</button></span></div>
+      <div class="tocmd">À commander : ${list}</div>${gestTable(g)}`;
+  }).join('');
+  if(stock.length){ const g=sortDate(stock), s=sumGroup(g);
+    h+=`<div class="group-head"><span>📦 Matière en stock à l’atelier (réservée) <span class="mini">— ${g.length} demande(s)</span></span><span class="tot">${fmtKg(s.kg)} · ${eur(s.eur)}</span></div>${gestTable(g)}`; }
+  return h;
+}
+// Texte prêt à coller dans un e-mail de demande de devis, groupé par fournisseur, copié dans le presse-papier.
+function pieceTxt(d){
+  return d.forme_type==='tole'
+    ? `${d.forme} ${d.dims_libelle||''}, découpe ${nb(d.longueur,0)}×${nb(d.largeur,0)} mm`
+    : `${d.forme} ${d.dims_libelle||''}, longueur ${nb(d.longueur,0)} mm`;
+}
+async function copyDevis(dateKey){
+  const rows=gestFiltered().filter(d=>d.decision==='commande'&&(dateKey==='~'?!d.date_commande:String(d.date_commande).slice(0,10)===dateKey));
+  if(!rows.length) return toast('Rien à commander pour cette date.');
+  const byFourn={};
+  rows.forEach(d=>{ const f=d.fournisseur||'Fournisseur non défini'; (byFourn[f]=byFourn[f]||[]).push(d); });
+  const dateLabel = dateKey==='~' ? 'à fixer' : fmtDayLong(dateKey);
+  let txt=`Demande de devis — Atelier GMP, IUT de Bordeaux\nCommande du ${dateLabel}\n\nBonjour,\n\nPourriez-vous nous transmettre un devis pour les éléments suivants :\n`;
+  Object.keys(byFourn).sort(byFr).forEach(f=>{
+    txt+=`\n${f} :\n`;
+    byFourn[f].forEach(d=>{ txt+=`- ${d.matiere} — ${pieceTxt(d)} (projet ${d.projet}, n°${d.numero||'?'})\n`; });
+  });
+  txt+=`\nMerci par avance,\nL'atelier GMP — IUT de Bordeaux`;
+  try{ await navigator.clipboard.writeText(txt); toast('📋 Texte copié dans le presse-papier'); }
+  catch(e){ console.log(txt); toast('Copie impossible ici — texte affiché dans la console.'); }
+}
+function setGestView(v){ _gestView=v; document.querySelectorAll('[data-gv]').forEach(b=>b.classList.toggle('active',b.dataset.gv===v)); renderGest(); }
+function gestTable(rows){
+  return `<div class="tablewrap"><table class="data">
+    <tr><th>Date</th><th>Contexte</th><th>Matière &amp; pièce</th><th>Poids</th><th>Brut</th><th>Coût</th><th>Statut</th><th>Actions</th></tr>
+    ${rows.map(d=>{
+      const enc=d.encadrant_nom||encadrantsForProjet(d.projet).join(', ');
+      return `<tr>
+        <td class="mini">${fmtDate(d.created_at)}</td>
+        <td><b>${esc(d.projet||'—')}</b><div class="ctx">${esc((d.etudiant_prenom+' '+d.etudiant_nom).trim())}</div><div class="ctx">${esc(d.formation||'')}${d.parcours?' · '+esc(d.parcours):''}</div><div class="ctx">👨‍🏫 ${esc(enc||'—')}</div></td>
+        <td><b>${esc(d.matiere)}</b><div>${descPiece(d)}</div>${d.hors_catalogue?'<div class="ctx">⚠️ hors liste</div>':''}
+          ${d.encadrant_commentaire?`<div class="ctx">👨‍🏫 ${esc(d.encadrant_commentaire)}</div>`:''}
+          ${d.gest_commentaire?`<div class="ctx">🏭 ${esc(d.gest_commentaire)}</div>`:''}</td>
+        <td>${fmtKg(d.poids_kg)}</td>
+        <td class="mini">${esc(d.brut_desc||'—')}${d.brut_qte>1?' × '+d.brut_qte:''}${d.part_brut!=null?`<div>${nb(d.part_brut*100,1)} % utilisé</div>`:''}${d.cout_perte!=null?`<div>perte ${eur(d.cout_perte)}</div>`:''}</td>
+        <td>${eur(d.cout_matiere)}</td>
+        <td>${pill(d)}${d.decision==='commande'&&d.date_commande?`<div class="ctx">📅 ${esc(fmtDay(d.date_commande))}</div>`:''}</td>
+        <td><div class="row-actions">
+          ${d.statut!=='validee'?`<button class="btn sm" onclick="patchStatut(${d.id},'validee')">Validée</button>`:''}
+          ${d.decision==='commande'&&d.statut!=='commandee'?`<button class="btn sm" onclick="patchStatut(${d.id},'commandee')">Commandée</button>`:''}
+          ${d.statut!=='recue'?`<button class="btn sm" onclick="patchStatut(${d.id},'recue')">Matière prête</button>`:''}
+          ${d.statut!=='remise'?`<button class="btn sm" onclick="patchStatut(${d.id},'remise')">Remise</button>`:''}
+          <button class="btn sm" onclick="openEdit(${d.id})">Éditer</button>
+        </div></td>
+      </tr>`;
+    }).join('')}
+  </table></div>`;
+}
+async function patchStatut(id,statut){
+  const d=DEMANDES.find(x=>x.id===id); if(!d) return;
+  const now=new Date().toISOString(), cmd=d.decision==='commande';
+  const patch={statut,statut_at:now,gest_nom:_gestNom,historique:histPush(d.historique,{t:now,statut,par:_gestNom})};
+  if(statut==='validee'){ patch.commandee_at=null; patch.recue_at=null; patch.remise_at=null; }
+  else if(statut==='commandee'){ patch.commandee_at=d.commandee_at||now; patch.recue_at=null; patch.remise_at=null; }
+  else if(statut==='recue'){ patch.commandee_at=cmd?(d.commandee_at||now):null; patch.recue_at=d.recue_at||now; patch.remise_at=null; }
+  else if(statut==='remise'){ patch.commandee_at=cmd?(d.commandee_at||now):null; patch.recue_at=d.recue_at||now; patch.remise_at=now; }
+  const {error}=await wdb.from('mat_demandes').update(patch).eq('id',id);
+  if(error) return toast('Erreur : '+error.message);
+  await loadDemandes();
+}
+function openEdit(id){
+  const d=DEMANDES.find(x=>x.id===id); if(!d) return;
+  _editId=id;
+  $('#ed-titre').textContent='Demande n°'+(d.numero||'?')+' — '+d.projet+' — '+d.matiere+' '+d.forme+' '+(d.dims_libelle||'');
+  $('#ed-decision').value=d.decision||'stock';
+  const dates=DATES.map(x=>String(x.date_commande).slice(0,10));
+  if(d.date_commande&&!dates.includes(String(d.date_commande).slice(0,10))) dates.push(String(d.date_commande).slice(0,10));
+  $('#ed-date').innerHTML=opt('','— aucune —')+dates.sort().map(x=>opt(x,fmtDay(x))).join('');
+  $('#ed-date').value=d.date_commande?String(d.date_commande).slice(0,10):'';
+  $('#ed-cout').value=d.cout_matiere??'';
+  $('#ed-com').value=d.gest_commentaire||'';
+  $('#ed-err').classList.remove('show');
+  openOverlay('ovEdit');
+}
+async function saveEdit(){
+  const d=DEMANDES.find(x=>x.id===_editId); if(!d) return;
+  const dec=$('#ed-decision').value;
+  const patch={decision:dec, date_commande:dec==='commande'?($('#ed-date').value||null):null, cout_matiere:num($('#ed-cout').value), gest_commentaire:$('#ed-com').value.trim(), gest_nom:_gestNom};
+  if(dec==='stock'&&d.statut==='commandee'){ patch.statut='validee'; patch.commandee_at=null; }
+  const {error}=await wdb.from('mat_demandes').update(patch).eq('id',_editId);
+  if(error) return fail($('#ed-err'),'Modification refusée : '+error.message);
+  closeOverlay('ovEdit'); await loadDemandes(); toast('Demande mise à jour');
+}
+async function editSetStatut(st){ await patchStatut(_editId,st); closeOverlay('ovEdit'); toast('Statut : '+STATUTS[st].label); }
+
+function exportRows(){
+  return gestFiltered().map(d=>({
+    Date:(d.created_at||'').slice(0,10), Projet:d.projet, Parcours:d.parcours, Formation:d.formation,
+    Étudiant:(d.etudiant_prenom+' '+d.etudiant_nom).trim(), Encadrant:d.encadrant_nom||'',
+    Matière:d.matiere, Forme:d.forme, Section:d.dims_libelle, 'Longueur (mm)':d.longueur, Quantité:d.quantite,
+    'Poids (kg)':d.poids_kg, 'Coût matière':d.cout_matiere??'', 'Coût perte':d.cout_perte??'', 'Portion du brut (%)':d.part_brut!=null?Math.round(d.part_brut*1000)/10:'',
+    Brut:d.brut_desc, 'Brut (qté)':d.brut_qte, Origine:d.decision==='commande'?'À commander':d.decision==='stock'?'En stock':'',
+    'Date de commande':d.date_commande?String(d.date_commande).slice(0,10):'', Statut:(STATUTS[d.statut]||{}).label||d.statut,
+    'Commentaire gestionnaire':d.gest_commentaire||''
+  }));
+}
+function exportCSV(){
+  const rows=exportRows(); if(!rows.length) return toast('Rien à exporter');
+  const head=Object.keys(rows[0]);
+  const csv=[head.join(';')].concat(rows.map(r=>head.map(h=>`"${String(r[h]??'').replace(/"/g,'""')}"`).join(';'))).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'})); a.download='matieres_'+todayIso()+'.csv'; a.click();
+}
+function exportXLSX(){
+  const rows=exportRows(); if(!rows.length) return toast('Rien à exporter');
+  const ws=XLSX.utils.json_to_sheet(rows), wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Matières'); XLSX.writeFile(wb,'matieres_'+todayIso()+'.xlsx');
+}
+
+/* ────────────────────────── ADMIN ────────────────────────── */
+function adminToggle(){ if(_adminOk){ adminLogout(); } else { const i=$('#al-pw'); i.value=''; $('#al-err').classList.remove('show'); openOverlay('ovAdminLogin'); setTimeout(()=>i.focus(),50); } }
+async function adminLogin(){
+  const err=$('#al-err'); err.classList.remove('show');
+  const code=$('#al-pw').value.trim(); if(!code) return fail(err,'Saisissez le mot de passe.');
+  let role=null;
+  try{ const res=await sb.functions.invoke('admin-op',{body:{action:'login',adminCode:code}}); if(!res.error&&res.data&&res.data.ok) role=res.data.role; }catch(e){}
+  if(!role) return fail(err,'Mot de passe incorrect.');
+  _adminOk=true; _adminRole=role; _adminPw=code; $('#al-pw').value='';
+  closeOverlay('ovAdminLogin'); applyAdminUI();
+}
+function adminLogout(){
+  _adminOk=false; _adminRole=''; _adminPw='';
+  ['ovMatieres','ovFourFam','ovFormes','ovBruts','ovDates','ovBudgets','ovParams','ovAdminLogin'].forEach(closeOverlay);
+  applyAdminUI(); toast('↩ Admin déconnecté');
+}
+function applyAdminUI(){
+  $('#adminBanner').classList.toggle('visible',_adminOk);
+  $('#btnAdmin').classList.toggle('active',_adminOk);
+  $('#adminRoleTag').textContent=!_adminOk?'':(_adminRole==='super'?'🛡️ Super admin':'⚙️ Mode administrateur actif');
+}
+function openAdmin(id,fn){ if(!_adminOk) return; fn(); openOverlay(id); }
+async function adminSave(promise,okMsg){
+  const {error}=await promise;
+  if(error){ toast('Erreur : '+error.message); return false; }
+  await loadCatalogue(); buildAll(); if(okMsg) toast(okMsg); return true;
+}
+
+/* — Matières — */
+function renderMatieres(){
+  const modeSelect=(id,cur)=>`<select id="${id}"><option value="ttc" ${cur!=='ht'?'selected':''}>TTC</option><option value="ht" ${cur==='ht'?'selected':''}>HT</option></select>`;
+  $('#matList').innerHTML=MATIERES.length?`<div class="tablewrap"><table class="data">
+    <tr><th>Matière</th><th>Densité kg/dm³</th><th>Prix €/kg</th><th>Saisi en</th><th>Prix TTC</th><th>Actif</th><th>Mise à jour</th><th></th></tr>
+    ${MATIERES.map((m,i)=>`<tr><td><b>${esc(m.nom)}</b></td>
+      <td><input id="mm-d-${i}" type="number" step="any" value="${m.densite??''}" style="width:100px"></td>
+      <td><input id="mm-p-${i}" type="number" step="any" value="${m.prix_kg??''}" style="width:100px" oninput="document.getElementById('mm-ttc-${i}').textContent=fmtTTCPreview(${i})"></td>
+      <td>${modeSelect('mm-mode-'+i, m.prix_mode)}</td>
+      <td class="mini" id="mm-ttc-${i}">${eur(prixTTC(m))}</td>
+      <td style="text-align:center"><input id="mm-a-${i}" type="checkbox" ${m.actif!==false?'checked':''} style="width:auto"></td>
+      <td class="mini">${esc(majTxt(m.maj_at))}</td>
+      <td><div class="row-actions"><button class="btn sm" onclick="saveMatiere(${i})">Enregistrer</button><button class="btn sm danger" onclick="delMatiere(${i})">Suppr.</button></div></td></tr>`).join('')}
+  </table></div>`:'<div class="hint">Aucune matière.</div>';
+}
+function fmtTTCPreview(i){
+  const p=num($('#mm-p-'+i).value), mode=$('#mm-mode-'+i).value;
+  return eur(p==null?null:(mode==='ht'?Math.round(p*(1+tvaTaux()/100)*100)/100:p));
+}
+async function saveMatiere(i){
+  const m=MATIERES[i]; const dens=num($('#mm-d-'+i).value);
+  if(!(dens>0)) return toast('Densité invalide');
+  if(await adminSave(wdb.from('mat_matieres').upsert([{nom:m.nom,densite:dens,prix_kg:num($('#mm-p-'+i).value),prix_mode:$('#mm-mode-'+i).value,actif:$('#mm-a-'+i).checked,maj_at:new Date().toISOString()}]),'Matière enregistrée')) renderMatieres();
+}
+async function addMatiere(){
+  const nom=$('#nm-nom').value.trim(), dens=num($('#nm-dens').value);
+  if(!nom) return toast('Nom requis'); if(!(dens>0)) return toast('Densité requise');
+  if(await adminSave(wdb.from('mat_matieres').upsert([{nom,densite:dens,prix_kg:num($('#nm-prix').value),prix_mode:$('#nm-mode').value,actif:true,maj_at:new Date().toISOString()}]),'Matière ajoutée')){
+    ['#nm-nom','#nm-dens','#nm-prix'].forEach(s=>$(s).value=''); renderMatieres();
+  }
+}
+async function delMatiere(i){
+  const m=MATIERES[i];
+  if(BRUTS.some(b=>b.matiere===m.nom)) return toast('Cette matière a des bruts : décochez « Actif » ou supprimez d’abord ses bruts.');
+  if(!confirm('Supprimer la matière « '+m.nom+' » ?')) return;
+  if(await adminSave(wdb.from('mat_matieres').delete().eq('nom',m.nom),'Matière supprimée')) renderMatieres();
+}
+
+/* — Fournisseurs, familles, associations (organigramme de l'atelier) — */
+function renderFourFam(){
+  renderFournisseursList(); renderFamillesList(); renderFourFamList();
+}
+function renderFournisseursList(){
+  $('#fourList').innerHTML=FOURNISSEURS.length?`<div class="tablewrap"><table class="data">
+    <tr><th>Fournisseur</th><th>Actif</th><th>Mise à jour</th><th></th></tr>
+    ${FOURNISSEURS.map((f,i)=>`<tr><td><b>${esc(f.nom)}</b></td>
+      <td style="text-align:center"><input id="fo-a-${i}" type="checkbox" ${f.actif!==false?'checked':''} onchange="toggleFournisseurActif(${i},this.checked)" style="width:auto"></td>
+      <td class="mini">${esc(majTxt(f.maj_at))}</td>
+      <td><button class="btn sm danger" onclick="delFournisseur(${i})">Suppr.</button></td></tr>`).join('')}
+  </table></div>`:'<div class="hint">Aucun fournisseur.</div>';
+}
+async function addFournisseur(){
+  const nom=$('#nfo-nom').value.trim(); if(!nom) return toast('Nom requis');
+  if(await adminSave(wdb.from('mat_fournisseurs').upsert([{nom,actif:true,maj_at:new Date().toISOString()}]),'Fournisseur ajouté')){ $('#nfo-nom').value=''; renderFourFam(); }
+}
+async function toggleFournisseurActif(i,val){
+  const f=FOURNISSEURS[i];
+  if(await adminSave(wdb.from('mat_fournisseurs').update({actif:val,maj_at:new Date().toISOString()}).eq('nom',f.nom))) renderFourFam();
+}
+async function delFournisseur(i){
+  const f=FOURNISSEURS[i];
+  if(FOUR_FAMILLES.some(r=>r.fournisseur===f.nom)) return toast('Ce fournisseur a des associations : supprimez-les d’abord.');
+  if(!confirm('Supprimer le fournisseur « '+f.nom+' » ?')) return;
+  if(await adminSave(wdb.from('mat_fournisseurs').delete().eq('nom',f.nom),'Fournisseur supprimé')) renderFourFam();
+}
+function renderFamillesList(){
+  $('#famList').innerHTML=FAMILLES.length?`<div class="tablewrap"><table class="data">
+    <tr><th>Famille</th><th>Actif</th><th>Mise à jour</th><th></th></tr>
+    ${FAMILLES.map((f,i)=>`<tr><td><b>${esc(f.nom)}</b></td>
+      <td style="text-align:center"><input id="fa-a-${i}" type="checkbox" ${f.actif!==false?'checked':''} onchange="toggleFamilleActif(${i},this.checked)" style="width:auto"></td>
+      <td class="mini">${esc(majTxt(f.maj_at))}</td>
+      <td><button class="btn sm danger" onclick="delFamille(${i})">Suppr.</button></td></tr>`).join('')}
+  </table></div>`:'<div class="hint">Aucune famille.</div>';
+}
+async function addFamille(){
+  const nom=$('#nfa-nom').value.trim(); if(!nom) return toast('Nom requis');
+  if(await adminSave(wdb.from('mat_familles').upsert([{nom,actif:true,maj_at:new Date().toISOString()}]),'Famille ajoutée')){ $('#nfa-nom').value=''; renderFourFam(); }
+}
+async function toggleFamilleActif(i,val){
+  const f=FAMILLES[i];
+  if(await adminSave(wdb.from('mat_familles').update({actif:val,maj_at:new Date().toISOString()}).eq('nom',f.nom))) renderFourFam();
+}
+async function delFamille(i){
+  const f=FAMILLES[i];
+  if(FORMES.some(x=>x.famille===f.nom)) return toast('Des formes utilisent cette famille : changez-les d’abord (Admin → Formes).');
+  if(FOUR_FAMILLES.some(r=>r.famille===f.nom)) return toast('Cette famille a des associations : supprimez-les d’abord.');
+  if(!confirm('Supprimer la famille « '+f.nom+' » ?')) return;
+  if(await adminSave(wdb.from('mat_familles').delete().eq('nom',f.nom),'Famille supprimée')) renderFourFam();
+}
+function renderFourFamList(){
+  $('#nff-matiere').innerHTML=MATIERES.map(m=>opt(m.nom)).join('');
+  $('#nff-fournisseur').innerHTML=FOURNISSEURS.map(f=>opt(f.nom)).join('');
+  $('#nff-famille').innerHTML=FAMILLES.map(f=>opt(f.nom)).join('');
+  const rows=FOUR_FAMILLES.slice().sort((a,b)=>byFr(a.matiere,b.matiere)||byFr(a.fournisseur,b.fournisseur)||byFr(a.famille,b.famille));
+  $('#fourFamList').innerHTML=rows.length?`<div class="tablewrap"><table class="data">
+    <tr><th>Matière</th><th>Fournisseur</th><th>Famille</th><th></th></tr>
+    ${rows.map(r=>`<tr><td>${esc(r.matiere)}</td><td>${esc(r.fournisseur)}</td><td>${esc(r.famille)}</td>
+      <td><button class="btn sm danger" onclick="delFourFamille(${r.id})">Suppr.</button></td></tr>`).join('')}
+  </table></div>`:'<div class="hint">Aucune association : sans elle, l’étudiant verra toutes les formes, sans fournisseur déduit.</div>';
+}
+async function addFourFamille(){
+  const err=$('#nff-err'); err.classList.remove('show');
+  const matiere=$('#nff-matiere').value, fournisseur=$('#nff-fournisseur').value, famille=$('#nff-famille').value;
+  if(!matiere||!fournisseur||!famille) return fail(err,'Choisissez matière, fournisseur et famille.');
+  if(FOUR_FAMILLES.some(r=>r.matiere===matiere&&r.fournisseur===fournisseur&&r.famille===famille)) return fail(err,'Cette association existe déjà.');
+  if(await adminSave(wdb.from('mat_four_familles').insert([{matiere,fournisseur,famille,maj_at:new Date().toISOString()}]),'Association ajoutée')) renderFourFamList();
+}
+async function delFourFamille(id){
+  if(!confirm('Supprimer cette association ?')) return;
+  if(await adminSave(wdb.from('mat_four_familles').delete().eq('id',id),'Association supprimée')) renderFourFamList();
+}
+
+/* — Formes — */
+function renderFormes(){
+  const tOpts=Object.entries(FORME_TYPES).map(([k,v])=>opt(k,v.label)).join('');
+  $('#nf-type').innerHTML=tOpts;
+  $('#nf-famille').innerHTML='<option value="">— aucune famille —</option>'+FAMILLES.map(f=>opt(f.nom)).join('');
+  const famSelect=cur=>'<option value="">— aucune —</option>'+FAMILLES.map(f=>`<option value="${esc(f.nom)}" ${cur===f.nom?'selected':''}>${esc(f.nom)}</option>`).join('');
+  $('#formeList').innerHTML=FORMES.length?`<div class="tablewrap"><table class="data">
+    <tr><th>Forme</th><th>Famille</th><th>Type géométrique</th><th>Actif</th><th>Mise à jour</th><th></th></tr>
+    ${FORMES.map((f,i)=>`<tr><td><b>${esc(f.nom)}</b></td>
+      <td><select id="ff-fam-${i}">${famSelect(f.famille)}</select></td>
+      <td><select id="ff-t-${i}">${Object.entries(FORME_TYPES).map(([k,v])=>`<option value="${k}" ${f.type===k?'selected':''}>${esc(v.label)}</option>`).join('')}</select></td>
+      <td style="text-align:center"><input id="ff-a-${i}" type="checkbox" ${f.actif!==false?'checked':''} style="width:auto"></td>
+      <td class="mini">${esc(majTxt(f.maj_at))}</td>
+      <td><div class="row-actions"><button class="btn sm" onclick="saveForme(${i})">Enregistrer</button><button class="btn sm danger" onclick="delForme(${i})">Suppr.</button></div></td></tr>`).join('')}
+  </table></div>`:'<div class="hint">Aucune forme.</div>';
+}
+async function saveForme(i){
+  const f=FORMES[i], t=$('#ff-t-'+i).value, fam=$('#ff-fam-'+i).value;
+  if(t!==f.type && BRUTS.some(b=>b.forme===f.nom) && !confirm('Des bruts existent pour cette forme : changer son type peut les rendre incohérents. Continuer ?')) return;
+  if(await adminSave(wdb.from('mat_formes').upsert([{nom:f.nom,type:t,famille:fam||null,actif:$('#ff-a-'+i).checked,maj_at:new Date().toISOString()}]),'Forme enregistrée')) renderFormes();
+}
+async function addForme(){
+  const nom=$('#nf-nom').value.trim(); if(!nom) return toast('Nom requis');
+  if(await adminSave(wdb.from('mat_formes').upsert([{nom,type:$('#nf-type').value,famille:$('#nf-famille').value||null,actif:true,maj_at:new Date().toISOString()}]),'Forme ajoutée')){ $('#nf-nom').value=''; renderFormes(); }
+}
+async function delForme(i){
+  const f=FORMES[i];
+  if(BRUTS.some(b=>b.forme===f.nom)) return toast('Cette forme a des bruts : décochez « Actif » ou supprimez d’abord ses bruts.');
+  if(!confirm('Supprimer la forme « '+f.nom+' » ?')) return;
+  if(await adminSave(wdb.from('mat_formes').delete().eq('nom',f.nom),'Forme supprimée')) renderFormes();
+}
+
+/* — Bruts proposés — */
+function renderBruts(){
+  const fOpts=FORMES.map(f=>opt(f.nom)).join('');
+  const keep=$('#nb-forme').value;
+  $('#nb-forme').innerHTML=fOpts; if(keep&&FORMES.some(f=>f.nom===keep)) $('#nb-forme').value=keep;
+  $('#nb-mats').innerHTML=MATIERES.map((m,i)=>`<label><input type="checkbox" class="nb-mat" value="${esc(m.nom)}"> ${esc(m.nom)}</label>`).join('');
+  const km=$('#bf-matiere').value, kf=$('#bf-forme').value;
+  $('#bf-matiere').innerHTML='<option value="">Toutes les matières</option>'+MATIERES.map(m=>opt(m.nom)).join('');
+  $('#bf-forme').innerHTML='<option value="">Toutes les formes</option>'+fOpts;
+  if(km) $('#bf-matiere').value=km; if(kf) $('#bf-forme').value=kf;
+  renderBrutDims(); renderBrutList();
+}
+function renderBrutDims(){
+  const f=formeOf($('#nb-forme').value); const box=$('#nb-dims');
+  if(!f||!FORME_TYPES[f.type]){ box.innerHTML=''; return; }
+  box.innerHTML=FORME_TYPES[f.type].dims.map(([k,l],i)=>`<label class="f">${esc(l)} (mm)${i===0?' — liste possible':''}<input data-k="${k}" ${i===0?'placeholder="ex. 10 ; 12 ; 16"':'type="number" step="any"'}></label>`).join('');
+}
+function parseList(s){ return String(s||'').split(/[;\s]+/).map(x=>num(x)).filter(x=>x!=null&&x>0); }
+async function addBruts(){
+  const err=$('#nb-err'); err.classList.remove('show');
+  const f=formeOf($('#nb-forme').value); if(!f) return fail(err,'Choisissez une forme.');
+  const mats=[...document.querySelectorAll('.nb-mat:checked')].map(c=>c.value);
+  if(!mats.length) return fail(err,'Cochez au moins une matière.');
+  const longs=parseList($('#nb-long').value); if(!longs.length) return fail(err,'Indiquez au moins une longueur.');
+  const FT=FORME_TYPES[f.type]; const inputs=[...$('#nb-dims').querySelectorAll('input')];
+  const first=parseList(inputs[0].value); if(!first.length) return fail(err,'Indiquez la '+FT.dims[0][1].toLowerCase()+'.');
+  const others={}; for(let i=1;i<inputs.length;i++){ const v=num(inputs[i].value); if(!(v>0)) return fail(err,'Complétez : '+FT.dims[i][1]+'.'); others[inputs[i].dataset.k]=v; }
+  const mlin=num($('#nb-mlin').value), now=new Date().toISOString();
+  const rows=[];
+  for(const m of mats) for(const v of first){
+    const dims=Object.assign({[FT.dims[0][0]]:v},others);
+    if(!(FT.area(dims)>0)) return fail(err,'Dimensions incohérentes : '+FT.tag(dims));
+    for(const L of longs){
+      if(BRUTS.some(b=>b.matiere===m&&b.forme===f.nom&&dimsKey(f.type,b.dims||{})===dimsKey(f.type,dims)&&+b.longueur===L)) continue;
+      rows.push({matiere:m,forme:f.nom,dims,longueur:L,masse_lin:mlin,actif:true,maj_at:now});
+    }
+  }
+  if(!rows.length) return fail(err,'Ces bruts existent déjà.');
+  if(rows.length>300) return fail(err,'Trop de lignes d’un coup ('+rows.length+').');
+  if(await adminSave(wdb.from('mat_bruts').insert(rows),rows.length+' brut(s) ajouté(s)')){
+    inputs.forEach(i=>i.value=''); $('#nb-long').value=''; renderBrutList();
+  }
+}
+function renderBrutList(){
+  const fm=$('#bf-matiere').value, ff=$('#bf-forme').value;
+  const rows=BRUTS.filter(b=>(!fm||b.matiere===fm)&&(!ff||b.forme===ff)).sort((a,b)=>byFr(a.matiere,b.matiere)||byFr(a.forme,b.forme)||(FORME_TYPES[formeOf(a.forme)?.type]?.area(a.dims||{})||0)-(FORME_TYPES[formeOf(b.forme)?.type]?.area(b.dims||{})||0)||a.longueur-b.longueur);
+  if(!rows.length){ $('#brutList').innerHTML='<div class="hint">Aucun brut. Ajoutez-en avec le formulaire ci-dessus.</div>'; return; }
+  const shown=rows.slice(0,200);
+  $('#brutList').innerHTML=`<div class="mini" style="margin-bottom:6px">${rows.length} brut(s)${rows.length>shown.length?' — 200 premiers affichés, filtrez pour affiner':''}</div><div class="tablewrap"><table class="data">
+    <tr><th>Matière</th><th>Forme</th><th>Section</th><th>Longueur mm</th><th>kg/m</th><th>Actif</th><th>Mise à jour</th><th></th></tr>
+    ${shown.map(b=>{ const f=formeOf(b.forme);
+      return `<tr><td>${esc(b.matiere)}</td><td>${esc(b.forme)}</td><td><b>${esc(f?dimsLabel(f.type,b.dims):'?')}</b></td>
+      <td><input id="bb-l-${b.id}" type="number" step="any" value="${b.longueur}" style="width:90px"></td>
+      <td><input id="bb-m-${b.id}" type="number" step="any" value="${b.masse_lin??''}" style="width:80px" placeholder="auto"></td>
+      <td style="text-align:center"><input id="bb-a-${b.id}" type="checkbox" ${b.actif!==false?'checked':''} style="width:auto"></td>
+      <td class="mini">${esc(majTxt(b.maj_at))}</td>
+      <td><div class="row-actions"><button class="btn sm" onclick="saveBrut(${b.id})">Enregistrer</button><button class="btn sm danger" onclick="delBrut(${b.id})">Suppr.</button></div></td></tr>`; }).join('')}
+  </table></div>`;
+}
+async function saveBrut(id){
+  const L=num($('#bb-l-'+id).value); if(!(L>0)) return toast('Longueur invalide');
+  if(await adminSave(wdb.from('mat_bruts').update({longueur:L,masse_lin:num($('#bb-m-'+id).value),actif:$('#bb-a-'+id).checked,maj_at:new Date().toISOString()}).eq('id',id),'Brut enregistré')) renderBrutList();
+}
+async function delBrut(id){ if(!confirm('Supprimer ce brut ?')) return; if(await adminSave(wdb.from('mat_bruts').delete().eq('id',id),'Brut supprimé')) renderBrutList(); }
+
+/* — Dates de commande — */
+function renderDates(){
+  const t=todayIso();
+  $('#dateList').innerHTML=DATES.length?`<div class="tablewrap"><table class="data"><tr><th>Date</th><th>Note</th><th>Mise à jour</th><th></th></tr>
+    ${DATES.slice().sort((a,b)=>String(a.date_commande).localeCompare(String(b.date_commande))).map(d=>`<tr style="${String(d.date_commande).slice(0,10)<t?'opacity:.55':''}"><td><b>${esc(fmtDayLong(d.date_commande))}</b></td><td>${esc(d.note||'')}</td><td class="mini">${esc(majTxt(d.maj_at))}</td>
+      <td><button class="btn sm danger" onclick="delDate(${d.id})">Suppr.</button></td></tr>`).join('')}</table></div>`:'<div class="hint">Aucune date de commande.</div>';
+}
+async function addDate(){
+  const d=$('#nd-date').value; if(!d) return toast('Choisissez une date');
+  if(await adminSave(wdb.from('mat_dates').insert([{date_commande:d,note:$('#nd-note').value.trim(),maj_at:new Date().toISOString()}]),'Date ajoutée')){ $('#nd-date').value=''; $('#nd-note').value=''; renderDates(); }
+}
+async function delDate(id){ if(!confirm('Supprimer cette date ?')) return; if(await adminSave(wdb.from('mat_dates').delete().eq('id',id),'Date supprimée')) renderDates(); }
+
+/* — Budgets — */
+function renderBudgets(){
+  $('#budgetList').innerHTML=`<div class="tablewrap"><table class="data"><tr><th>Parcours</th><th>Limite €</th><th>Consommé (année)</th><th></th></tr>
+    ${parcoursList().map((p,i)=>`<tr><td>${esc(p)}</td><td><input type="number" step="1" value="${BUDGETS[p]??''}" id="bl-${i}" style="width:120px"></td>
+      <td class="mini">${eur(consumed(p))}</td><td><button class="btn sm" onclick="saveBudgetRow(${i})">Enregistrer</button></td></tr>`).join('')}</table></div>`;
+}
+async function saveBudgetRow(i){
+  const p=parcoursList()[i];
+  if(await adminSave(wdb.from('mat_budgets').upsert([{parcours:p,limite:num($('#bl-'+i).value),maj_at:new Date().toISOString()}]),'Budget enregistré')) renderBudgets();
+}
+async function saveBudget(){
+  const p=$('#nb2-parcours').value.trim(); if(!p) return;
+  if(await adminSave(wdb.from('mat_budgets').upsert([{parcours:p,limite:num($('#nb2-limite').value),maj_at:new Date().toISOString()}]),'Budget enregistré')){ $('#nb2-parcours').value=''; $('#nb2-limite').value=''; renderBudgets(); }
+}
+
+/* — Paramètres — */
+function renderParams(){
+  $('#p-trait').value=traitScie(); $('#p-tva').value=tvaTaux();
+  $('#p-tole-l').value=toleLongueur(); $('#p-tole-w').value=toleLargeur();
+  $('#p-maj').textContent='';
+}
+async function saveParams(){
+  const t=num($('#p-trait').value), tva=num($('#p-tva').value), tl=num($('#p-tole-l').value), tw=num($('#p-tole-w').value);
+  if(t==null||t<0||tva==null||tva<0||!(tl>0)||!(tw>0)) return toast('Valeurs invalides');
+  const now=new Date().toISOString();
+  if(await adminSave(wdb.from('mat_parametres').upsert([
+    {cle:'trait_scie',valeur:String(t),maj_at:now},{cle:'tva_taux',valeur:String(tva),maj_at:now},
+    {cle:'tole_longueur',valeur:String(tl),maj_at:now},{cle:'tole_largeur',valeur:String(tw),maj_at:now}
+  ]),'Paramètres enregistrés')) $('#p-maj').textContent='Enregistré le '+new Date().toLocaleDateString('fr-FR');
+}
+
+/* ────────────────────────── Temps réel + démarrage ────────────────────────── */
+sb.channel('matieres-rt')
+  .on('postgres_changes',{event:'*',schema:'public',table:'mat_demandes'},()=>{ loadDemandes(); })
+  .on('postgres_changes',{event:'*',schema:'public',table:'mat_matieres'},async()=>{ await loadCatalogue(); buildAll(); })
+  .on('postgres_changes',{event:'*',schema:'public',table:'mat_formes'},async()=>{ await loadCatalogue(); buildAll(); })
+  .on('postgres_changes',{event:'*',schema:'public',table:'mat_fournisseurs'},async()=>{ await loadCatalogue(); buildAll(); })
+  .on('postgres_changes',{event:'*',schema:'public',table:'mat_familles'},async()=>{ await loadCatalogue(); buildAll(); })
+  .on('postgres_changes',{event:'*',schema:'public',table:'mat_four_familles'},async()=>{ await loadCatalogue(); buildAll(); })
+  .on('postgres_changes',{event:'*',schema:'public',table:'mat_bruts'},async()=>{ await loadCatalogue(); buildAll(); })
+  .on('postgres_changes',{event:'*',schema:'public',table:'mat_dates'},async()=>{ await loadCatalogue(); recalc(); })
+  .subscribe();
+loadAll();
+</script>
+</body>
+</html>
