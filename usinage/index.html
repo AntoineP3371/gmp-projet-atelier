@@ -574,7 +574,7 @@
   <span class="legend-item"><span class="legend-dot" style="background:#f1f5f9;border-color:#94a3b8"></span>Bloqué</span>
 </div>
 
-<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.5.0</div>
+<div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.5.1</div>
 
 <div class="overlay" id="overlay" onclick="closeOnBg(event)">
   <div class="modal" id="modal"></div>
@@ -1899,7 +1899,7 @@ function book(machine,date,slot){
           "</div>"+
         "</div>"+
         "<div class='form-group' style='margin-bottom:4px'>"+
-          "<label>🚫 Mot de passe du projet (pour annuler / modifier)</label>"+
+          "<label>🚫 Mot de passe du projet</label>"+
           "<input type='password' id='pinIn' placeholder='Mot de passe du projet' maxlength='32' autocomplete='off'>"+
           "<span class='pin-error' id='pinErr'>Mot de passe du projet incorrect.</span>"+
         "</div>"+
@@ -1940,10 +1940,10 @@ function book(machine,date,slot){
         "<span class='field-err' id='eprenom'>Obligatoire</span></div>"+
     "</div>"+
     "<div class='form-group'>"+
-      "<label>Mot de passe du projet (pour annuler / modifier) <span class='req'>*</span></label>"+
+      "<label>Mot de passe du projet <span class='req'>*</span></label>"+
       "<input type='password' id='fpin' placeholder='Mot de passe du projet' maxlength='32' autocomplete='off'>"+
       "<span class='field-err' id='epin'>Obligatoire</span>"+
-      "<span class='pin-hint'>C'est le mot de passe de votre projet (le même que dans Carnet SAE GMP). Il sera demandé pour modifier ou annuler la réservation.</span>"+
+      "<span class='pin-hint'>Demandé pour modifier ou annuler votre réservation.</span>"+
     "</div>"+
     "<div class='disclaimer-note'>⚠️ Ce planning ne tient pas compte de l'emploi du temps pédagogique des opérateurs et des machines. Pensez à consulter l'opérateur en amont de votre réservation.</div>"+
     "<div style='margin:14px 0 6px;border-top:2px dashed var(--border);padding-top:14px'>"+
@@ -2188,7 +2188,7 @@ function promptPinMove(srcKey,destKey){
     "<h2>Déplacer la réservation</h2>"+
     "<div class='meta'>"+esc(sp[0])+" "+esc(sp[2])+" &nbsp;→&nbsp; "+esc(dp[0])+" — "+esc(dLabel)+" — "+esc(dp[2])+"</div>"+
     "<div class='form-group' style='margin-bottom:4px'>"+
-      "<label>🚫 Mot de passe du projet (pour annuler / modifier)</label>"+
+      "<label>🚫 Mot de passe du projet</label>"+
       "<input type='password' id='movePin' placeholder='Mot de passe du projet' maxlength='32' autocomplete='off'>"+
       "<span class='pin-error' id='movePinErr'>Mot de passe du projet incorrect.</span>"+
     "</div>"+
