@@ -5,6 +5,8 @@
 // Une seule action générique { action:'db', table, op, rows|patch, eq, creds } + { action:'wipe' } :
 //   • tables du catalogue (matières, formes, bruts, fournisseurs, familles, associations, dates,
 //     budgets, paramètres, gestionnaires) : mot de passe ADMIN (creds.adminPw) ;
+//   • mat_demandes — insert par un ENCADRANT (asEnc:true + creds.encNom/encCode) : demande validée d'office
+//     (statut « validee », décision stock/commande), sans mot de passe de projet ; l'encadrant doit encadrer le projet ;
 //   • mat_demandes — insert : étudiant identifié par le MOT DE PASSE DE PROJET de Carnet SAE (creds.projetPw ;
 //     projet inconnu ou sans mot de passe là-bas = ouvert), colonnes filtrées, statut forcé « en_attente », n° recalculé ;
 //   • mat_demandes — update : opérateur (creds.opName/opCode) pour le suivi, encadrant du projet
@@ -151,6 +153,14 @@ Deno.serve(async (req) => {
       return false
     }
 
+    // L'encadrant encadre-t-il ce projet ? (aucun encadrant renseigné pour le projet = pas de restriction)
+    const encadreProjet = async (projet: string, nom: string) => {
+      const { data: et } = await sb.from('etudiants').select('encadrant1, encadrant2, encadrant3').eq('projet', projet)
+      const encs = new Set<string>()
+      for (const r of (et || []) as any[]) for (const x of [r.encadrant1, r.encadrant2, r.encadrant3]) if (x) encs.add(norm(x))
+      return !encs.size || encs.has(norm(nom))
+    }
+
     // ───────────── vidage de tables (super admin) ─────────────
     if (b.action === 'wipe') {
       if (!(await adminInfo(c.adminPw ?? b.adminPw)).isSuper) return json({ ok: false, error: 'auth' }, 401)
@@ -191,23 +201,41 @@ Deno.serve(async (req) => {
 
     if (table !== 'mat_demandes') return json({ ok: false, error: 'bad-table' }, 400)
 
-    // ───────────── dépôt d'une demande (public) ─────────────
+    // ───────────── dépôt d'une demande (étudiant, ou encadrant : validée d'office) ─────────────
     if (op === 'insert') {
       if (!rows.length || rows.length > 20) return json({ ok: false, error: 'bad-input' }, 400)
       const now = new Date().toISOString()
       const clean: any[] = []
+      const asEnc = b.asEnc === true
+      const nomEnc = String(c.encNom ?? '')
+      if (asEnc && !(await encOk(nomEnc, c.encCode))) return json({ ok: false, error: 'auth' }, 401)
       for (const proj of new Set(rows.map((r) => String(r?.projet ?? '').trim()).filter(Boolean))) {
-        const refus = await refusProjet(proj, c.projetPw)
-        if (refus) return refus
+        if (asEnc) { if (!(await encadreProjet(proj, nomEnc))) return json({ ok: false, error: 'auth' }, 401) }
+        else {
+          const refus = await refusProjet(proj, c.projetPw)
+          if (refus) return refus
+        }
       }
       for (const r of rows) {
         const o: any = {}
         for (const k of DEM_INSERT_COLS) if (r && k in r) o[k] = r[k]
         if (!String(o.projet ?? '').trim() || !String(o.matiere ?? '').trim()) return json({ ok: false, error: 'bad-input' }, 400)
         o.quantite = 1
-        o.statut = 'en_attente'
-        o.statut_at = now
-        o.historique = [{ t: now, statut: 'en_attente', par: `${o.etudiant_prenom ?? ''} ${o.etudiant_nom ?? ''}`.trim() }]
+        if (asEnc) {
+          // Dépôt direct de l'encadrant : validée d'office, « en stock » ou « à commander ».
+          const dec = String(r?.decision ?? '')
+          if (!['stock', 'commande'].includes(dec)) return json({ ok: false, error: 'bad-input' }, 400)
+          const dc = dec === 'commande' ? String(r?.date_commande ?? '').slice(0, 10) : ''
+          o.etudiant_nom = ''; o.etudiant_prenom = ''
+          o.statut = 'validee'; o.decision = dec; o.date_commande = /^\d{4}-\d{2}-\d{2}$/.test(dc) ? dc : null
+          o.encadrant_nom = nomEnc; o.encadrant_at = now
+          o.statut_at = now
+          o.historique = [{ t: now, statut: 'validee', par: nomEnc }]
+        } else {
+          o.statut = 'en_attente'
+          o.statut_at = now
+          o.historique = [{ t: now, statut: 'en_attente', par: `${o.etudiant_prenom ?? ''} ${o.etudiant_nom ?? ''}`.trim() }]
+        }
         clean.push(o)
       }
       // N° incrémental par projet, calculé côté serveur.
@@ -243,10 +271,7 @@ Deno.serve(async (req) => {
         if (ENC_LOCKED.includes(cur.statut)) return json({ ok: false, error: 'locked' }, 409)
         if (patch.statut && !ENC_STATUTS.includes(patch.statut)) return json({ ok: false, error: 'bad-statut' }, 400)
         // L'encadrant doit encadrer le projet (s'il a des encadrants renseignés).
-        const { data: et } = await sb.from('etudiants').select('encadrant1, encadrant2, encadrant3').eq('projet', cur.projet)
-        const encs = new Set<string>()
-        for (const r of (et || []) as any[]) for (const x of [r.encadrant1, r.encadrant2, r.encadrant3]) if (x) encs.add(norm(x))
-        if (encs.size && !encs.has(norm(c.encNom))) return json({ ok: false, error: 'auth' }, 401)
+        if (!(await encadreProjet(cur.projet, c.encNom))) return json({ ok: false, error: 'auth' }, 401)
         allowed = true
       } else if (patch.statut === 'annulee' && only(['statut', 'statut_at', 'historique']) &&
                  ['en_attente', 'attente_info'].includes(cur.statut)) {

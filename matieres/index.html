@@ -203,6 +203,7 @@ table.data input,table.data select{padding:5px 7px;font-size:.84rem}
 .dim-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
 /* Identification étudiant par projet (cartes groupées par parcours, comme Carnet SAE) */
 .proj-wrap{display:flex;flex-direction:column;gap:16px}
+.enc-direct{margin-top:18px;padding-top:14px;border-top:1px dashed var(--border)}
 .proj-group-title{font-size:.76rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
 .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
 .proj-card{border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--surface);cursor:pointer;
@@ -270,11 +271,34 @@ table.data input,table.data select{padding:5px 7px;font-size:.84rem}
       <div id="n-gate">
         <div class="sub">Choisissez votre projet.</div>
         <div id="n-projet-cards" class="proj-wrap"></div>
+
+        <div class="enc-direct">
+          <div id="encDirectIn">
+            <button class="btn sm" type="button" onclick="toggleEncDirect()">👨‍🏫 Je suis encadrant : déposer directement une demande</button>
+            <div id="encDirect" style="display:none;margin-top:12px">
+              <div class="sub">Saisissez le mot de passe de votre compte Carnet SAE GMP (sans compte Carnet SAE : votre code personnel Atelier, à définir à la 1ʳᵉ connexion). Votre demande est alors <b>validée d’office</b> et part directement chez le gestionnaire.</div>
+              <div class="grid2">
+                <label class="f">Encadrant
+                  <select id="n-encadrant"></select></label>
+                <label class="f">Votre mot de passe
+                  <input id="n-pin" type="password" maxlength="64" placeholder="mot de passe Carnet SAE / code personnel" autocomplete="off" onkeydown="if(event.key==='Enter')encLoginDirect()"></label>
+              </div>
+              <button class="btn primary" style="margin-top:12px" onclick="encLoginDirect()">Entrer</button>
+              <div class="err" id="n-login-err"></div>
+            </div>
+          </div>
+          <div id="encDirectLogged" style="display:none">
+            Vous êtes identifié(e) comme encadrant : <b id="encDirectWho"></b>.
+            <button class="btn sm primary" type="button" style="margin-left:8px" onclick="startEncMode()">Déposer une demande en tant qu’encadrant</button>
+          </div>
+        </div>
       </div>
       <select id="n-projet" style="display:none"></select>
       <div id="n-idpanel" style="display:none">
         <div class="sub" id="n-projet-chosen" style="margin:0 0 14px"></div>
         <div class="grid2">
+          <label class="f" id="n-projet-enc-wrap" style="display:none">Projet
+            <select id="n-projet-enc" onchange="pickProjetEnc()"></select></label>
           <label class="f" id="n-projet-autre-wrap" style="display:none">Nom du projet
             <input id="n-projet-autre" placeholder="ex. Porte A380" autocomplete="off" oninput="recalc()"></label>
           <label class="f" id="n-etu-wrap">Étudiant
@@ -289,7 +313,7 @@ table.data input,table.data select{padding:5px 7px;font-size:.84rem}
             <select id="n-formation"></select></label>
         </div>
         <div class="mini" id="n-ctx-note" style="margin-top:6px"></div>
-        <button class="btn sm" style="margin-top:12px" onclick="changerProjet()">↩ Changer de projet</button>
+        <button class="btn sm" id="n-change-btn" style="margin-top:12px" onclick="changerProjet()">↩ Changer de projet</button>
       </div>
     </div>
 
@@ -324,6 +348,12 @@ table.data input,table.data select{padding:5px 7px;font-size:.84rem}
       <div id="estBox"></div>
       <div id="budgetHint"></div>
       <div id="dateHint" class="mini" style="margin-top:8px"></div>
+
+      <div id="n-encdec" style="display:none;margin-top:14px">
+        <b>Votre décision (demande validée d’office)</b>
+        <label class="choice"><input type="radio" name="n-dec" value="stock"><span>Matière disponible et réservée à l’atelier<small>La matière est en stock : l’atelier la met de côté.</small></span></label>
+        <label class="choice"><input type="radio" name="n-dec" value="commande"><span>Matière à commander<small id="n-dec-date"></small></span></label>
+      </div>
 
       <div style="display:flex;justify-content:flex-end;margin-top:16px">
         <button class="btn primary" onclick="submitDemande()">Envoyer la demande</button>
@@ -432,7 +462,7 @@ table.data input,table.data select{padding:5px 7px;font-size:.84rem}
     </div>
   </section>
 
-  <div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.3.2</div>
+  <div class="site-version" style="margin:16px 0 8px;font-size:.7rem;color:var(--muted);opacity:.6;text-align:center">v5.4.0</div>
 </div>
 
 <!-- ══════════ FENÊTRES ══════════ -->
@@ -683,7 +713,7 @@ function makeWriter(){
     async function call(){
       try{
         const proj=(st.rows&&st.rows[0]&&st.rows[0].projet)||((DEMANDES.find(d=>d.id===st.eq.id)||{}).projet)||'';
-        const {data,error}=await sb.functions.invoke('matiere-op',{body:{action:'db',table,op:st.op,rows:st.rows,patch:st.patch,eq:st.eq,creds:{...creds(),projetPw:getPw(proj)}}});
+        const {data,error}=await sb.functions.invoke('matiere-op',{body:{action:'db',table,op:st.op,rows:st.rows,patch:st.patch,eq:st.eq,asEnc:(table==='mat_demandes'&&st.op==='insert'&&_mode==='enc'),creds:{...creds(),projetPw:getPw(proj)}}});
         if(error) return {error:{message:error.message||String(error)}};
         if(!data||data.ok===false) return {error:{message:ERR_MSG[data&&data.error]||('Refusé : '+((data&&data.error)||'non autorisé'))}};
         return {data:null,error:null};
@@ -754,6 +784,7 @@ let ETUDIANTS=[], PROJETS=[], ENCADRANTS=[], GESTIONNAIRES=[], OPERATEURS=[];
 let _ets=[], _est=null;
 let _encOk=false,_encNom='', _gestOk=false,_gestNom='', _adminOk=false,_adminRole='';
 let _gestView='commande', _editId=null;
+let _mode='';   // '' (étudiant, par projet) | 'enc' (encadrant : dépôt direct, validé d'office)
 
 /* ────────────────────────── Utilitaires ────────────────────────── */
 const $ = s => document.querySelector(s);
@@ -968,7 +999,7 @@ function showView(v){
   if(v==='suivi') renderSuivi();
   if(v==='encadrant' && _encOk) renderEnc();
   if(v==='gestionnaire' && _gestOk) renderGest();
-  if(v==='nouvelle') recalc();
+  if(v==='nouvelle'){ renderGateEnc(); recalc(); }
 }
 
 /* ────────────────────────── Construction des listes ────────────────────────── */
@@ -993,7 +1024,8 @@ function buildAll(){
   const brOpts=[...new Set(DEMANDES.map(d=>d.brut_desc))].filter(Boolean).sort(byFr).map(b=>opt(b)).join('');
   $('#f-brut').innerHTML='<option value="">Brut : tous</option>'+brOpts;
   ['#s-projet','#s-statut','#s-matiere','#f-projet','#f-matiere','#f-statut','#f-forme','#f-brut','#f-fournisseur'].forEach((id,i)=>{ if(kp[i]&&[...$(id).options].some(o=>o.value===kp[i])) $(id).value=kp[i]; });
-  $('#e-nom').innerHTML = ENCADRANTS.length ? "<option value=''>— Choisir votre nom —</option>"+ENCADRANTS.map(e=>opt(e)).join('') : "<option value=''>— Aucun encadrant : voir l’administrateur —</option>";
+  const encHtml = ENCADRANTS.length ? "<option value=''>— Choisir votre nom —</option>"+ENCADRANTS.map(e=>opt(e)).join('') : "<option value=''>— Aucun encadrant : voir l’administrateur —</option>";
+  ['#e-nom','#n-encadrant'].forEach(id=>{ const k=$(id).value; $(id).innerHTML=encHtml; if(k&&[...$(id).options].some(o=>o.value===k)) $(id).value=k; });
   const gsrc=GESTIONNAIRES.length?GESTIONNAIRES:OPERATEURS;
   $('#g-nom').innerHTML = gsrc.length ? gsrc.map(n=>opt(n)).join('') : opt('',' ');
   $('#statutHelp').innerHTML=STATUT_ORDER.map(k=>`<div style="display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border)"><span class="pill ${STATUTS[k].cls}">${STATUTS[k].label}</span><span class="mini">${esc(STATUT_HELP[k])}</span></div>`).join('');
@@ -1100,7 +1132,51 @@ function onProjet(){
     $('#n-ctx-note').textContent = (p&&f) ? 'Parcours et formation repris de la fiche projet.' : 'Parcours ou formation non renseignés pour ce projet : choisissez-les.';
     onEtu();
   }
+  const enc=_mode==='enc';
+  $('#n-projet-enc-wrap').style.display = enc ? 'flex' : 'none';
+  $('#n-change-btn').style.display = enc ? 'none' : '';
+  $('#n-encdec').style.display = enc ? 'block' : 'none';
+  $('#dateHint').style.display = enc ? 'none' : '';
+  if(enc){
+    ['#n-etu-wrap','#n-nom-wrap','#n-prenom-wrap'].forEach(s=>{ $(s).style.display='none'; });   // pas d'étudiant : c'est l'encadrant qui dépose
+    $('#n-projet-chosen').innerHTML = 'Demande déposée par <b>'+esc(_encNom)+'</b> — <a href="#" onclick="backToGate();return false;">quitter le mode encadrant</a>. Votre demande est <b>validée d’office</b> et part directement chez le gestionnaire.';
+    const nd=nextOrderDate();
+    $('#n-dec-date').textContent = nd ? 'Elle sera rattachée à la commande du '+fmtDay(nd)+'.' : 'Aucune date de commande fixée pour le moment.';
+    if($('#n-projet-enc').value!==v) $('#n-projet-enc').value=v;
+  }
   recalc();
+}
+/* Encadrant : dépôt direct d'une demande, validée d'office (comme pour les commandes d'éléments standards). */
+function toggleEncDirect(){ const e=$('#encDirect'); e.style.display = e.style.display==='none' ? 'block' : 'none'; }
+function renderGateEnc(){
+  $('#encDirectIn').style.display = _encOk ? 'none' : 'block';
+  $('#encDirectLogged').style.display = _encOk ? 'block' : 'none';
+  if(_encOk) $('#encDirectWho').textContent = _encNom;
+}
+function startEncMode(){
+  if(!_encOk) return;
+  _mode='enc';
+  const mine=projetsForEncadrant(_encNom), projs=mine.length?mine:PROJETS;
+  const opts=projs.map(x=>opt(x)).join('')+opt('__autre','Autre projet…');
+  $('#n-projet').innerHTML=opts; $('#n-projet-enc').innerHTML=opts;
+  $('#n-projet').value=projs[0]||'__autre';
+  onProjet();
+}
+function pickProjetEnc(){ $('#n-projet').value=$('#n-projet-enc').value; onProjet(); }
+function backToGate(){
+  _mode=''; $('#n-projet').value='';
+  document.querySelectorAll('#n-projet-cards .proj-card').forEach(c=>c.classList.remove('active'));
+  onProjet(); renderGateEnc();
+}
+async function encLoginDirect(){
+  const err=$('#n-login-err'); err.classList.remove('show');
+  const nom=$('#n-encadrant').value, pin=$('#n-pin').value.trim();
+  if(!nom) return fail(err,'Choisissez votre nom.');
+  if(pin.length<4) return fail(err,'Le code doit comporter au moins 4 caractères.');
+  const r=await verifyCode('encadrant',nom,pin);
+  if(!r.ok) return fail(err,r.msg);
+  setEncSession(nom,r.code);
+  startEncMode();
 }
 function onEtu(){
   const other=$('#n-etu').value==='__autre' && $('#n-projet').value!=='__autre' && $('#n-projet').value!=='';
@@ -1239,17 +1315,22 @@ async function submitDemande(){
   const autreProj=p==='__autre';
   const projet=autreProj?$('#n-projet-autre').value.trim():p;
   if(!projet) return fail(err,'Indiquez le nom du projet.');
+  const enc=_mode==='enc';
+  if(enc && !_encOk) return fail(err,'Identifiez-vous de nouveau comme encadrant.');
   let nom='', prenom='';
-  if(!autreProj && $('#n-etu').value!=='__autre'){ const e=_ets[+$('#n-etu').value]; if(e){ nom=e.nom; prenom=e.prenom; } }
+  if(enc){ /* dépôt par l'encadrant : pas d'étudiant */ }
+  else if(!autreProj && $('#n-etu').value!=='__autre'){ const e=_ets[+$('#n-etu').value]; if(e){ nom=e.nom; prenom=e.prenom; } }
   else { nom=$('#n-nom').value.trim(); prenom=$('#n-prenom').value.trim(); }
-  if(!nom&&!prenom) return fail(err,'Indiquez votre nom et votre prénom.');
+  if(!enc && !nom&&!prenom) return fail(err,'Indiquez votre nom et votre prénom.');
+  const dec = enc ? ((document.querySelector('input[name="n-dec"]:checked')||{}).value||'') : '';
+  if(enc && !dec) return fail(err,'Choisissez : matière disponible en stock, ou à commander.');
   const parcours=$('#n-parcours').value, formation=$('#n-formation').value;
   if(!parcours||!formation) return fail(err,'Indiquez le parcours et la formation.');
   const I=readInputs(); const E=computeEstimate(I);
   if(E.err) return fail(err,E.err);
   const numero=1+DEMANDES.filter(d=>(d.projet||'').toLowerCase()===projet.toLowerCase()).reduce((m,d)=>Math.max(m,d.numero||0),0);
   const now=new Date().toISOString();
-  const par=((prenom+' '+nom).trim());
+  const par=enc ? _encNom : ((prenom+' '+nom).trim());
   const famille=$('#n-famille').value||'';
   const fournisseur=famille?fournisseurFor(E.mat.nom,famille):'';
   let brutDesc = E.catalogue
@@ -1267,11 +1348,22 @@ async function submitDemande(){
     cout_perte:E.catalogue?E.coutPerte:null, reste_mm:(E.catalogue&&!E.tole)?+E.rest.toFixed(1):null,
     statut:'en_attente', statut_at:now, historique:[{t:now,statut:'en_attente',par}]
   };
+  if(enc){   // validée d'office par l'encadrant qui dépose (le serveur recalcule ces champs)
+    Object.assign(row,{statut:'validee', decision:dec, date_commande:dec==='commande'?nextOrderDate():null,
+      encadrant_nom:_encNom, encadrant_at:now, historique:[{t:now,statut:'validee',par:_encNom}]});
+  }
   const {error}=await wdb.from('mat_demandes').insert([row]);
   if(error){ console.warn(error); return fail(err,'Enregistrement impossible : '+(error.message||error)); }
   $('#n-long').value=''; $('#n-larg').value=''; $('#n-notes').value='';
   await loadDemandes();
   recalc();
+  if(enc){
+    document.querySelectorAll('input[name="n-dec"]').forEach(r=>{ r.checked=false; });
+    $('#e-statut').value='all';
+    toast('Demande déposée et validée ✅ — elle est chez le gestionnaire');
+    showView('encadrant');
+    return;
+  }
   toast('Demande envoyée ✅ — elle apparaît dans le Suivi');
   showView('suivi');
 }
@@ -1336,7 +1428,7 @@ function rowSuivi(d){
   return `<tr>
     <td>${d.numero||''}</td>
     <td><b>${esc(d.matiere)}</b><div>${descPiece(d)}</div>
-      <div class="ctx">👤 ${esc((d.etudiant_prenom+' '+d.etudiant_nom).trim())}</div>
+      <div class="ctx">👤 ${esc(demandeur(d))}</div>
       ${d.hors_catalogue?'<div class="ctx">⚠️ dimension hors liste</div>':''}
       ${d.notes?`<div class="ctx">✏️ ${esc(d.notes)}</div>`:''}
       ${d.precision_etudiant?`<div class="ctx">💬 ${esc(d.precision_etudiant).replace(/\n/g,'<br>')}</div>`:''}
@@ -1382,13 +1474,29 @@ async function encLogin(){
   if(code.length<4) return fail(err,'Le code comporte au moins 4 caractères.');
   const r=await verifyCode('encadrant',nom,code);
   if(!r.ok) return fail(err,r.msg);
-  _encOk=true; _encNom=nom; _encCode=r.code; $('#e-code').value='';
-  $('#encGate').style.display='none'; $('#encPanel').style.display='block';
-  const mine=projetsForEncadrant(nom);
-  $('#encWho').innerHTML=`Connecté : <b>${esc(nom)}</b> — ${mine.length?mine.length+' projet(s) encadré(s)':'aucun projet à votre nom'}`;
-  renderEnc();
+  setEncSession(nom,r.code);
 }
-function encLogout(){ _encOk=false; _encNom=''; _encCode=''; $('#encPanel').style.display='none'; $('#encGate').style.display='block'; }
+// Session encadrant partagée entre « Espace encadrant » et le dépôt direct de « Nouvelle demande ».
+function setEncSession(nom,code){
+  _encOk=true; _encNom=nom; _encCode=code; $('#e-code').value=''; $('#n-pin').value='';
+  updateEncView(); renderGateEnc();
+}
+function updateEncView(){
+  $('#encGate').style.display = _encOk ? 'none' : 'block';
+  $('#encPanel').style.display = _encOk ? 'block' : 'none';
+  if(_encOk){
+    const mine=projetsForEncadrant(_encNom);
+    $('#encWho').innerHTML=`Connecté : <b>${esc(_encNom)}</b> — ${mine.length?mine.length+' projet(s) encadré(s)':'aucun projet à votre nom'}`;
+    renderEnc();
+  }
+}
+function encLogout(){
+  _encOk=false; _encNom=''; _encCode='';
+  if(_mode==='enc') backToGate();
+  updateEncView(); renderGateEnc();
+}
+// Demandeur affiché : l'étudiant, ou l'encadrant qui a déposé directement (pas de nom d'étudiant).
+const demandeur = d => (d.etudiant_prenom+' '+d.etudiant_nom).trim() || (d.encadrant_nom ? d.encadrant_nom+' (encadrant)' : '');
 function encCurrentChoice(d){ return d.statut==='validee'?d.decision:d.statut==='attente_info'?'info':d.statut==='refusee'?'refus':''; }
 function renderEnc(){
   if(!_encOk) return;
@@ -1403,7 +1511,7 @@ function renderEnc(){
     const cur=encCurrentChoice(d);
     const ch=(v,label,sub)=>`<label class="choice"><input type="radio" name="dec-${d.id}" value="${v}" ${cur===v?'checked':''}><span>${label}${sub?`<small>${sub}</small>`:''}</span></label>`;
     return `<div class="dcard s-${d.statut}">
-      <div class="dtitle">Demande n°${d.numero||'?'} — ${esc((d.etudiant_prenom+' '+d.etudiant_nom).trim())} — projet ${esc(d.projet)} ${pill(d)}</div>
+      <div class="dtitle">Demande n°${d.numero||'?'} — ${esc(demandeur(d))} — projet ${esc(d.projet)} ${pill(d)}</div>
       <div class="dmeta">
         <div class="dpiece"><b>${esc(d.matiere)}</b> · ${descPiece(d)}</div>${d.hors_catalogue?'<b>⚠️ dimension hors liste : à confirmer</b><br>':''}
         Poids ${fmtKg(d.poids_kg)} · matière <b>${eur(d.cout_matiere)}</b>${d.cout_perte!=null?` · perte ${eur(d.cout_perte)} · ${nb(d.part_brut*100,1)} % du brut`:''}<br>
@@ -1553,7 +1661,7 @@ function gestTable(rows){
       const enc=d.encadrant_nom||encadrantsForProjet(d.projet).join(', ');
       return `<tr>
         <td class="mini">${fmtDate(d.created_at)}</td>
-        <td><b>${esc(d.projet||'—')}</b><div class="ctx">${esc((d.etudiant_prenom+' '+d.etudiant_nom).trim())}</div><div class="ctx">${esc(d.formation||'')}${d.parcours?' · '+esc(d.parcours):''}</div><div class="ctx">👨‍🏫 ${esc(enc||'—')}</div></td>
+        <td><b>${esc(d.projet||'—')}</b><div class="ctx">${esc(demandeur(d))}</div><div class="ctx">${esc(d.formation||'')}${d.parcours?' · '+esc(d.parcours):''}</div><div class="ctx">👨‍🏫 ${esc(enc||'—')}</div></td>
         <td><b>${esc(d.matiere)}</b><div>${descPiece(d)}</div>${d.hors_catalogue?'<div class="ctx">⚠️ hors liste</div>':''}
           ${d.encadrant_commentaire?`<div class="ctx">👨‍🏫 ${esc(d.encadrant_commentaire)}</div>`:''}
           ${d.gest_commentaire?`<div class="ctx">🏭 ${esc(d.gest_commentaire)}</div>`:''}</td>
@@ -1612,7 +1720,7 @@ async function editSetStatut(st){ await patchStatut(_editId,st); closeOverlay('o
 function exportRows(){
   return gestFiltered().map(d=>({
     Date:(d.created_at||'').slice(0,10), Projet:d.projet, Parcours:d.parcours, Formation:d.formation,
-    Étudiant:(d.etudiant_prenom+' '+d.etudiant_nom).trim(), Encadrant:d.encadrant_nom||'',
+    Étudiant:demandeur(d), Encadrant:d.encadrant_nom||'',
     Matière:d.matiere, Forme:d.forme, Section:d.dims_libelle, 'Longueur (mm)':d.longueur, Quantité:d.quantite,
     'Poids (kg)':d.poids_kg, 'Coût matière':d.cout_matiere??'', 'Coût perte':d.cout_perte??'', 'Portion du brut (%)':d.part_brut!=null?Math.round(d.part_brut*1000)/10:'',
     Brut:d.brut_desc, 'Brut (qté)':d.brut_qte, Origine:d.decision==='commande'?'À commander':d.decision==='stock'?'En stock':'',
