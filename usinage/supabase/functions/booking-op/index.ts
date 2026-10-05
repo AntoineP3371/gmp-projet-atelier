@@ -61,10 +61,35 @@ Deno.serve(async (req) => {
       if (!h) return { ok: false, mustSet: c === '000000' }   // code par défaut → doit en choisir un
       return { ok: h === (await sha256hex(c)), mustSet: false }
     }
+    // Le code d'annulation/modification d'une réservation est désormais le MOT DE PASSE DU PROJET.
+    // On n'en stocke jamais le clair : booking_pins.pin contient une EMPREINTE à sens unique
+    // (hachée avec le secret serveur). L'annulation compare l'empreinte → marche hors-ligne.
+    const SAE_SECRET = (Deno.env.get('SAE_SYNC_SECRET') || '').trim()
+    const pinHash = async (pw?: string) => await sha256hex(SAE_SECRET + '|' + (pw ?? '').toString())
     const pinOk = async (m: string, d: string, s: string, pin?: string) => {
       const { data } = await sb.from('booking_pins').select('pin').match({ machine: m, date: d, slot: s }).maybeSingle()
       const stored = (data?.pin ?? '').toString()
-      return stored.length > 0 && stored === (pin ?? '').toString().trim()
+      return stored.length > 0 && stored === await pinHash((pin ?? '').toString())
+    }
+    // Vérifie le mot de passe d'un projet en réutilisant la fonction projet-access (même mécanisme
+    // que Impression 3D / Matières : /etu/list + /etu/unlock côté Carnet SAE). Retour :
+    //   'ok'   = mot de passe correct OU projet ouvert (sans mot de passe / hors SAE)
+    //   'bad'  = mot de passe incorrect
+    //   'down' = Carnet SAE injoignable (échec fermé)
+    const SUPA_URL = (Deno.env.get('SUPABASE_URL') || '').trim()
+    const SRK = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim()
+    const verifyProjetPw = async (projet?: string, password?: string): Promise<'ok' | 'bad' | 'down'> => {
+      try {
+        const r = await fetch(SUPA_URL + '/functions/v1/projet-access', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SRK },
+          body: JSON.stringify({ action: 'verify', projet: (projet ?? '').toString(), password: (password ?? '').toString() }),
+        })
+        const j = await r.json().catch(() => ({}))
+        if (j && j.ok) return 'ok'
+        if (j && j.error === 'bad') return 'bad'
+        return 'down'
+      } catch (_) { return 'down' }
     }
     const free = async (m: string, d: string, s: string) => {
       const bk = await sb.from('bookings').select('machine').match({ machine: m, date: d, slot: s }).maybeSingle()
@@ -120,10 +145,14 @@ Deno.serve(async (req) => {
     if (action === 'create') {
       const oc = await opOk(b.opName, b.opCode)
       if (!oc.ok) return json({ ok: false, error: oc.mustSet ? 'setcode' : 'badcode' })
+      // Mot de passe du projet (remplace l'ancien code perso) : vérifié via projet-access (Carnet SAE).
+      const acc = await verifyProjetPw(b.projet, b.pin)
+      if (acc === 'down') return json({ ok: false, error: 'saedown' })
+      if (acc === 'bad') return json({ ok: false, error: 'badproject' })
       if (!(await free(b.machine, b.date, b.slot))) return json({ ok: false, error: 'occupied' })
       const ins = await sb.from('bookings').insert({ machine: b.machine, date: b.date, slot: b.slot, ...fields(b) })
       if (ins.error) throw ins.error
-      await sb.from('booking_pins').upsert({ machine: b.machine, date: b.date, slot: b.slot, pin: (b.pin ?? '').toString() })
+      await sb.from('booking_pins').upsert({ machine: b.machine, date: b.date, slot: b.slot, pin: await pinHash((b.pin ?? '').toString()) })
       return json({ ok: true })
     }
 
